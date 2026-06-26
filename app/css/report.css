@@ -1,0 +1,42 @@
+/* ============================================================
+ * report.css — printable report card (one page per pupil).
+ * Loaded for the report preview + print window.
+ * ============================================================ */
+.report-card {
+  --rc-ink:#111; --rc-line:#333;
+  background:#fff; color: var(--rc-ink); width: 210mm; max-width:100%;
+  margin: 0 auto 1rem; padding: 10mm; border:1px solid #ccc; font-size: 11px;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+.report-card * { box-sizing: border-box; }
+.rc-head { display:flex; gap:10px; align-items:center; border-bottom:2px solid var(--rc-line); padding-bottom:6px; }
+.rc-logo { width:64px; height:64px; flex:0 0 64px; border:1px solid #999; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; color:#333; object-fit:contain; }
+.rc-head .rc-titles { flex:1; text-align:center; }
+.rc-head .rc-school { font-size:18px; font-weight:800; letter-spacing:.5px; }
+.rc-head .rc-contact { font-size:9.5px; color:#222; }
+.rc-term { text-align:center; font-weight:700; text-decoration:underline; margin:6px 0; font-size:13px; }
+.rc-meta { width:100%; border-collapse:collapse; margin-bottom:6px; }
+.rc-meta td { padding:2px 4px; font-size:10.5px; }
+.rc-meta .lbl { font-weight:700; }
+.rc-table { width:100%; border-collapse:collapse; margin:6px 0; }
+.rc-table th, .rc-table td { border:1px solid var(--rc-line); padding:3px 5px; font-size:10px; }
+.rc-table th { background:#eee; text-align:center; }
+.rc-table td.subj { text-align:left; }
+.rc-table td.num { text-align:center; }
+.rc-domain { background:#ddd; font-weight:700; }
+.rc-keys { font-size:9.5px; margin:4px 0; font-style:italic; }
+.rc-fees { width:100%; border-collapse:collapse; margin:6px 0; }
+.rc-fees td { border:1px solid var(--rc-line); padding:3px 6px; font-size:10.5px; }
+.rc-fees .lbl { font-weight:700; background:#f4f4f4; }
+.rc-lines div { margin:4px 0; font-size:10.5px; border-bottom:1px dotted #888; padding-bottom:2px; }
+.rc-foot { margin-top:8px; font-size:9.5px; font-style:italic; text-align:center; border-top:1px solid #999; padding-top:4px; }
+.rc-sign { display:flex; justify-content:space-between; margin-top:14px; font-size:10.5px; }
+.rc-promote { font-weight:700; margin:6px 0; }
+
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area { position:absolute; left:0; top:0; width:100%; }
+  .report-card { border:0; margin:0; padding:8mm; page-break-after: always; }
+  .no-print { display:none !important; }
+}

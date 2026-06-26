@@ -1,0 +1,961 @@
+{
+  "school": {
+    "id": "sch-1",
+    "name": "Demo Basic School",
+    "motto": "Knowledge, Discipline, Service",
+    "address": "P.O. Box [PLACEHOLDER], Kasoa (C/R)",
+    "location": "[PLACEHOLDER location / area]",
+    "phone": "+233 00 000 0000",
+    "whatsapp": "+233 00 000 0000",
+    "email": "info@demobasicschool.edu.gh",
+    "website": "www.demobasicschool.edu.gh",
+    "logo": "",
+    "currency": "GHS",
+    "signature": "",
+    "stamp": ""
+  },
+  "academic": {
+    "id": "ay-1",
+    "school_id": "sch-1",
+    "year": "2025/2026",
+    "current_term": 3,
+    "promotional_term": 3,
+    "terms": [
+      {
+        "n": 1,
+        "name": "First Term",
+        "vacation": "2025-12-19",
+        "reopening": "2026-01-06"
+      },
+      {
+        "n": 2,
+        "name": "Second Term",
+        "vacation": "2026-04-02",
+        "reopening": "2026-04-28"
+      },
+      {
+        "n": 3,
+        "name": "Third Term",
+        "vacation": "2026-07-24",
+        "reopening": "2026-09-09"
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "cat-pre",
+      "school_id": "sch-1",
+      "name": "Preschool",
+      "sort": 1
+    },
+    {
+      "id": "cat-lower",
+      "school_id": "sch-1",
+      "name": "Lower Primary",
+      "sort": 2
+    },
+    {
+      "id": "cat-upper",
+      "school_id": "sch-1",
+      "name": "Upper Primary",
+      "sort": 3
+    },
+    {
+      "id": "cat-jhs",
+      "school_id": "sch-1",
+      "name": "Junior High School",
+      "sort": 4
+    }
+  ],
+  "classes": [
+    {
+      "id": "cl-creche",
+      "school_id": "sch-1",
+      "category_id": "cat-pre",
+      "name": "Creche",
+      "template": "A",
+      "subjects": [
+        "Literacy",
+        "Numeracy",
+        "Creativity",
+        "Picture Reading"
+      ],
+      "sort": 1
+    },
+    {
+      "id": "cl-nur1",
+      "school_id": "sch-1",
+      "category_id": "cat-pre",
+      "name": "Nursery 1",
+      "template": "B",
+      "subjects": [
+        "Language & Literacy",
+        "Writing",
+        "Numeracy",
+        "Creative Arts",
+        "Our World Our People"
+      ],
+      "sort": 2
+    },
+    {
+      "id": "cl-nur2",
+      "school_id": "sch-1",
+      "category_id": "cat-pre",
+      "name": "Nursery 2",
+      "template": "B",
+      "subjects": [
+        "Language & Literacy",
+        "Writing",
+        "Numeracy",
+        "Creative Arts",
+        "Our World Our People"
+      ],
+      "sort": 3
+    },
+    {
+      "id": "cl-kg1",
+      "school_id": "sch-1",
+      "category_id": "cat-pre",
+      "name": "KG 1",
+      "template": "B",
+      "subjects": [
+        "Language & Literacy",
+        "Writing",
+        "Numeracy",
+        "Creative Arts",
+        "Our World Our People"
+      ],
+      "sort": 4
+    },
+    {
+      "id": "cl-kg2",
+      "school_id": "sch-1",
+      "category_id": "cat-pre",
+      "name": "KG 2",
+      "template": "B",
+      "subjects": [
+        "Language & Literacy",
+        "Writing",
+        "Numeracy",
+        "Creative Arts",
+        "Our World Our People"
+      ],
+      "sort": 5
+    },
+    {
+      "id": "cl-b1",
+      "school_id": "sch-1",
+      "category_id": "cat-lower",
+      "name": "Basic 1",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Creative Arts",
+        "History",
+        "Our World Our People",
+        "RME",
+        "Fantse"
+      ],
+      "sort": 6
+    },
+    {
+      "id": "cl-b2",
+      "school_id": "sch-1",
+      "category_id": "cat-lower",
+      "name": "Basic 2",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Creative Arts",
+        "History",
+        "Our World Our People",
+        "RME",
+        "Fantse"
+      ],
+      "sort": 7
+    },
+    {
+      "id": "cl-b3",
+      "school_id": "sch-1",
+      "category_id": "cat-lower",
+      "name": "Basic 3",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Creative Arts",
+        "History",
+        "Our World Our People",
+        "RME",
+        "Fantse"
+      ],
+      "sort": 8
+    },
+    {
+      "id": "cl-b4",
+      "school_id": "sch-1",
+      "category_id": "cat-upper",
+      "name": "Basic 4",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "History",
+        "Creative Arts",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 9
+    },
+    {
+      "id": "cl-b5",
+      "school_id": "sch-1",
+      "category_id": "cat-upper",
+      "name": "Basic 5",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "History",
+        "Creative Arts",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 10
+    },
+    {
+      "id": "cl-b6",
+      "school_id": "sch-1",
+      "category_id": "cat-upper",
+      "name": "Basic 6",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "History",
+        "Creative Arts",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 11
+    },
+    {
+      "id": "cl-b7",
+      "school_id": "sch-1",
+      "category_id": "cat-jhs",
+      "name": "Basic 7",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Career Technology",
+        "Creative Art & Design",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 12
+    },
+    {
+      "id": "cl-b8",
+      "school_id": "sch-1",
+      "category_id": "cat-jhs",
+      "name": "Basic 8",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Career Technology",
+        "Creative Art & Design",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 13
+    },
+    {
+      "id": "cl-b9",
+      "school_id": "sch-1",
+      "category_id": "cat-jhs",
+      "name": "Basic 9",
+      "template": "B",
+      "subjects": [
+        "English Language",
+        "Mathematics",
+        "Science",
+        "Career Technology",
+        "Creative Art & Design",
+        "Our World Our People",
+        "RME",
+        "Computing",
+        "Fantse"
+      ],
+      "sort": 14
+    }
+  ],
+  "gradeBands": [
+    {
+      "id": "g1",
+      "school_id": "sch-1",
+      "level": 1,
+      "grade": "A1",
+      "min": 90,
+      "max": 100,
+      "remark": "EXCELLENT"
+    },
+    {
+      "id": "g2",
+      "school_id": "sch-1",
+      "level": 2,
+      "grade": "B2",
+      "min": 80,
+      "max": 89,
+      "remark": "VERY GOOD"
+    },
+    {
+      "id": "g3",
+      "school_id": "sch-1",
+      "level": 3,
+      "grade": "B3",
+      "min": 75,
+      "max": 79,
+      "remark": "GOOD"
+    },
+    {
+      "id": "g4",
+      "school_id": "sch-1",
+      "level": 4,
+      "grade": "C4",
+      "min": 70,
+      "max": 74,
+      "remark": "FAIRLY GOOD"
+    },
+    {
+      "id": "g5",
+      "school_id": "sch-1",
+      "level": 5,
+      "grade": "C5",
+      "min": 65,
+      "max": 69,
+      "remark": "AVERAGE"
+    },
+    {
+      "id": "g6",
+      "school_id": "sch-1",
+      "level": 6,
+      "grade": "D6",
+      "min": 60,
+      "max": 64,
+      "remark": "BELOW AVERAGE"
+    },
+    {
+      "id": "g7",
+      "school_id": "sch-1",
+      "level": 7,
+      "grade": "D7",
+      "min": 55,
+      "max": 59,
+      "remark": "CREDIT"
+    },
+    {
+      "id": "g8",
+      "school_id": "sch-1",
+      "level": 8,
+      "grade": "E8",
+      "min": 50,
+      "max": 54,
+      "remark": "PASS"
+    },
+    {
+      "id": "g9",
+      "school_id": "sch-1",
+      "level": 9,
+      "grade": "E9",
+      "min": 0,
+      "max": 49,
+      "remark": "BEGINNING"
+    }
+  ],
+  "feeTypes": [
+    {
+      "id": "fe-tui",
+      "school_id": "sch-1",
+      "name": "Tuition",
+      "amount": 600,
+      "applies_to": "all",
+      "frequency": "per_term",
+      "required": true
+    },
+    {
+      "id": "fe-pta",
+      "school_id": "sch-1",
+      "name": "PTA Dues",
+      "amount": 30,
+      "applies_to": "all",
+      "frequency": "per_term",
+      "required": true
+    },
+    {
+      "id": "fe-exam",
+      "school_id": "sch-1",
+      "name": "Examination Fee",
+      "amount": 50,
+      "applies_to": "all",
+      "frequency": "per_term",
+      "required": true
+    },
+    {
+      "id": "fe-ict",
+      "school_id": "sch-1",
+      "name": "ICT Fee",
+      "amount": 40,
+      "applies_to": "all",
+      "frequency": "per_term",
+      "required": false
+    },
+    {
+      "id": "fe-feed",
+      "school_id": "sch-1",
+      "name": "Feeding",
+      "amount": 300,
+      "applies_to": "all",
+      "frequency": "per_term",
+      "required": false
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "id": "inc-0",
+      "school_id": "sch-1",
+      "name": "Stationery"
+    },
+    {
+      "id": "inc-1",
+      "school_id": "sch-1",
+      "name": "Textbooks"
+    },
+    {
+      "id": "inc-2",
+      "school_id": "sch-1",
+      "name": "ICT Equipment"
+    },
+    {
+      "id": "inc-3",
+      "school_id": "sch-1",
+      "name": "Furniture"
+    },
+    {
+      "id": "inc-4",
+      "school_id": "sch-1",
+      "name": "Cleaning Supplies"
+    },
+    {
+      "id": "inc-5",
+      "school_id": "sch-1",
+      "name": "Sports Equipment"
+    },
+    {
+      "id": "inc-6",
+      "school_id": "sch-1",
+      "name": "First Aid"
+    }
+  ],
+  "reportTemplates": [
+    {
+      "id": "A",
+      "school_id": "sch-1",
+      "kind": "A",
+      "name": "Template A (Creche)",
+      "blocks": {
+        "checklist": true,
+        "scoresTable": true,
+        "conduct": false,
+        "feesBlock": true
+      },
+      "checklistDomains": [
+        {
+          "name": "Health & Physical Development",
+          "indicators": [
+            "Shows good physical coordination",
+            "Eats tidily and independently",
+            "Washes and cleans hands after toilet, meals etc."
+          ]
+        },
+        {
+          "name": "Emotional & Social Development",
+          "indicators": [
+            "Is active and enjoys outdoor activities",
+            "Remains cheerful and sociable",
+            "Takes part in all class activities"
+          ]
+        },
+        {
+          "name": "Cognitive & Language Development",
+          "indicators": [
+            "Can identify simple colours and shapes",
+            "Follows activity to the conclusion",
+            "Can recite rhymes",
+            "Understands and uses simple words, sentences and gestures",
+            "Can count from 1 to 10",
+            "Can sort items and scribble simple lines"
+          ]
+        }
+      ],
+      "labels": {
+        "classScore": "Class Score %",
+        "examScore": "Exam Score %",
+        "total": "Total %",
+        "remarks": "Remarks"
+      },
+      "keysLegend": "KEYS: YES = Yes   PAR = Partially / Sometimes   NES = Needs effort / Special attention",
+      "footer": "Any erasure on this report invalidates it."
+    },
+    {
+      "id": "B",
+      "school_id": "sch-1",
+      "kind": "B",
+      "name": "Template B (Standard)",
+      "blocks": {
+        "checklist": false,
+        "scoresTable": true,
+        "conduct": true,
+        "feesBlock": true
+      },
+      "fields": {
+        "grade": {
+          "show": true,
+          "label": "Grade"
+        },
+        "positionInSubject": {
+          "show": true,
+          "label": "Position in Subject"
+        },
+        "overallPosition": {
+          "show": true,
+          "label": "Position"
+        },
+        "remarks": {
+          "show": true,
+          "label": "Remarks"
+        }
+      },
+      "keysLegend": "",
+      "footer": "Any erasure on this report invalidates it.",
+      "remarkFields": {
+        "conduct": {
+          "show": true,
+          "label": "Conduct",
+          "options": [
+            "SATISFACTORY",
+            "EXCELLENT",
+            "FAIRLY GOOD",
+            "GENERALLY ACTIVE",
+            "ENERGETIC",
+            "UNPREDICTABLE"
+          ]
+        },
+        "attitude": {
+          "show": true,
+          "label": "Attitude",
+          "options": [
+            "CALM",
+            "ADVENTUROUS",
+            "SOCIABLE",
+            "RESERVED",
+            "WELL BEHAVED",
+            "DISCIPLINED"
+          ]
+        },
+        "interest": {
+          "show": true,
+          "label": "Interest",
+          "options": [
+            "READING/ENGLISH",
+            "MATHEMATICS",
+            "SCIENCE",
+            "SPORTS/GAMES",
+            "MUSIC/DANCE",
+            "MAKING ARTWORK",
+            "COMPUTING",
+            "MULTI-TALENTED",
+            "INDOOR ACTIVITIES",
+            "OUTDOOR ACTIVITIES"
+          ]
+        },
+        "overall": {
+          "show": true,
+          "label": "Overall Remark",
+          "options": [
+            "EXCEEDS EXPECTATIONS",
+            "MEETS EXPECTATIONS",
+            "APPROACHING EXPECTATIONS",
+            "NEEDS IMPROVEMENT",
+            "BELOW EXPECTATIONS"
+          ]
+        }
+      },
+      "freeRemarks": {
+        "teacher": {
+          "show": true,
+          "label": "Class Teacher's Remark"
+        },
+        "head": {
+          "show": true,
+          "label": "Head Teacher's Signature / Stamp"
+        }
+      }
+    }
+  ],
+  "idRules": {
+    "id": "idr-1",
+    "school_id": "sch-1",
+    "student_prefix": "ST",
+    "staff_prefix": "SF",
+    "digits": 4,
+    "auto_generate": true,
+    "allow_manual": false
+  },
+  "weighting": {
+    "id": "w-1",
+    "school_id": "sch-1",
+    "class_pct": 50,
+    "exam_pct": 50
+  },
+  "labels": {
+    "id": "lab-1",
+    "school_id": "sch-1",
+    "fees_arrears": "School Fees Arrears",
+    "fees_next": "Next Term's School Fees",
+    "fees_payable": "Total Payable",
+    "roll": "Number on Roll",
+    "attendance": "Attendance",
+    "out_of": "Out of"
+  },
+  "messageTemplates": [
+    {
+      "id": "mt-fee",
+      "school_id": "sch-1",
+      "name": "Fee Reminder",
+      "body": "Dear {parent}, this is a reminder that {student} has an outstanding balance of {currency}{balance} for {term}. Thank you. - {school}"
+    },
+    {
+      "id": "mt-report",
+      "school_id": "sch-1",
+      "name": "Report Ready",
+      "body": "Dear {parent}, the {term} report for {student} is ready. Please visit the school. - {school}"
+    },
+    {
+      "id": "mt-announce",
+      "school_id": "sch-1",
+      "name": "General Announcement",
+      "body": "Dear {parent}, {message} - {school}"
+    }
+  ],
+  "permissions": {
+    "Admin": {
+      "Dashboard": true,
+      "Students": true,
+      "Assessment": true,
+      "Finance": true,
+      "Attendance": true,
+      "Communication": true,
+      "Administration": true,
+      "Inventory": true,
+      "Settings": true
+    },
+    "Director": {
+      "Dashboard": true,
+      "Students": true,
+      "Assessment": true,
+      "Finance": true,
+      "Attendance": true,
+      "Communication": true,
+      "Administration": true,
+      "Inventory": true,
+      "Settings": false
+    },
+    "Teacher": {
+      "Dashboard": true,
+      "Students": true,
+      "Assessment": true,
+      "Finance": false,
+      "Attendance": true,
+      "Communication": false,
+      "Administration": false,
+      "Inventory": false,
+      "Settings": false
+    },
+    "Other staff": {
+      "Dashboard": true,
+      "Students": true,
+      "Assessment": false,
+      "Finance": false,
+      "Attendance": true,
+      "Communication": true,
+      "Administration": false,
+      "Inventory": true,
+      "Settings": false
+    },
+    "Parent": {
+      "Dashboard": true,
+      "Students": true,
+      "Assessment": true,
+      "Finance": true,
+      "Attendance": true,
+      "Communication": true,
+      "Administration": false,
+      "Inventory": false,
+      "Settings": false
+    }
+  },
+  "users": [
+    {
+      "id": "u-admin",
+      "school_id": "sch-1",
+      "name": "School Administrator",
+      "username": "admin",
+      "role": "Admin",
+      "staff_id": "SF0001",
+      "linked_student_ids": []
+    },
+    {
+      "id": "u-dir",
+      "school_id": "sch-1",
+      "name": "The Director",
+      "username": "director",
+      "role": "Director",
+      "staff_id": "SF0002",
+      "linked_student_ids": []
+    },
+    {
+      "id": "u-teacher",
+      "school_id": "sch-1",
+      "name": "Class Teacher",
+      "username": "teacher",
+      "role": "Teacher",
+      "staff_id": "SF0003",
+      "class_ids": [
+        "cl-b1"
+      ],
+      "linked_student_ids": []
+    },
+    {
+      "id": "u-staff",
+      "school_id": "sch-1",
+      "name": "Front Desk",
+      "username": "staff",
+      "role": "Other staff",
+      "staff_id": "SF0004",
+      "linked_student_ids": []
+    },
+    {
+      "id": "u-parent",
+      "school_id": "sch-1",
+      "name": "A Parent",
+      "username": "parent",
+      "role": "Parent",
+      "linked_student_ids": [
+        "ST0001"
+      ]
+    }
+  ],
+  "staff": [
+    {
+      "id": "st-1",
+      "school_id": "sch-1",
+      "staff_id": "SF0001",
+      "name": "School Administrator",
+      "role": "Admin",
+      "phone": "+233 00 000 0001",
+      "class_ids": []
+    },
+    {
+      "id": "st-2",
+      "school_id": "sch-1",
+      "staff_id": "SF0002",
+      "name": "The Director",
+      "role": "Director",
+      "phone": "+233 00 000 0002",
+      "class_ids": []
+    },
+    {
+      "id": "st-3",
+      "school_id": "sch-1",
+      "staff_id": "SF0003",
+      "name": "Class Teacher",
+      "role": "Teacher",
+      "phone": "+233 00 000 0003",
+      "class_ids": [
+        "cl-b1"
+      ]
+    },
+    {
+      "id": "st-4",
+      "school_id": "sch-1",
+      "staff_id": "SF0004",
+      "name": "Front Desk",
+      "role": "Other staff",
+      "phone": "+233 00 000 0004",
+      "class_ids": []
+    }
+  ],
+  "parents": [
+    {
+      "id": "pa-1",
+      "school_id": "sch-1",
+      "name": "Kwame Mensah",
+      "phone": "+233 24 111 1111",
+      "whatsapp": "+233 24 111 1111",
+      "email": "kmensah@example.com",
+      "student_ids": [
+        "ST0001",
+        "ST0002"
+      ]
+    },
+    {
+      "id": "pa-2",
+      "school_id": "sch-1",
+      "name": "Ama Owusu",
+      "phone": "+233 24 222 2222",
+      "whatsapp": "+233 24 222 2222",
+      "email": "aowusu@example.com",
+      "student_ids": [
+        "ST0003"
+      ]
+    },
+    {
+      "id": "pa-3",
+      "school_id": "sch-1",
+      "name": "Yaw Boateng",
+      "phone": "+233 24 333 3333",
+      "whatsapp": "+233 24 333 3333",
+      "email": "",
+      "student_ids": [
+        "ST0004"
+      ]
+    }
+  ],
+  "students": [
+    {
+      "id": "stu-ST0001",
+      "school_id": "sch-1",
+      "student_id": "ST0001",
+      "first_name": "Adwoa",
+      "last_name": "Mensah",
+      "class_id": "cl-b1",
+      "gender": "F",
+      "dob": "",
+      "parent_id": "pa-1",
+      "status": "active",
+      "admitted_on": "2025-09-09"
+    },
+    {
+      "id": "stu-ST0002",
+      "school_id": "sch-1",
+      "student_id": "ST0002",
+      "first_name": "Kojo",
+      "last_name": "Mensah",
+      "class_id": "cl-b1",
+      "gender": "M",
+      "dob": "",
+      "parent_id": "pa-1",
+      "status": "active",
+      "admitted_on": "2025-09-09"
+    },
+    {
+      "id": "stu-ST0003",
+      "school_id": "sch-1",
+      "student_id": "ST0003",
+      "first_name": "Efua",
+      "last_name": "Owusu",
+      "class_id": "cl-b1",
+      "gender": "F",
+      "dob": "",
+      "parent_id": "pa-2",
+      "status": "active",
+      "admitted_on": "2025-09-09"
+    },
+    {
+      "id": "stu-ST0004",
+      "school_id": "sch-1",
+      "student_id": "ST0004",
+      "first_name": "Kofi",
+      "last_name": "Boateng",
+      "class_id": "cl-creche",
+      "gender": "M",
+      "dob": "",
+      "parent_id": "pa-3",
+      "status": "active",
+      "admitted_on": "2025-09-09"
+    },
+    {
+      "id": "stu-ST0005",
+      "school_id": "sch-1",
+      "student_id": "ST0005",
+      "first_name": "Akosua",
+      "last_name": "Asante",
+      "class_id": "cl-b1",
+      "gender": "F",
+      "dob": "",
+      "parent_id": null,
+      "status": "active",
+      "admitted_on": "2025-09-09"
+    }
+  ],
+  "scores": [],
+  "attendance": [],
+  "conduct": [],
+  "invoices": [],
+  "payments": [],
+  "inventoryItems": [],
+  "stockMovements": [],
+  "announcements": [],
+  "messages": [],
+  "meta": {
+    "seq": {
+      "student": 5,
+      "staff": 4
+    }
+  },
+  "constants": {
+    "MODULES": [
+      "Dashboard",
+      "Students",
+      "Assessment",
+      "Finance",
+      "Attendance",
+      "Communication",
+      "Administration",
+      "Inventory",
+      "Settings"
+    ],
+    "ROLES": [
+      "Admin",
+      "Director",
+      "Teacher",
+      "Other staff",
+      "Parent"
+    ],
+    "SCHOOL_ID": "sch-1"
+  },
+  "staffAttendance": [],
+  "studentRemarks": []
+}
