@@ -10,20 +10,22 @@
 
   // ---- Modules used by the permission matrix / sidebar ----
   var MODULES = ['Dashboard', 'Students', 'Assessment', 'Finance',
-    'Attendance', 'Communication', 'Administration', 'Inventory', 'Settings'];
+    'Attendance', 'Communication', 'Administration', 'Inventory',
+    'Accounting', 'Payroll', 'Settings'];
 
   var ROLES = ['Admin', 'Director', 'Teacher', 'Other staff', 'Parent'];
 
   // Permission matrix: role -> { module: bool }. Admin always full (enforced in code too).
+  // Order: Dash, Students, Assess, Finance, Attend, Comm, Admin, Invent, Accounting, Payroll, Settings
   function row(vals) {
     var o = {}; MODULES.forEach(function (m, i) { o[m] = vals[i]; }); return o;
   }
   var permissions = {
-    'Admin':       row([true,  true,  true,  true,  true,  true,  true,  true,  true]),
-    'Director':    row([true,  true,  true,  true,  true,  true,  true,  true,  false]),
-    'Teacher':     row([true,  true,  true,  false, true,  false, false, false, false]),
-    'Other staff': row([true,  true,  false, false, true,  true,  false, true,  false]),
-    'Parent':      row([true,  true,  true,  true,  true,  true,  false, false, false])
+    'Admin':       row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true]),
+    'Director':    row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false]),
+    'Teacher':     row([true,  true,  true,  false, true,  false, false, false, false, false, false]),
+    'Other staff': row([true,  true,  false, false, true,  true,  false, true,  false, false, false]),
+    'Parent':      row([true,  true,  true,  true,  true,  true,  false, false, false, false, false])
   };
 
   // ---- School profile ----
@@ -123,10 +125,94 @@
   ];
 
   // ---- Inventory categories ----
-  var inventoryCategories = ['Stationery', 'Textbooks', 'ICT Equipment', 'Furniture',
-    'Cleaning Supplies', 'Sports Equipment', 'First Aid'].map(function (n, i) {
+  var inventoryCategories = ['Stationery', 'Textbooks', 'Uniforms', 'ICT Equipment', 'Furniture',
+    'Cleaning Supplies', 'Sports Equipment', 'First Aid', 'Office Supplies', 'Science Lab'].map(function (n, i) {
     return { id: 'inc-' + i, school_id: SCHOOL_ID, name: n };
   });
+
+  // ---- Accounting categories (editable in Accounting → Categories) ----
+  var expenseCategories = ['Salaries & Wages', 'Utilities (ECG/Water)', 'Rent',
+    'Teaching & Learning Materials', 'Repairs & Maintenance', 'Transport & Fuel',
+    'Feeding / Canteen', 'Printing & Stationery', 'Marketing', 'Levies & Licences',
+    'Miscellaneous'].map(function (n, i) {
+    return { id: 'exc-' + i, school_id: SCHOOL_ID, name: n };
+  });
+  var incomeCategories = ['Donations', 'Uniform Sales', 'Canteen Sales', 'Bus Fees',
+    'Facility Rental', 'Miscellaneous'].map(function (n, i) {
+    return { id: 'ino-' + i, school_id: SCHOOL_ID, name: n };
+  });
+
+  // ---- Payroll statutory settings (Ghana 2026 defaults; editable, resettable) ----
+  // SSNIT: employee 5.5% / employer 13% of BASIC salary.
+  // PAYE monthly graduated bands per GRA 2026: chunk = band width; null = everything above.
+  // ---- Automation defaults (Settings → Automation) ----
+  var automation = {
+    id: 'auto-1', school_id: SCHOOL_ID,
+    enabled: true,
+    auto_billing: true,
+    fee_reminders: true, fee_reminder_days: 7,
+    absence_notify: true,
+    low_stock_alerts: true,
+    payroll_reminder: true, payroll_reminder_day: 25,
+    report_ready_notify: false
+  };
+
+  // Configurable payroll: every earning / deduction / employer cost is a
+  // togglable field with an editable default. SSNIT is deducted before PAYE.
+  // (payroll-lib.js normalizes/upgrades this object; keep shape in sync.)
+  var payrollSettings = {
+    id: 'ps-1', school_id: SCHOOL_ID,
+    version: 2,
+    apply_statutory: true,
+    employer_section_enabled: true,
+    ssnit_ceiling: 0,                 // 0 = no cap; enter current SSNIT insurable ceiling
+    payment_methods: ['Bank', 'MoMo', 'Cash'],
+    employee_types: ['Full-time', 'Part-time', 'Other'],
+    paye_monthly_bands: [
+      { chunk: 490,     rate: 0 },
+      { chunk: 110,     rate: 5 },
+      { chunk: 130,     rate: 10 },
+      { chunk: 3166.67, rate: 17.5 },
+      { chunk: 16000,   rate: 25 },
+      { chunk: 30520,   rate: 30 },
+      { chunk: null,    rate: 35 }
+    ],
+    fields: [
+      { key: 'basic',       name: 'Basic salary',              type: 'earning',       kind: 'amount',    basis: 'flat',    default: 0,    enabled: true,  editable: false, locked_on: true, source: 'staff', order: 1 },
+      { key: 'allowances',  name: 'Allowances',                type: 'earning',       kind: 'amount',    basis: 'flat',    default: 0,    enabled: true,  editable: true,  source: 'staff', order: 2 },
+      { key: 'bonus',       name: 'Bonus',                     type: 'earning',       kind: 'amount',    basis: 'flat',    default: 0,    enabled: true,  editable: true,  order: 3 },
+      { key: 'other',       name: 'Other',                     type: 'earning',       kind: 'amount',    basis: 'flat',    default: 0,    enabled: true,  editable: true,  order: 4 },
+      { key: 'ssnit_t1',    name: 'SSNIT Tier 1 (employee)',   type: 'deduction',     kind: 'percent',   basis: 'basic',   default: 5.5,  enabled: true,  editable: true,  locked_on: true, statutory: true, pre_tax: true, order: 5 },
+      { key: 'paye',        name: 'PAYE (income tax)',         type: 'deduction',     kind: 'graduated', basis: 'taxable', default: 0,    enabled: true,  editable: false, locked_on: true, statutory: true, pre_tax: false, order: 6 },
+      { key: 'tier2',       name: 'Tier 2 pension',            type: 'deduction',     kind: 'percent',   basis: 'basic',   default: 5,    enabled: true,  editable: true,  pre_tax: true, order: 7 },
+      { key: 'tier3',       name: 'Tier 3 pension (voluntary)',type: 'deduction',     kind: 'percent',   basis: 'basic',   default: 0,    enabled: false, editable: true,  pre_tax: true, max_pct: 16.5, order: 8 },
+      { key: 'emp_ssnit_t1',name: 'SSNIT Tier 1 (employer)',   type: 'employer_cost', kind: 'percent',   basis: 'basic',   default: 13,   enabled: true,  editable: true,  order: 9 },
+      { key: 'emp_tier2',   name: 'Tier 2 (employer)',         type: 'employer_cost', kind: 'percent',   basis: 'basic',   default: 5,    enabled: true,  editable: true,  order: 10 }
+    ],
+    note: 'Ghana defaults. SSNIT (Tier 1/2/3) is deducted before PAYE. Verify GRA PAYE bands and the SSNIT insurable ceiling each January and edit in Payroll → Pay Structure.'
+  };
+
+  // ---- Inventory feature toggles + configuration lists ----
+  var inventorySettings = {
+    id: 'inv-1', school_id: SCHOOL_ID,
+    toggles: { supplierDetails: false, batchTracking: false, multiCampus: false, auditSnapshot: false },
+    storeLocations: ['Main Admin Store', 'Bookshop'],
+    reasonCodes: ['New Supply / Restock', 'Damaged / Torn', 'Classroom Allocation', 'Physical Count Discrepancy', 'Theft / Loss', 'Student Sale', 'Staff Issue'],
+    paymentStatuses: ['Cash/MoMo Paid', 'Billed to School Fees Ledger', 'Not Applicable (Staff Internal Use)'],
+    branches: ['Main Campus']
+  };
+
+  // ---- Sample inventory items (Item Master) + stock rows (Stock Levels) ----
+  var inventoryItems = [
+    { id: 'itm-1', school_id: SCHOOL_ID, sku: 'UNI-BRN-14', name: 'Brown Uniform - Size 14', inventory_type: 'resale', category: 'Uniforms', target_class: 'cl-b1', cost_price: 45, selling_price: 70, unit_cost: 45, unit: 'set', low_threshold: 10, qty: 40, supplier: { name: '', contact: '', location: '' }, archived: false },
+    { id: 'itm-2', school_id: SCHOOL_ID, sku: 'BK-MAT-B9', name: 'Mathematics Textbook - Basic 9', inventory_type: 'resale', category: 'Textbooks', target_class: 'cl-b9', cost_price: 30, selling_price: 45, unit_cost: 30, unit: 'copy', low_threshold: 15, qty: 60, supplier: { name: '', contact: '', location: '' }, archived: false },
+    { id: 'itm-3', school_id: SCHOOL_ID, sku: 'ICT-LAP-01', name: 'ICT Lab Laptop', inventory_type: 'asset', category: 'ICT Equipment', target_class: '', cost_price: 4500, selling_price: 0, unit_cost: 4500, unit: 'unit', low_threshold: 2, qty: 12, supplier: { name: '', contact: '', location: '' }, archived: false }
+  ];
+  var inventoryStock = [
+    { id: 'stk-1', school_id: SCHOOL_ID, item_id: 'itm-1', item_name: 'Brown Uniform - Size 14', location: 'Bookshop', qoh: 40, allocated: 5, reorder_level: 10, batch: {}, archived: false },
+    { id: 'stk-2', school_id: SCHOOL_ID, item_id: 'itm-2', item_name: 'Mathematics Textbook - Basic 9', location: 'Bookshop', qoh: 60, allocated: 0, reorder_level: 15, batch: {}, archived: false },
+    { id: 'stk-3', school_id: SCHOOL_ID, item_id: 'itm-3', item_name: 'ICT Lab Laptop', location: 'Main Admin Store', qoh: 12, allocated: 0, reorder_level: 2, batch: {}, archived: false }
+  ];
 
   // ---- Report templates (blocks/fields toggleable & renamable) ----
   var checklistDomains = [
@@ -228,11 +314,12 @@
   ];
 
   // ---- Staff records ----
+  // basic_salary / allowances are DEMO figures — set real pay in Payroll → Staff Pay Setup.
   var staff = [
-    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [] },
-    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [] },
-    { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'] },
-    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [] }
+    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
+    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} }
   ];
 
   // ---- Sample parents & students (demo data) ----
@@ -264,6 +351,11 @@
     gradeBands: gradeBands,
     feeTypes: feeTypes,
     inventoryCategories: inventoryCategories,
+    inventorySettings: inventorySettings,
+    expenseCategories: expenseCategories,
+    incomeCategories: incomeCategories,
+    payrollSettings: payrollSettings,
+    automation: automation,
     reportTemplates: reportTemplates,
     idRules: idRules,
     weighting: weighting,
@@ -282,11 +374,18 @@
     conduct: [],
     invoices: [],
     payments: [],
-    inventoryItems: [],
+    inventoryItems: inventoryItems,
     stockMovements: [],
+    inventoryStock: inventoryStock,
+    inventoryTransactions: [],
+    inventoryAudit: [],
     announcements: [],
     messages: [],
-    meta: { seq: { student: 5, staff: 4 } },
+    expenses: [],
+    otherIncome: [],
+    payrollRuns: [],
+    automationLog: [],
+    meta: { seq: { student: 5, staff: 4, invtxn: 0 } },
     constants: { MODULES: MODULES, ROLES: ROLES, SCHOOL_ID: SCHOOL_ID }
   };
 
