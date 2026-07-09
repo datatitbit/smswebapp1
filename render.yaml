@@ -1,0 +1,22 @@
+# ============================================================
+# render.yaml — Render Blueprint for the SMS webapp.
+#
+# Deploys the browser app in ./app as a free Static Site.
+# The app runs in localStorage mode (no backend needed), so
+# anyone with the URL can open and test it in their browser.
+#
+# To use: Render Dashboard -> New + -> Blueprint -> pick this
+# repo. Render reads this file and creates the static site.
+# ============================================================
+services:
+  - type: web
+    name: smswebapp
+    runtime: static
+    # No build step — the files in app/ are served as-is.
+    buildCommand: echo "No build step — serving static files from app/"
+    staticPublishPath: ./app
+    # Single-page app: send any unknown path to index.html.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
