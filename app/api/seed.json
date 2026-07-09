@@ -10,9 +10,9 @@
     "email": "info@demobasicschool.edu.gh",
     "website": "www.demobasicschool.edu.gh",
     "logo": "",
-    "currency": "GHS",
     "signature": "",
-    "stamp": ""
+    "stamp": "",
+    "currency": "GHS"
   },
   "academic": {
     "id": "ay-1",
@@ -455,29 +455,350 @@
     {
       "id": "inc-2",
       "school_id": "sch-1",
-      "name": "ICT Equipment"
+      "name": "Uniforms"
     },
     {
       "id": "inc-3",
       "school_id": "sch-1",
-      "name": "Furniture"
+      "name": "ICT Equipment"
     },
     {
       "id": "inc-4",
       "school_id": "sch-1",
-      "name": "Cleaning Supplies"
+      "name": "Furniture"
     },
     {
       "id": "inc-5",
       "school_id": "sch-1",
-      "name": "Sports Equipment"
+      "name": "Cleaning Supplies"
     },
     {
       "id": "inc-6",
       "school_id": "sch-1",
+      "name": "Sports Equipment"
+    },
+    {
+      "id": "inc-7",
+      "school_id": "sch-1",
       "name": "First Aid"
+    },
+    {
+      "id": "inc-8",
+      "school_id": "sch-1",
+      "name": "Office Supplies"
+    },
+    {
+      "id": "inc-9",
+      "school_id": "sch-1",
+      "name": "Science Lab"
     }
   ],
+  "inventorySettings": {
+    "id": "inv-1",
+    "school_id": "sch-1",
+    "toggles": {
+      "supplierDetails": false,
+      "batchTracking": false,
+      "multiCampus": false,
+      "auditSnapshot": false
+    },
+    "storeLocations": [
+      "Main Admin Store",
+      "Bookshop"
+    ],
+    "reasonCodes": [
+      "New Supply / Restock",
+      "Damaged / Torn",
+      "Classroom Allocation",
+      "Physical Count Discrepancy",
+      "Theft / Loss",
+      "Student Sale",
+      "Staff Issue"
+    ],
+    "paymentStatuses": [
+      "Cash/MoMo Paid",
+      "Billed to School Fees Ledger",
+      "Not Applicable (Staff Internal Use)"
+    ],
+    "branches": [
+      "Main Campus"
+    ]
+  },
+  "expenseCategories": [
+    {
+      "id": "exc-0",
+      "school_id": "sch-1",
+      "name": "Salaries & Wages"
+    },
+    {
+      "id": "exc-1",
+      "school_id": "sch-1",
+      "name": "Utilities (ECG/Water)"
+    },
+    {
+      "id": "exc-2",
+      "school_id": "sch-1",
+      "name": "Rent"
+    },
+    {
+      "id": "exc-3",
+      "school_id": "sch-1",
+      "name": "Teaching & Learning Materials"
+    },
+    {
+      "id": "exc-4",
+      "school_id": "sch-1",
+      "name": "Repairs & Maintenance"
+    },
+    {
+      "id": "exc-5",
+      "school_id": "sch-1",
+      "name": "Transport & Fuel"
+    },
+    {
+      "id": "exc-6",
+      "school_id": "sch-1",
+      "name": "Feeding / Canteen"
+    },
+    {
+      "id": "exc-7",
+      "school_id": "sch-1",
+      "name": "Printing & Stationery"
+    },
+    {
+      "id": "exc-8",
+      "school_id": "sch-1",
+      "name": "Marketing"
+    },
+    {
+      "id": "exc-9",
+      "school_id": "sch-1",
+      "name": "Levies & Licences"
+    },
+    {
+      "id": "exc-10",
+      "school_id": "sch-1",
+      "name": "Miscellaneous"
+    }
+  ],
+  "incomeCategories": [
+    {
+      "id": "ino-0",
+      "school_id": "sch-1",
+      "name": "Donations"
+    },
+    {
+      "id": "ino-1",
+      "school_id": "sch-1",
+      "name": "Uniform Sales"
+    },
+    {
+      "id": "ino-2",
+      "school_id": "sch-1",
+      "name": "Canteen Sales"
+    },
+    {
+      "id": "ino-3",
+      "school_id": "sch-1",
+      "name": "Bus Fees"
+    },
+    {
+      "id": "ino-4",
+      "school_id": "sch-1",
+      "name": "Facility Rental"
+    },
+    {
+      "id": "ino-5",
+      "school_id": "sch-1",
+      "name": "Miscellaneous"
+    }
+  ],
+  "payrollSettings": {
+    "id": "ps-1",
+    "school_id": "sch-1",
+    "version": 2,
+    "apply_statutory": true,
+    "employer_section_enabled": true,
+    "ssnit_ceiling": 0,
+    "payment_methods": [
+      "Bank",
+      "MoMo",
+      "Cash"
+    ],
+    "employee_types": [
+      "Full-time",
+      "Part-time",
+      "Other"
+    ],
+    "paye_monthly_bands": [
+      {
+        "chunk": 490,
+        "rate": 0
+      },
+      {
+        "chunk": 110,
+        "rate": 5
+      },
+      {
+        "chunk": 130,
+        "rate": 10
+      },
+      {
+        "chunk": 3166.67,
+        "rate": 17.5
+      },
+      {
+        "chunk": 16000,
+        "rate": 25
+      },
+      {
+        "chunk": 30520,
+        "rate": 30
+      },
+      {
+        "chunk": null,
+        "rate": 35
+      }
+    ],
+    "fields": [
+      {
+        "key": "basic",
+        "name": "Basic salary",
+        "type": "earning",
+        "kind": "amount",
+        "basis": "flat",
+        "default": 0,
+        "enabled": true,
+        "editable": false,
+        "locked_on": true,
+        "source": "staff",
+        "order": 1
+      },
+      {
+        "key": "allowances",
+        "name": "Allowances",
+        "type": "earning",
+        "kind": "amount",
+        "basis": "flat",
+        "default": 0,
+        "enabled": true,
+        "editable": true,
+        "source": "staff",
+        "order": 2
+      },
+      {
+        "key": "bonus",
+        "name": "Bonus",
+        "type": "earning",
+        "kind": "amount",
+        "basis": "flat",
+        "default": 0,
+        "enabled": true,
+        "editable": true,
+        "order": 3
+      },
+      {
+        "key": "other",
+        "name": "Other",
+        "type": "earning",
+        "kind": "amount",
+        "basis": "flat",
+        "default": 0,
+        "enabled": true,
+        "editable": true,
+        "order": 4
+      },
+      {
+        "key": "ssnit_t1",
+        "name": "SSNIT Tier 1 (employee)",
+        "type": "deduction",
+        "kind": "percent",
+        "basis": "basic",
+        "default": 5.5,
+        "enabled": true,
+        "editable": true,
+        "locked_on": true,
+        "statutory": true,
+        "pre_tax": true,
+        "order": 5
+      },
+      {
+        "key": "paye",
+        "name": "PAYE (income tax)",
+        "type": "deduction",
+        "kind": "graduated",
+        "basis": "taxable",
+        "default": 0,
+        "enabled": true,
+        "editable": false,
+        "locked_on": true,
+        "statutory": true,
+        "pre_tax": false,
+        "order": 6
+      },
+      {
+        "key": "tier2",
+        "name": "Tier 2 pension",
+        "type": "deduction",
+        "kind": "percent",
+        "basis": "basic",
+        "default": 5,
+        "enabled": true,
+        "editable": true,
+        "pre_tax": true,
+        "order": 7
+      },
+      {
+        "key": "tier3",
+        "name": "Tier 3 pension (voluntary)",
+        "type": "deduction",
+        "kind": "percent",
+        "basis": "basic",
+        "default": 0,
+        "enabled": false,
+        "editable": true,
+        "pre_tax": true,
+        "max_pct": 16.5,
+        "order": 8
+      },
+      {
+        "key": "emp_ssnit_t1",
+        "name": "SSNIT Tier 1 (employer)",
+        "type": "employer_cost",
+        "kind": "percent",
+        "basis": "basic",
+        "default": 13,
+        "enabled": true,
+        "editable": true,
+        "order": 9
+      },
+      {
+        "key": "emp_tier2",
+        "name": "Tier 2 (employer)",
+        "type": "employer_cost",
+        "kind": "percent",
+        "basis": "basic",
+        "default": 5,
+        "enabled": true,
+        "editable": true,
+        "order": 10
+      }
+    ],
+    "note": "Ghana defaults. SSNIT (Tier 1/2/3) is deducted before PAYE. Verify GRA PAYE bands and the SSNIT insurable ceiling each January and edit in Payroll → Pay Structure."
+  },
+  "automation": {
+    "id": "auto-1",
+    "school_id": "sch-1",
+    "enabled": true,
+    "auto_billing": true,
+    "fee_reminders": true,
+    "fee_reminder_days": 7,
+    "absence_notify": true,
+    "low_stock_alerts": true,
+    "payroll_reminder": true,
+    "payroll_reminder_day": 25,
+    "report_ready_notify": false
+  },
   "reportTemplates": [
     {
       "id": "A",
@@ -557,8 +878,6 @@
           "label": "Remarks"
         }
       },
-      "keysLegend": "",
-      "footer": "Any erasure on this report invalidates it.",
       "remarkFields": {
         "conduct": {
           "show": true,
@@ -621,7 +940,9 @@
           "show": true,
           "label": "Head Teacher's Signature / Stamp"
         }
-      }
+      },
+      "keysLegend": "",
+      "footer": "Any erasure on this report invalidates it."
     }
   ],
   "idRules": {
@@ -679,6 +1000,8 @@
       "Communication": true,
       "Administration": true,
       "Inventory": true,
+      "Accounting": true,
+      "Payroll": true,
       "Settings": true
     },
     "Director": {
@@ -690,6 +1013,8 @@
       "Communication": true,
       "Administration": true,
       "Inventory": true,
+      "Accounting": true,
+      "Payroll": true,
       "Settings": false
     },
     "Teacher": {
@@ -701,6 +1026,8 @@
       "Communication": false,
       "Administration": false,
       "Inventory": false,
+      "Accounting": false,
+      "Payroll": false,
       "Settings": false
     },
     "Other staff": {
@@ -712,6 +1039,8 @@
       "Communication": true,
       "Administration": false,
       "Inventory": true,
+      "Accounting": false,
+      "Payroll": false,
       "Settings": false
     },
     "Parent": {
@@ -723,6 +1052,8 @@
       "Communication": true,
       "Administration": false,
       "Inventory": false,
+      "Accounting": false,
+      "Payroll": false,
       "Settings": false
     }
   },
@@ -785,7 +1116,12 @@
       "name": "School Administrator",
       "role": "Admin",
       "phone": "+233 00 000 0001",
-      "class_ids": []
+      "class_ids": [],
+      "basic_salary": 2500,
+      "allowances": 300,
+      "employee_type": "Full-time",
+      "payment_method": "Bank",
+      "payroll_overrides": {}
     },
     {
       "id": "st-2",
@@ -794,7 +1130,12 @@
       "name": "The Director",
       "role": "Director",
       "phone": "+233 00 000 0002",
-      "class_ids": []
+      "class_ids": [],
+      "basic_salary": 4000,
+      "allowances": 500,
+      "employee_type": "Full-time",
+      "payment_method": "Bank",
+      "payroll_overrides": {}
     },
     {
       "id": "st-3",
@@ -805,7 +1146,12 @@
       "phone": "+233 00 000 0003",
       "class_ids": [
         "cl-b1"
-      ]
+      ],
+      "basic_salary": 1800,
+      "allowances": 200,
+      "employee_type": "Full-time",
+      "payment_method": "MoMo",
+      "payroll_overrides": {}
     },
     {
       "id": "st-4",
@@ -814,7 +1160,12 @@
       "name": "Front Desk",
       "role": "Other staff",
       "phone": "+233 00 000 0004",
-      "class_ids": []
+      "class_ids": [],
+      "basic_salary": 1200,
+      "allowances": 100,
+      "employee_type": "Part-time",
+      "payment_method": "Cash",
+      "payroll_overrides": {}
     }
   ],
   "parents": [
@@ -922,17 +1273,128 @@
   ],
   "scores": [],
   "attendance": [],
+  "staffAttendance": [],
+  "studentRemarks": [],
   "conduct": [],
   "invoices": [],
   "payments": [],
-  "inventoryItems": [],
+  "inventoryItems": [
+    {
+      "id": "itm-1",
+      "school_id": "sch-1",
+      "sku": "UNI-BRN-14",
+      "name": "Brown Uniform - Size 14",
+      "inventory_type": "resale",
+      "category": "Uniforms",
+      "target_class": "cl-b1",
+      "cost_price": 45,
+      "selling_price": 70,
+      "unit_cost": 45,
+      "unit": "set",
+      "low_threshold": 10,
+      "qty": 40,
+      "supplier": {
+        "name": "",
+        "contact": "",
+        "location": ""
+      },
+      "archived": false
+    },
+    {
+      "id": "itm-2",
+      "school_id": "sch-1",
+      "sku": "BK-MAT-B9",
+      "name": "Mathematics Textbook - Basic 9",
+      "inventory_type": "resale",
+      "category": "Textbooks",
+      "target_class": "cl-b9",
+      "cost_price": 30,
+      "selling_price": 45,
+      "unit_cost": 30,
+      "unit": "copy",
+      "low_threshold": 15,
+      "qty": 60,
+      "supplier": {
+        "name": "",
+        "contact": "",
+        "location": ""
+      },
+      "archived": false
+    },
+    {
+      "id": "itm-3",
+      "school_id": "sch-1",
+      "sku": "ICT-LAP-01",
+      "name": "ICT Lab Laptop",
+      "inventory_type": "asset",
+      "category": "ICT Equipment",
+      "target_class": "",
+      "cost_price": 4500,
+      "selling_price": 0,
+      "unit_cost": 4500,
+      "unit": "unit",
+      "low_threshold": 2,
+      "qty": 12,
+      "supplier": {
+        "name": "",
+        "contact": "",
+        "location": ""
+      },
+      "archived": false
+    }
+  ],
   "stockMovements": [],
+  "inventoryStock": [
+    {
+      "id": "stk-1",
+      "school_id": "sch-1",
+      "item_id": "itm-1",
+      "item_name": "Brown Uniform - Size 14",
+      "location": "Bookshop",
+      "qoh": 40,
+      "allocated": 5,
+      "reorder_level": 10,
+      "batch": {},
+      "archived": false
+    },
+    {
+      "id": "stk-2",
+      "school_id": "sch-1",
+      "item_id": "itm-2",
+      "item_name": "Mathematics Textbook - Basic 9",
+      "location": "Bookshop",
+      "qoh": 60,
+      "allocated": 0,
+      "reorder_level": 15,
+      "batch": {},
+      "archived": false
+    },
+    {
+      "id": "stk-3",
+      "school_id": "sch-1",
+      "item_id": "itm-3",
+      "item_name": "ICT Lab Laptop",
+      "location": "Main Admin Store",
+      "qoh": 12,
+      "allocated": 0,
+      "reorder_level": 2,
+      "batch": {},
+      "archived": false
+    }
+  ],
+  "inventoryTransactions": [],
+  "inventoryAudit": [],
   "announcements": [],
   "messages": [],
+  "expenses": [],
+  "otherIncome": [],
+  "payrollRuns": [],
+  "automationLog": [],
   "meta": {
     "seq": {
       "student": 5,
-      "staff": 4
+      "staff": 4,
+      "invtxn": 0
     }
   },
   "constants": {
@@ -945,6 +1407,8 @@
       "Communication",
       "Administration",
       "Inventory",
+      "Accounting",
+      "Payroll",
       "Settings"
     ],
     "ROLES": [
@@ -955,7 +1419,5 @@
       "Parent"
     ],
     "SCHOOL_ID": "sch-1"
-  },
-  "staffAttendance": [],
-  "studentRemarks": []
+  }
 }
