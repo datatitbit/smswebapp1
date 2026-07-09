@@ -97,7 +97,19 @@ CREATE TABLE IF NOT EXISTS parent_student (
 CREATE TABLE IF NOT EXISTS staff (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL, staff_id VARCHAR(12) NOT NULL,
   name VARCHAR(140), role VARCHAR(40), phone VARCHAR(60),
+  basic_salary DECIMAL(10,2) DEFAULT 0, allowances DECIMAL(10,2) DEFAULT 0,
+  employee_type VARCHAR(20) DEFAULT 'Full-time',    -- Full-time | Part-time | Other
+  payment_method VARCHAR(10) DEFAULT 'Bank',        -- Bank | MoMo | Cash
+  payroll_overrides LONGTEXT NULL,                  -- {fieldKey:{enabled,value}} JSON
   UNIQUE KEY uniq_staff (school_id, staff_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Finalised payroll runs (line detail stored as JSON snapshot).
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
+  month CHAR(7), status VARCHAR(16), created_on DATE, created_by VARCHAR(120),
+  total_net DECIMAL(12,2), total_employer_cost DECIMAL(12,2),
+  settings_snapshot LONGTEXT, lines LONGTEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS staff_classes (
@@ -157,11 +169,48 @@ CREATE TABLE IF NOT EXISTS inventory_categories (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL, name VARCHAR(80)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Item Master (section 1). qty is a rollup of inventory_stock.qoh.
 CREATE TABLE IF NOT EXISTS inventory_items (
-  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL, name VARCHAR(120),
-  category VARCHAR(80), qty INT DEFAULT 0, unit VARCHAR(30), unit_cost DECIMAL(10,2) NULL, low_threshold INT DEFAULT 0
+  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
+  sku VARCHAR(60), name VARCHAR(120),
+  inventory_type VARCHAR(12) DEFAULT 'resale',   -- 'resale' | 'asset'
+  category VARCHAR(80), target_class VARCHAR(40) NULL,
+  cost_price DECIMAL(10,2) NULL, selling_price DECIMAL(10,2) NULL,
+  unit VARCHAR(30), unit_cost DECIMAL(10,2) NULL, low_threshold INT DEFAULT 0,
+  qty INT DEFAULT 0,
+  supplier_name VARCHAR(120) NULL, supplier_contact VARCHAR(120) NULL, supplier_location VARCHAR(120) NULL,
+  archived TINYINT(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Stock Levels (section 2). available = qoh - allocated.
+CREATE TABLE IF NOT EXISTS inventory_stock (
+  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
+  item_id VARCHAR(40) NOT NULL, item_name VARCHAR(120), location VARCHAR(80),
+  qoh INT DEFAULT 0, allocated INT DEFAULT 0, reorder_level INT DEFAULT 0,
+  batch_no VARCHAR(60) NULL, batch_expiry DATE NULL, archived TINYINT(1) DEFAULT 0,
+  KEY idx_item_loc (item_id, location)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Allocation & Sales Logistics (section 3).
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
+  txn_id VARCHAR(30), type VARCHAR(16),           -- 'restock' | 'sale' | 'staff_issue'
+  item_id VARCHAR(40), item_name VARCHAR(120), qty INT,
+  recipient_id VARCHAR(60) NULL,                  -- student_id / staff_id / supplier ref
+  payment_status VARCHAR(60), amount DECIMAL(10,2) DEFAULT 0,
+  branch_route VARCHAR(80) NULL, tdate DATE, created_by VARCHAR(120), archived TINYINT(1) DEFAULT 0,
+  KEY idx_type_date (type, tdate)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Inventory Audit (section 4) — immutable delta ledger.
+CREATE TABLE IF NOT EXISTS inventory_audit (
+  id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
+  log_id VARCHAR(40), ts DATETIME, item_id VARCHAR(40), item_name VARCHAR(120),
+  qty_change INT, reason_code VARCHAR(80), audit_user VARCHAR(120), snapshot VARCHAR(120) NULL,
+  KEY idx_reason (reason_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Legacy simple movement log (kept for backward compatibility).
 CREATE TABLE IF NOT EXISTS stock_movements (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL, item_id VARCHAR(40),
   item_name VARCHAR(120), type VARCHAR(4), qty INT, note VARCHAR(200), mdate DATE, created_by VARCHAR(120)
