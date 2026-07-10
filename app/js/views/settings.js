@@ -11,7 +11,7 @@
   var el = U.el;
 
   var TABS = ['Profile', 'Academic', 'Classes & Subjects', 'Grading', 'Fees',
-    'Inventory', 'Report Templates', 'Identity', 'Roles', 'Messages & Labels', 'Data'];
+    'Inventory', 'Report Templates', 'Identity', 'Roles', 'Access Control', 'Messages & Labels', 'Data'];
 
   function render(container) {
     U.clear(container);
@@ -34,7 +34,7 @@
       ({
         'Profile': tabProfile, 'Academic': tabAcademic, 'Classes & Subjects': tabClasses,
         'Grading': tabGrading, 'Fees': tabFees, 'Inventory': tabInventory,
-        'Report Templates': tabTemplates, 'Identity': tabIdentity, 'Roles': tabRoles,
+        'Report Templates': tabTemplates, 'Identity': tabIdentity, 'Roles': tabRoles, 'Access Control': tabAccess,
         'Messages & Labels': tabMessages, 'Data': tabData
       }[active])(panel);
     }
@@ -699,6 +699,63 @@
       box.appendChild(el('div', { class: 'field' }, [el('label', { text: k }), i]));
     });
     return box;
+  }
+
+
+  /* ---------------- Access Control (Admin only) ---------------- */
+  function tabAccess(panel) {
+    if (App.user.role !== 'Admin') { panel.appendChild(el('div', { class: 'empty', text: 'Access Control is available to the Administrator only.' })); return; }
+    Promise.all([DB.all('parents'), DB.all('classes'), DB.singleton('access')]).then(function (r) {
+      var parents = r[0], classes = r[1].slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+      var access = r[2] || {}; var byClass = access.report_download_by_class || {};
+
+      // ---- Parent report download control (whole-school / by class / per parent) ----
+      var dcard = el('div', { class: 'card' }, [el('h2', { text: 'Parent report download' })]);
+      dcard.appendChild(el('div', { class: 'help', text: 'Control whether parents can download the terminal report. Set a school-wide default, override by class, or per parent below. When off, the download button is simply hidden from that parent.' }));
+      var globalCb = el('input', { type: 'checkbox' }); globalCb.checked = access.report_download_default !== false;
+      dcard.appendChild(el('label', { class: 'check-label', style: 'display:block;margin:.4rem 0;font-weight:600' }, [globalCb, document.createTextNode(' Allow report download school-wide (default)')]));
+      dcard.appendChild(el('div', { class: 'help', text: 'Override by class (Inherit = use the default above):' }));
+      var clsList = el('div');
+      classes.forEach(function (c) {
+        var cur = byClass[c.id]; var selv = cur === true ? 'allow' : cur === false ? 'block' : 'inherit';
+        var sSel = el('select', { style: 'min-width:120px' });
+        [['inherit', 'Inherit'], ['allow', 'Allow'], ['block', 'Block']].forEach(function (o) { var op = el('option', { value: o[0], text: o[1] }); if (o[0] === selv) op.selected = true; sSel.appendChild(op); });
+        sSel._cid = c.id;
+        clsList.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;margin:.2rem 0' }, [el('span', { text: c.name }), sSel]));
+      });
+      dcard.appendChild(clsList);
+      dcard.appendChild(saveBtn(function () {
+        var bc = {};
+        U.$all('select', clsList).forEach(function (sSel) { if (sSel.value === 'allow') bc[sSel._cid] = true; else if (sSel.value === 'block') bc[sSel._cid] = false; });
+        DB.setSingleton('access', { id: 'access-1', report_download_default: globalCb.checked, report_download_by_class: bc }).then(function () { App.refresh(); U.toast('Report download settings saved.'); });
+      }));
+      panel.appendChild(dcard);
+
+      // ---- Parent accounts: per-parent login + report override ----
+      var pcard = el('div', { class: 'card' }, [el('h2', { text: 'Parent accounts' })]);
+      pcard.appendChild(el('div', { class: 'help', text: 'Enable or disable an individual parent login. A disabled parent cannot sign in or view any student data. You can also override report download per parent.' }));
+      var t = el('table', { class: 'data' });
+      t.appendChild(el('thead', {}, [el('tr', {}, ['Parent', 'Portal login', 'Report download', ''].map(function (h) { return el('th', { text: h }); }))]));
+      var tb = el('tbody');
+      if (!parents.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 4, html: '<span class=muted>No parents recorded yet.</span>' })]));
+      parents.forEach(function (p) {
+        var enabled = p.portal_enabled !== false;
+        var rdSel = el('select', { style: 'min-width:120px' });
+        [['inherit', 'Inherit'], ['allow', 'Allow'], ['block', 'Block']].forEach(function (o) { var op = el('option', { value: o[0], text: o[1] }); var cur = p.report_download; if ((cur === 'allow' && o[0] === 'allow') || (cur === 'block' && o[0] === 'block') || (cur == null && o[0] === 'inherit')) op.selected = true; rdSel.appendChild(op); });
+        rdSel.addEventListener('change', function () { DB.update('parents', p.id, { report_download: rdSel.value === 'inherit' ? null : rdSel.value }).then(function () { App.refresh(); U.toast('Updated ' + p.name + '.'); }); });
+        tb.appendChild(el('tr', {}, [
+          el('td', { text: p.name }),
+          el('td', {}, [el('span', { class: 'tag ' + (enabled ? '' : 'muted'), text: enabled ? 'Enabled' : 'Disabled' })]),
+          el('td', {}, [rdSel]),
+          el('td', {}, [el('button', { class: 'btn sm ' + (enabled ? 'ghost' : 'gold'), text: enabled ? 'Disable login' : 'Enable login', onclick: function () { DB.update('parents', p.id, { portal_enabled: !enabled }).then(function () { App.refresh(); U.toast('Portal ' + (enabled ? 'disabled' : 'enabled') + ' for ' + p.name + '.'); U.clear(panel); tabAccess(panel); }); } })])
+        ]));
+      });
+      t.appendChild(tb);
+      pcard.appendChild(el('div', { class: 'table-wrap' }, [t]));
+      panel.appendChild(pcard);
+
+      panel.appendChild(el('div', { class: 'note', html: 'Which modules each role can open is managed on the <b>Roles</b> tab. This Access Control area is visible to the Administrator only.' }));
+    });
   }
 
   global.Views = global.Views || {};
