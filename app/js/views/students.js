@@ -2,7 +2,7 @@
  * students.js — Student & Academic: admissions, records,
  * parents (multi-child), class assignment, promotion, bulk admit.
  * Parents get a read-only ward portal (select ward, view report + attendance).
- * Admin can enable/disable each parent's portal access individually.
+ * Admin manages each parent's portal access under Settings → Access Control.
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -35,8 +35,18 @@
 
   /* ---------- Parent ward portal ---------- */
   function parentWard(panel) {
-    Promise.all([DB.all('students'), DB.all('classes'), DB.all('scores'), DB.all('attendance'), DB.all('invoices'), DB.all('payments')]).then(function (r) {
+    Promise.all([DB.all('students'), DB.all('classes'), DB.all('scores'), DB.all('attendance'), DB.all('invoices'), DB.all('payments'), DB.all('parents'), DB.singleton('access')]).then(function (r) {
       var all = r[0], classes = r[1], scores = r[2], attendance = r[3], invoices = r[4], payments = r[5];
+      var access = r[7] || {};
+      var myParent = (r[6] || []).filter(function (pp) { var sids = pp.student_ids || []; return (App.user.linked_student_ids || []).some(function (id) { return sids.indexOf(id) !== -1; }); })[0] || {};
+      function canDL(classId) {
+        if (myParent.report_download === 'block') return false;
+        if (myParent.report_download === 'allow') return true;
+        var bc = access.report_download_by_class || {};
+        if (bc[classId] === false) return false;
+        if (bc[classId] === true) return true;
+        return access.report_download_default !== false;
+      }
       var ids = App.user.linked_student_ids || [];
       var wards = all.filter(function (s) { return ids.indexOf(s.student_id) !== -1; });
       if (!wards.length) { panel.appendChild(el('div', { class: 'empty', text: 'No ward is linked to your account yet. Please contact the school office.' })); return; }
@@ -57,7 +67,7 @@
         var prof = el('div', { class: 'card' });
         prof.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem' }, [
           el('h3', { text: (s.first_name + ' ' + s.last_name) }),
-          el('button', { class: 'btn sm', text: '⤓ Print / PDF report', onclick: function () { printWard(s, cls, term); } })
+          canDL(s.class_id) ? el('button', { class: 'btn sm', text: '⤓ Print / PDF report', onclick: function () { printWard(s, cls, term); } }) : el('span', { class: 'muted', style: 'font-size:.8rem', text: 'Report download is turned off by the school.' })
         ]));
         prof.appendChild(el('div', { class: 'grid cols-3' }, [
           info('Student ID', s.student_id), info('Class', cls ? cls.name : '—'), info('Gender', s.gender || '—'),
@@ -257,30 +267,25 @@
       panel.appendChild(tools);
       var c = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
-      t.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'Phone', 'WhatsApp', 'Children', 'Portal access', ''].map(function (h) { return el('th', { text: h }); }))]));
+      t.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'Phone', 'WhatsApp', 'Children', ''].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
       parents.forEach(function (p) {
         var kids = students.filter(function (s) { return (p.student_ids || []).indexOf(s.student_id) !== -1; })
           .map(function (s) { return s.first_name + ' ' + s.last_name; }).join(', ') || '—';
-        var enabled = p.portal_enabled !== false;
         var act = el('div', { class: 'wrap-actions' });
         if (canEdit) {
           act.appendChild(el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editParent(p, students, refresh); } }));
-          act.appendChild(el('button', { class: 'btn sm ' + (enabled ? 'ghost' : 'gold'), text: enabled ? 'Disable access' : 'Enable access', onclick: function () {
-            DB.update('parents', p.id, { portal_enabled: !enabled }).then(function () { U.toast('Portal ' + (enabled ? 'disabled' : 'enabled') + ' for ' + p.name + '.'); App.refresh(); refresh(); });
-          } }));
           act.appendChild(el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Delete parent ' + p.name + '?', function () { DB.remove('parents', p.id).then(refresh); }); } }));
         }
         tb.appendChild(el('tr', {}, [
           el('td', { text: p.name }), el('td', { text: p.phone || '—' }), el('td', { text: p.whatsapp || '—' }), el('td', { text: kids }),
-          el('td', {}, [el('span', { class: 'tag ' + (enabled ? '' : 'muted'), text: enabled ? 'Enabled' : 'Disabled' })]),
           el('td', {}, [act])
         ]));
       });
       t.appendChild(tb);
       c.appendChild(el('div', { class: 'table-wrap' }, [t]));
       panel.appendChild(c);
-      panel.appendChild(el('div', { class: 'note', text: 'One parent links to several children — a single login covers all of them. Use "Disable access" to switch off an individual parent\'s portal.' }));
+      panel.appendChild(el('div', { class: 'note', text: 'One parent links to several children — a single login covers all of them. Enabling/disabling a parent login and report-download control now live under Settings → Access Control (admin only).' }));
     });
     function refresh() { U.clear(panel); tabParents(panel); }
   }
