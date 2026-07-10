@@ -8,12 +8,13 @@
   var MODULES = global.SMS_SEED.constants.MODULES;
   var ICONS = {
     Dashboard: '▤', Students: '👥', Assessment: '✎', Finance: '₵', Attendance: '✓',
-    Communication: '✉', Administration: '⚙', Inventory: '▦', Settings: '⚙'
+    Communication: '✉', Administration: '⚙', Inventory: '▦',
+    Accounting: '∑', Payroll: '💼', Settings: '⚙'
   };
   var ROUTES = {
     Dashboard: 'dashboard', Students: 'students', Assessment: 'assessment', Finance: 'finance',
     Attendance: 'attendance', Communication: 'communication', Administration: 'administration',
-    Inventory: 'inventory', Settings: 'settings'
+    Inventory: 'inventory', Accounting: 'accounting', Payroll: 'payroll', Settings: 'settings'
   };
 
   var App = {
@@ -175,6 +176,12 @@
     App.refresh().then(function () {
       renderShell();
       router();
+      // Automation "night clerk": routine admin done automatically (Settings → Automation).
+      if (global.Automation) {
+        global.Automation.runAll().then(function (acts) {
+          if (acts && acts.length) router(); // re-render current view with fresh data
+        }).catch(function (e) { console.error('Automation error:', e); });
+      }
     });
   }
 
