@@ -76,9 +76,127 @@
         });
         ecard.appendChild(grid); container.appendChild(ecard);
 
+        trendsSection(container, { students: r[0], attendance: attendance, payments: allPayments, otherIncome: otherIncome, expenses: expenses, cur: cur });
+
         upcoming(container);
         announcements(container);
       });
+  }
+
+
+  /* ---------------- Trends (inline SVG, dependency-free) ---------------- */
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function svg(tag, attrs) { var e = document.createElementNS(SVGNS, tag); if (attrs) Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); }); return e; }
+  function svgText(x, y, str, anchor, size) { var t = svg('text', { x: x, y: y, 'text-anchor': anchor || 'start', 'font-size': size || 10, fill: '#6b7280' }); t.textContent = str; return t; }
+  function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function shortDay(isoStr) { var p = isoStr.split('-'); return p[2] + '/' + p[1]; }
+  function shortMon(isoStr) { var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; var p = isoStr.split('-'); return m[Number(p[1]) - 1] + ' ' + p[0].slice(2); }
+
+  function rangeFor(period) {
+    var end = new Date(U.todayISO() + 'T00:00:00'); var start = new Date(end);
+    if (period === 'week') { start.setDate(end.getDate() - 6); return { start: start, end: end, unit: 'day' }; }
+    if (period === 'month') { start.setDate(end.getDate() - 29); return { start: start, end: end, unit: 'day' }; }
+    if (period === 'term') { start.setDate(end.getDate() - 119); return { start: start, end: end, unit: 'week' }; }
+    start.setMonth(end.getMonth() - 11); start.setDate(1); return { start: start, end: end, unit: 'month' };
+  }
+  function makeBuckets(range) {
+    var b = [], d = new Date(range.start);
+    while (d <= range.end) {
+      var st = new Date(d), en, label;
+      if (range.unit === 'day') { en = new Date(d); label = shortDay(iso(st)); d.setDate(d.getDate() + 1); }
+      else if (range.unit === 'week') { en = new Date(d); en.setDate(en.getDate() + 6); label = shortDay(iso(st)); d.setDate(d.getDate() + 7); }
+      else { en = new Date(d.getFullYear(), d.getMonth() + 1, 0); label = shortMon(iso(st)); d = new Date(d.getFullYear(), d.getMonth() + 1, 1); }
+      b.push({ start: iso(st), end: iso(en), label: label });
+    }
+    return b;
+  }
+  function bucketIndex(buckets, dateStr) { if (!dateStr) return -1; for (var i = 0; i < buckets.length; i++) { if (dateStr >= buckets[i].start && dateStr <= buckets[i].end) return i; } return -1; }
+
+  function lineChart(series, o) {
+    o = o || {}; var W = 520, H = 158, pad = { l: 40, r: 10, t: 12, b: 22 };
+    var vals = series.map(function (p) { return p.value; });
+    var maxV = Math.max.apply(null, vals.concat([0])); var minV = o.zero ? 0 : Math.min.apply(null, vals.concat([0]));
+    if (maxV === minV) maxV = minV + 1;
+    var iw = W - pad.l - pad.r, ih = H - pad.t - pad.b, n = series.length;
+    function x(i) { return pad.l + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw); }
+    function y(v) { return pad.t + ih - ((v - minV) / (maxV - minV)) * ih; }
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', height: H });
+    s.appendChild(svg('line', { x1: pad.l, y1: pad.t + ih, x2: pad.l + iw, y2: pad.t + ih, stroke: '#e5e7eb' }));
+    s.appendChild(svgText(pad.l - 6, pad.t + 9, o.fmt ? o.fmt(maxV) : Math.round(maxV), 'end'));
+    s.appendChild(svgText(pad.l - 6, pad.t + ih, o.fmt ? o.fmt(minV) : Math.round(minV), 'end'));
+    var pts = series.map(function (p, i) { return x(i) + ',' + y(p.value); }).join(' ');
+    s.appendChild(svg('polyline', { points: pts, fill: 'none', stroke: o.color || '#0f5e5e', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    var step = Math.max(1, Math.ceil(n / 6));
+    series.forEach(function (p, i) {
+      s.appendChild(svg('circle', { cx: x(i), cy: y(p.value), r: 2.4, fill: o.color || '#0f5e5e' }));
+      if (n <= 8 || i % step === 0 || i === n - 1) s.appendChild(svgText(x(i), pad.t + ih + 14, p.label, 'middle', 9));
+    });
+    return s;
+  }
+  function barsChart(buckets, income, expense, o) {
+    o = o || {}; var W = 520, H = 168, pad = { l: 46, r: 10, t: 12, b: 26 };
+    var maxV = Math.max(1, Math.max.apply(null, income.concat(expense)));
+    var iw = W - pad.l - pad.r, ih = H - pad.t - pad.b, n = buckets.length;
+    var groupW = iw / n, bw = Math.max(3, Math.min(14, groupW / 3));
+    function y(v) { return pad.t + ih - (v / maxV) * ih; }
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', height: H });
+    s.appendChild(svg('line', { x1: pad.l, y1: pad.t + ih, x2: pad.l + iw, y2: pad.t + ih, stroke: '#e5e7eb' }));
+    s.appendChild(svgText(pad.l - 6, pad.t + 9, o.fmt ? o.fmt(maxV) : Math.round(maxV), 'end'));
+    var step = Math.max(1, Math.ceil(n / 6));
+    buckets.forEach(function (b, i) {
+      var cx = pad.l + groupW * i + groupW / 2, inc = income[i] || 0, exp = expense[i] || 0;
+      s.appendChild(svg('rect', { x: cx - bw - 1, y: y(inc), width: bw, height: (pad.t + ih) - y(inc), fill: '#0f5e5e', rx: 2 }));
+      s.appendChild(svg('rect', { x: cx + 1, y: y(exp), width: bw, height: (pad.t + ih) - y(exp), fill: '#c99a2e', rx: 2 }));
+      if (n <= 8 || i % step === 0 || i === n - 1) s.appendChild(svgText(cx, pad.t + ih + 14, b.label, 'middle', 9));
+    });
+    return s;
+  }
+  function chartBlock(title, node) { return el('div', { style: 'margin-top:.6rem' }, [el('div', { class: 'help', style: 'font-weight:600;color:var(--ink)', text: title }), node]); }
+  function legend(items) { var w = el('div', { class: 'flex', style: 'gap:1rem;flex-wrap:wrap;margin:.2rem 0 .1rem' }); items.forEach(function (it) { w.appendChild(el('span', { class: 'flex', style: 'align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted,#6b7280)' }, [el('span', { style: 'width:10px;height:10px;border-radius:2px;display:inline-block;background:' + it[1] }), document.createTextNode(it[0])])); }); return w; }
+
+  function trendsSection(container, D) {
+    var showFinance = App.can('Finance') || App.can('Accounting');
+    var period = 'week';
+    var head = el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem;align-items:center' }, [el('h3', { text: 'Trends' })]);
+    var bar = el('div', { class: 'btn-row' });
+    [['week', 'Week'], ['month', 'Month'], ['term', 'Term'], ['year', 'Year']].forEach(function (pp) {
+      var b = el('button', { class: 'btn sm' + (pp[0] === period ? ' gold' : ''), text: pp[1], onclick: function () { period = pp[0]; U.$all('button', bar).forEach(function (x) { x.classList.remove('gold'); }); b.classList.add('gold'); draw(); } });
+      bar.appendChild(b);
+    });
+    head.appendChild(bar);
+    var card = el('div', { class: 'card' }, [head]);
+    var area = el('div'); card.appendChild(area);
+    container.appendChild(card);
+    draw();
+
+    function draw() {
+      U.clear(area);
+      var buckets = makeBuckets(rangeFor(period));
+      // Attendance rate per bucket
+      var present = buckets.map(function () { return 0; }), tot = buckets.map(function () { return 0; });
+      D.attendance.forEach(function (a) { var i = bucketIndex(buckets, a.date); if (i < 0) return; tot[i]++; if (a.status === 'present') present[i]++; });
+      var attSeries = buckets.map(function (b, i) { return { label: b.label, value: tot[i] ? Math.round(present[i] / tot[i] * 100) : 0 }; });
+      // Enrolment cumulative to bucket end
+      var enrSeries = buckets.map(function (b) { return { label: b.label, value: D.students.filter(function (s) { return (s.admitted_on || '0000-00-00') <= b.end && s.status !== 'withdrawn'; }).length }; });
+      // Finance income/expense per bucket
+      var income = buckets.map(function () { return 0; }), expense = buckets.map(function () { return 0; });
+      D.payments.forEach(function (p) { var i = bucketIndex(buckets, p.created_on); if (i >= 0) income[i] += Number(p.amount || 0); });
+      (D.otherIncome || []).forEach(function (o) { var i = bucketIndex(buckets, o.date); if (i >= 0) income[i] += Number(o.amount || 0); });
+      (D.expenses || []).forEach(function (e) { var i = bucketIndex(buckets, e.date); if (i >= 0) expense[i] += Number(e.amount || 0); });
+
+      var hasAtt = tot.some(function (v) { return v > 0; });
+      area.appendChild(chartBlock('Attendance rate (%)', hasAtt ? lineChart(attSeries, { color: '#0f5e5e', zero: true, fmt: function (v) { return Math.round(v) + '%'; } }) : el('div', { class: 'empty', text: 'No attendance recorded in this period yet.' })));
+      area.appendChild(chartBlock('Enrolment (cumulative)', lineChart(enrSeries, { color: '#2563eb', zero: true })));
+      if (showFinance) {
+        var hasFin = income.some(function (v) { return v > 0; }) || expense.some(function (v) { return v > 0; });
+        if (hasFin) {
+          area.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', barsChart(buckets, income, expense, { fmt: function (v) { return U.money(v, D.cur); } })));
+          area.appendChild(legend([['Income', '#0f5e5e'], ['Expenses', '#c99a2e']]));
+        } else {
+          area.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', el('div', { class: 'empty', text: 'No finance activity recorded in this period yet.' })));
+        }
+      }
+    }
   }
 
   function upcoming(container) {
