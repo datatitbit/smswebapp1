@@ -1,10 +1,11 @@
 /* ============================================================
  * payroll.js — configurable payroll.
- *   Tabs: Run Payroll · History · Staff Pay Setup · Pay Structure
- * Every earning / deduction / employer-cost is a togglable field
- * with an editable default (see payroll-lib.js). SSNIT is deducted
- * before PAYE. Employer contributions are a separate cost ledger.
- * Finalised runs post their employer cost into Accounting.
+ *   Tabs: Run Payroll · History · Staff Pay Setup · Reports · Pay Structure
+ * Run Payroll is a read-only computed sheet (filters + finalise only);
+ * all per-person figures (basic, allowances, bonus, other earnings and
+ * other deductions) are set in Staff Pay Setup. SSNIT is deducted before
+ * PAYE. Employer contributions are a separate cost ledger. Finalised runs
+ * post their employer cost into Accounting.
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -19,6 +20,14 @@
   }
   function saveConfig(cfg) { return DB.setSingleton('payrollSettings', cfg); }
 
+  // Per-staff standing extras used by every calculation (set in Staff Pay Setup).
+  function staffExtras(s) { return { bonus: Number(s.bonus) || 0, other: Number(s.other) || 0, other_deductions: Number(s.other_deductions) || 0 }; }
+  function lineFor(s, config) {
+    return Object.assign({ staff_id: s.staff_id, name: s.name, role: s.role,
+      employee_type: s.employee_type || 'Full-time', payment_method: s.payment_method || '' },
+      PL.payrollLine(s, config, staffExtras(s)));
+  }
+
   function render(container) {
     U.clear(container);
     container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'Payroll' })]));
@@ -27,7 +36,7 @@
       return;
     }
     var bar = el('div', { class: 'tabs' }); var panel = el('div'); var active = 'Run Payroll';
-    ['Run Payroll', 'History', 'Staff Pay Setup', 'Pay Structure'].forEach(function (t) {
+    ['Run Payroll', 'History', 'Staff Pay Setup', 'Reports', 'Pay Structure'].forEach(function (t) {
       var b = el('button', { text: t, onclick: function () { active = t; draw(); } }); b._t = t; bar.appendChild(b);
     });
     container.appendChild(bar); container.appendChild(panel);
@@ -37,12 +46,13 @@
       if (active === 'Run Payroll') tabRun(panel);
       else if (active === 'History') tabHistory(panel);
       else if (active === 'Staff Pay Setup') tabSetup(panel);
+      else if (active === 'Reports') tabReports(panel);
       else tabStructure(panel);
     }
     draw();
   }
 
-  /* ================= Run Payroll ================= */
+  /* ================= Run Payroll (read-only) ================= */
   function tabRun(panel) {
     Promise.all([DB.all('staff'), getConfig(), DB.all('payrollRuns')]).then(function (r) {
       var allStaff = r[0].filter(function (s) { return Number(s.basic_salary) > 0; });
@@ -52,7 +62,6 @@
       var head = el('div', { class: 'card' });
       head.appendChild(el('h3', { text: 'New payroll run' }));
       var monthInp = el('input', { type: 'month', value: ym });
-      // ---- Filters ----
       var methodSel = el('select'); methodSel.appendChild(el('option', { value: '', text: 'All methods' }));
       (config.payment_methods || []).forEach(function (m) { methodSel.appendChild(el('option', { value: m, text: m })); });
       var typeSel = el('select'); typeSel.appendChild(el('option', { value: '', text: 'All types' }));
@@ -66,10 +75,9 @@
         head.appendChild(el('div', { class: 'empty', text: 'No staff have a basic salary yet. Set salaries in "Staff Pay Setup" first.' }));
         panel.appendChild(head); return;
       }
-      head.appendChild(el('div', { class: 'note', html: 'SSNIT is deducted <b>before</b> PAYE. Only fields toggled ON in <b>Pay Structure</b> are included. Bonus / Other / ad-hoc deductions can be tuned per person below; custom fields apply automatically and show on payslips.' }));
+      head.appendChild(el('div', { class: 'note', html: 'This is a read-only sheet. All figures come from <b>Staff Pay Setup</b> (basic, allowances, bonus, other, deductions) and <b>Pay Structure</b> (rates & toggles). SSNIT is deducted <b>before</b> PAYE. Adjust a person\'s pay in Staff Pay Setup, then finalise here.' }));
       panel.appendChild(head);
 
-      var extras = {}; // staff_id -> { bonus, other, other_deductions }
       var card = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
       t.appendChild(el('thead', {}, [el('tr', {}, ['Staff', 'Type', 'Basic', 'Allow.', 'Bonus', 'Other', 'Gross', 'SSNIT', 'Tier2', 'PAYE', 'Other ded.', 'NET'].map(function (h) { return el('th', { text: h }); }))]));
@@ -86,15 +94,8 @@
           return true;
         });
       }
-      function compute() {
-        return filtered().map(function (s) {
-          var ex = extras[s.staff_id] || {};
-          var line = PL.payrollLine(s, config, ex);
-          return Object.assign({ staff_id: s.staff_id, name: s.name, role: s.role,
-            employee_type: s.employee_type || 'Full-time', payment_method: s.payment_method || '' }, line);
-        });
-      }
-      function drawLines() {
+      function compute() { return filtered().map(function (s) { return lineFor(s, config); }); }
+      function draw() {
         U.clear(tb);
         var lines = compute();
         var totals = { gross: 0, net: 0, paye: 0, ssnit: 0, employer: 0 };
@@ -102,23 +103,18 @@
         lines.forEach(function (L) {
           totals.gross += L.gross; totals.net += L.net; totals.paye += L.paye;
           totals.ssnit += L.ssnit_employee + L.ssnit_employer; totals.employer += L.employer_cost;
-          var ex = extras[L.staff_id] = extras[L.staff_id] || {};
-          var bonusInp = numInp(ex.bonus); var otherInp = numInp(ex.other); var dedInp = numInp(ex.other_deductions);
-          bonusInp.addEventListener('change', function () { ex.bonus = Number(bonusInp.value) || 0; drawLines(); });
-          otherInp.addEventListener('change', function () { ex.other = Number(otherInp.value) || 0; drawLines(); });
-          dedInp.addEventListener('change', function () { ex.other_deductions = Number(dedInp.value) || 0; drawLines(); });
           tb.appendChild(el('tr', {}, [
             el('td', { text: L.name }),
             el('td', {}, [el('span', { class: 'tag', text: L.employee_type })]),
             el('td', { text: U.money(L.basic, cur()) }),
             el('td', { text: U.money(L.allowances, cur()) }),
-            el('td', {}, [bonusInp]),
-            el('td', {}, [otherInp]),
+            el('td', { text: U.money(L.bonus, cur()) }),
+            el('td', { text: U.money(L.other, cur()) }),
             el('td', { text: U.money(L.gross, cur()) }),
             el('td', { text: U.money(L.ssnit_employee, cur()) }),
             el('td', { text: U.money(L.tier2, cur()) }),
             el('td', { text: U.money(L.paye, cur()) }),
-            el('td', {}, [dedInp]),
+            el('td', { text: U.money(L.other_deductions, cur()) }),
             el('td', { html: '<b>' + U.esc(U.money(L.net, cur())) + '</b>' })
           ]));
         });
@@ -128,9 +124,9 @@
           + ' · SSNIT (both parts): ' + U.money(totals.ssnit, cur())
           + ' · Total employer cost: ' + U.money(totals.employer, cur());
       }
-      methodSel.addEventListener('change', drawLines);
-      typeSel.addEventListener('change', drawLines);
-      drawLines();
+      methodSel.addEventListener('change', draw);
+      typeSel.addEventListener('change', draw);
+      draw();
 
       card.appendChild(el('button', { class: 'btn gold', text: 'Finalise payroll for this month', onclick: function () {
         var month = monthInp.value;
@@ -161,7 +157,6 @@
       panel.appendChild(card);
     });
   }
-  function numInp(v) { return el('input', { type: 'number', min: 0, step: '0.01', value: v || '', style: 'width:80px' }); }
 
   /* ================= History & payslips ================= */
   function tabHistory(panel) {
@@ -213,7 +208,8 @@
     U.modal({ title: 'Payroll · ' + PL.monthLabel(r.month), wide: true, body: body, actions: [{ label: 'Close', onClick: function (x) { x(); } }] });
   }
 
-  function payslip(run, L) {
+  // Payslip inner HTML (reused by the modal and the Reports export).
+  function payslipInnerHtml(run, L) {
     var sc = App.ctx.school;
     function lines(list, sign) {
       return (list || []).filter(function (x) { return x.amount; }).map(function (x) {
@@ -223,19 +219,20 @@
     var earnHtml = lines(L.earnings) || ('<b>Basic:</b> ' + U.money(L.basic, cur()));
     var dedHtml = lines(L.deductions, '−') || '—';
     var empHtml = lines(L.employer) || '—';
-    var body = el('div', { class: 'report-card', style: 'width:auto' });
-    body.appendChild(el('div', { class: 'rc-term', text: sc.name + ' — PAYSLIP · ' + PL.monthLabel(run.month) }));
-    body.appendChild(el('p', { html:
-      '<b>Staff:</b> ' + U.esc(L.name) + ' (' + U.esc(L.staff_id) + ')' + (L.employee_type ? ' · ' + U.esc(L.employee_type) : '') + (L.payment_method ? ' · paid by ' + U.esc(L.payment_method) : '') + '<hr>' +
+    return '<div class="rc-term">' + U.esc(sc.name) + ' — PAYSLIP · ' + PL.monthLabel(run.month) + '</div>' +
+      '<p><b>Staff:</b> ' + U.esc(L.name) + ' (' + U.esc(L.staff_id) + ')' + (L.employee_type ? ' · ' + U.esc(L.employee_type) : '') + (L.payment_method ? ' · paid by ' + U.esc(L.payment_method) : '') + '<hr>' +
       '<u>EARNINGS</u><br>' + earnHtml + '<br><b>Gross pay:</b> ' + U.money(L.gross, cur()) + '<hr>' +
       '<u>DEDUCTIONS</u><br>' + dedHtml + '<hr>' +
       '<b style="font-size:1.1em">NET PAY: ' + U.money(L.net, cur()) + '</b><hr>' +
       '<span class="muted"><u>EMPLOYER CONTRIBUTIONS</u> (paid by school, not deducted)<br>' + empHtml +
-      '<br>Total cost to school: ' + U.money(L.employer_cost, cur()) + '</span>'
-    }));
-    body.appendChild(el('p', { class: 'rc-foot', text: 'Generated by SMS · ' + U.fmtDate(run.created_on) }));
+      '<br>Total cost to school: ' + U.money(L.employer_cost, cur()) + '</span></p>' +
+      '<p class="rc-foot">Generated by SMS · ' + U.fmtDate(run.created_on) + '</p>';
+  }
+
+  function payslip(run, L) {
+    var body = el('div', { class: 'report-card', style: 'width:auto', html: payslipInnerHtml(run, L) });
     U.modal({ title: 'Payslip', body: body, actions: [
-      { label: 'Print', onClick: function () { var w = window.open('', '_blank'); w.document.write('<link rel="stylesheet" href="css/report.css"><div class="report-card">' + body.innerHTML + '</div>'); w.document.close(); w.print(); } },
+      { label: 'Print', onClick: function () { printReport('Payslip', '<div class="report-card">' + payslipInnerHtml(run, L) + '</div>'); } },
       { label: 'Close', onClick: function (x) { x(); } }
     ] });
   }
@@ -245,22 +242,23 @@
     Promise.all([DB.all('staff'), getConfig()]).then(function (r) {
       var staff = r[0], config = r[1];
       var c = el('div', { class: 'card' }, [el('h3', { text: 'Monthly pay per staff member' })]);
-      c.appendChild(el('div', { class: 'help', text: 'Basic salary is what SSNIT/pension apply to. Allowances are taxed but not SSNIT-able. Set each person\'s payment method and employee type (used as payroll filters). Use "Overrides" to give an individual a different rate or toggle than the company default. Leave basic at 0 to exclude from payroll.' }));
+      c.appendChild(el('div', { class: 'help', text: 'Everything Run Payroll needs is set here. Basic salary is what SSNIT/pension apply to; Allowances are taxed but not SSNIT-able; Bonus and Other are extra earnings; Other ded. is a standing deduction (e.g. staff loan). Set each person\'s payment method and employee type too (used as payroll filters). Use "Overrides" to give someone a different statutory rate or toggle. Leave Basic at 0 to exclude from payroll.' }));
       var t = el('table', { class: 'data' });
-      t.appendChild(el('thead', {}, [el('tr', {}, ['Staff', 'Role', 'Employee type', 'Pay method', 'Basic salary', 'Allowances', ''].map(function (h) { return el('th', { text: h }); }))]));
+      t.appendChild(el('thead', {}, [el('tr', {}, ['Staff', 'Role', 'Employee type', 'Pay method', 'Basic', 'Allowances', 'Bonus', 'Other', 'Other ded.', ''].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
+      function payInp(v) { return el('input', { type: 'number', min: 0, step: '0.01', value: v || 0, style: 'width:85px' }); }
       staff.forEach(function (s) {
         var typeSel = selectFrom(config.employee_types, s.employee_type || 'Full-time');
         var methSel = selectFrom(config.payment_methods, s.payment_method || (config.payment_methods[0] || 'Bank'));
-        var b = el('input', { type: 'number', min: 0, step: '0.01', value: s.basic_salary || 0, style: 'width:100px' });
-        var a = el('input', { type: 'number', min: 0, step: '0.01', value: s.allowances || 0, style: 'width:100px' });
+        var b = payInp(s.basic_salary), a = payInp(s.allowances), bo = payInp(s.bonus), ot = payInp(s.other), od = payInp(s.other_deductions);
         tb.appendChild(el('tr', {}, [
           el('td', { text: s.name }), el('td', { text: s.role }),
           el('td', {}, [typeSel]), el('td', {}, [methSel]),
-          el('td', {}, [b]), el('td', {}, [a]),
+          el('td', {}, [b]), el('td', {}, [a]), el('td', {}, [bo]), el('td', {}, [ot]), el('td', {}, [od]),
           el('td', {}, [el('div', { class: 'wrap-actions' }, [
             el('button', { class: 'btn sm gold', text: 'Save', onclick: function () {
               DB.update('staff', s.id, { basic_salary: Number(b.value) || 0, allowances: Number(a.value) || 0,
+                bonus: Number(bo.value) || 0, other: Number(ot.value) || 0, other_deductions: Number(od.value) || 0,
                 employee_type: typeSel.value, payment_method: methSel.value })
                 .then(function () { U.toast('Saved ' + s.name + '.'); });
             } }),
@@ -309,12 +307,176 @@
   function sectionTag(type) { return type === 'earning' ? 'earning' : type === 'employer_cost' ? 'employer' : 'deduction'; }
   function byOrder(a, b) { return (a.order || 0) - (b.order || 0); }
 
+  /* ================= Reports ================= */
+  function tabReports(panel) {
+    Promise.all([DB.all('staff'), getConfig()]).then(function (r) {
+      var allStaff = r[0].filter(function (s) { return Number(s.basic_salary) > 0; });
+      var config = r[1];
+      var c = el('div', { class: 'card' }, [el('h3', { text: 'Generate payroll report' })]);
+      if (!allStaff.length) { c.appendChild(el('div', { class: 'empty', text: 'No staff with a salary yet — set salaries in Staff Pay Setup first.' })); panel.appendChild(c); return; }
+
+      var monthInp = el('input', { type: 'month', value: new Date().toISOString().slice(0, 7) });
+      var typeSel = optSelect([
+        { value: 'payslips', label: 'Payslips' },
+        { value: 'salary', label: 'Salary details (month)' },
+        { value: 'statutory', label: 'Statutory summary (SSNIT & PAYE)' },
+        { value: 'schedule', label: 'Payment schedule (by pay method)' }
+      ]);
+      var scopeSel = optSelect([
+        { value: 'all', label: 'All staff' },
+        { value: 'selected', label: 'Selected staff' },
+        { value: 'single', label: 'Single staff member' }
+      ]);
+      var singleSel = optSelect(allStaff.map(function (s) { return { value: s.staff_id, label: s.staff_id + ' · ' + s.name }; }));
+      var checkHost = el('div', { class: 'grid cols-2' });
+      allStaff.forEach(function (s) {
+        var cb = el('input', { type: 'checkbox', value: s.staff_id });
+        checkHost.appendChild(el('label', { class: 'check-label', style: 'display:block' }, [cb, document.createTextNode(' ' + s.staff_id + ' · ' + s.name)]));
+      });
+      var pickerBox = el('div');
+      function drawPicker() {
+        U.clear(pickerBox);
+        if (scopeSel.value === 'single') pickerBox.appendChild(field('Staff member', singleSel));
+        else if (scopeSel.value === 'selected') pickerBox.appendChild(el('div', { class: 'field' }, [el('label', { text: 'Tick staff to include' }), checkHost]));
+      }
+      scopeSel.addEventListener('change', drawPicker); drawPicker();
+
+      c.appendChild(el('div', { class: 'form-grid' }, [field('Month', monthInp), field('Report type', typeSel), field('Scope', scopeSel)]));
+      c.appendChild(pickerBox);
+      c.appendChild(el('button', { class: 'btn gold', text: '+ Generate Report', onclick: function () { generate(); } }));
+      panel.appendChild(c);
+      var preview = el('div'); panel.appendChild(preview);
+
+      function chosen() {
+        var sc = scopeSel.value;
+        if (sc === 'single') return allStaff.filter(function (s) { return s.staff_id === singleSel.value; });
+        if (sc === 'selected') { var ids = U.$all('input[type=checkbox]', checkHost).filter(function (x) { return x.checked; }).map(function (x) { return x.value; }); return allStaff.filter(function (s) { return ids.indexOf(s.staff_id) !== -1; }); }
+        return allStaff;
+      }
+      function generate() {
+        var list = chosen();
+        if (!list.length) return U.toast('Select at least one staff member.', 'err');
+        var lines = list.map(function (s) { return lineFor(s, config); });
+        var run = { month: monthInp.value || new Date().toISOString().slice(0, 7), created_on: U.todayISO() };
+        U.clear(preview);
+        var type = typeSel.value;
+        if (type === 'payslips') renderPayslips(preview, run, lines);
+        else if (type === 'salary') renderSalary(preview, run, lines);
+        else if (type === 'statutory') renderStatutory(preview, run, lines);
+        else renderSchedule(preview, run, lines);
+      }
+    });
+  }
+
+  function renderPayslips(preview, run, lines) {
+    var wrap = el('div', { class: 'card' });
+    wrap.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center' }, [
+      el('h3', { text: 'Payslips · ' + PL.monthLabel(run.month) + ' (' + lines.length + ')' }),
+      el('button', { class: 'btn sm', text: '⤓ Print / PDF', onclick: function () {
+        var html = lines.map(function (L) { return '<div class="report-card">' + payslipInnerHtml(run, L) + '</div>'; }).join('');
+        printReport('Payslips ' + run.month, html);
+      } })
+    ]));
+    lines.forEach(function (L) {
+      wrap.appendChild(el('div', { class: 'report-card', style: 'width:auto;margin:.6rem 0;border:1px solid var(--line);border-radius:8px;padding:.6rem', html: payslipInnerHtml(run, L) }));
+    });
+    preview.appendChild(wrap);
+  }
+
+  function renderSalary(preview, run, lines) {
+    var heads = ['Staff', 'Type', 'Method', 'Basic', 'Allow.', 'Bonus', 'Other', 'Gross', 'SSNIT', 'Tier2', 'PAYE', 'Other ded.', 'NET', 'Employer cost'];
+    var moneyCols = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1 };
+    var rows = lines.map(function (L) { return [L.name, L.employee_type, L.payment_method, L.basic, L.allowances, L.bonus, L.other, L.gross, L.ssnit_employee, L.tier2, L.paye, L.other_deductions, L.net, L.employer_cost]; });
+    var tot = lines.reduce(function (a, L) { a.basic += L.basic; a.gross += L.gross; a.ssnit += L.ssnit_employee; a.paye += L.paye; a.net += L.net; a.emp += L.employer_cost; return a; }, { basic: 0, gross: 0, ssnit: 0, paye: 0, net: 0, emp: 0 });
+    var wrap = el('div', { class: 'card' });
+    wrap.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center' }, [
+      el('h3', { text: 'Salary details · ' + PL.monthLabel(run.month) }),
+      el('div', { class: 'wrap-actions' }, [
+        el('button', { class: 'btn sm ghost', text: '⤓ CSV', onclick: function () { Bulk.download('salary-details-' + run.month + '.csv', [heads].concat(rows)); } }),
+        el('button', { class: 'btn sm', text: '⤓ Print / PDF', onclick: function () { printReport('Salary details ' + run.month, htmlTable('Salary details — ' + PL.monthLabel(run.month), heads, rows, moneyCols)); } })
+      ])
+    ]));
+    wrap.appendChild(previewTable(heads, rows, moneyCols));
+    wrap.appendChild(el('p', { style: 'font-weight:700' , text: 'Totals — Gross: ' + U.money(tot.gross, cur()) + ' · SSNIT (emp): ' + U.money(tot.ssnit, cur()) + ' · PAYE: ' + U.money(tot.paye, cur()) + ' · NET: ' + U.money(tot.net, cur()) + ' · Employer cost: ' + U.money(tot.emp, cur()) }));
+    preview.appendChild(wrap);
+  }
+
+  function renderStatutory(preview, run, lines) {
+    var heads = ['Staff', 'SSNIT Tier 1 (emp)', 'Tier 2', 'Tier 3', 'PAYE', 'SSNIT Tier 1 (employer)'];
+    var moneyCols = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 };
+    var rows = lines.map(function (L) { return [L.name, L.ssnit_employee, L.tier2, L.tier3, L.paye, L.ssnit_employer]; });
+    var tot = lines.reduce(function (a, L) { a.s1 += L.ssnit_employee; a.t2 += L.tier2; a.t3 += L.tier3; a.paye += L.paye; a.emp += L.ssnit_employer; return a; }, { s1: 0, t2: 0, t3: 0, paye: 0, emp: 0 });
+    rows.push(['TOTAL', tot.s1, tot.t2, tot.t3, tot.paye, tot.emp]);
+    var wrap = el('div', { class: 'card' });
+    wrap.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center' }, [
+      el('h3', { text: 'Statutory summary · ' + PL.monthLabel(run.month) }),
+      el('div', { class: 'wrap-actions' }, [
+        el('button', { class: 'btn sm ghost', text: '⤓ CSV', onclick: function () { Bulk.download('statutory-' + run.month + '.csv', [heads].concat(rows)); } }),
+        el('button', { class: 'btn sm', text: '⤓ Print / PDF', onclick: function () { printReport('Statutory summary ' + run.month, htmlTable('Statutory summary (SSNIT & PAYE) — ' + PL.monthLabel(run.month), heads, rows, moneyCols)); } })
+      ])
+    ]));
+    wrap.appendChild(el('div', { class: 'note', html: 'Remittance totals — <b>SSNIT to pay</b> (employee Tier 1 + employer): ' + U.money(tot.s1 + tot.emp, cur()) + ' · <b>PAYE to GRA</b>: ' + U.money(tot.paye, cur()) }));
+    wrap.appendChild(previewTable(heads, rows, moneyCols));
+    preview.appendChild(wrap);
+  }
+
+  function renderSchedule(preview, run, lines) {
+    var groups = {};
+    lines.forEach(function (L) { var m = L.payment_method || 'Unspecified'; (groups[m] = groups[m] || []).push(L); });
+    var wrap = el('div', { class: 'card' });
+    var csvRows = [['Pay method', 'Staff ID', 'Name', 'Net pay']];
+    var htmlParts = ['<h2>Payment schedule — ' + U.esc(PL.monthLabel(run.month)) + '</h2>'];
+    wrap.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center' }, [
+      el('h3', { text: 'Payment schedule · ' + PL.monthLabel(run.month) }),
+      el('div', { class: 'wrap-actions' }, [
+        el('button', { class: 'btn sm ghost', text: '⤓ CSV', onclick: function () { Bulk.download('payment-schedule-' + run.month + '.csv', csvRows); } }),
+        el('button', { class: 'btn sm', text: '⤓ Print / PDF', onclick: function () { printReport('Payment schedule ' + run.month, htmlParts.join('')); } })
+      ])
+    ]));
+    var grand = 0;
+    Object.keys(groups).forEach(function (m) {
+      var list = groups[m]; var sub = list.reduce(function (a, L) { return a + L.net; }, 0); grand += sub;
+      wrap.appendChild(el('h4', { text: m + ' — ' + list.length + ' staff · ' + U.money(sub, cur()) }));
+      var rows = list.map(function (L) { csvRows.push([m, L.staff_id, L.name, L.net]); return [L.staff_id, L.name, L.net]; });
+      wrap.appendChild(previewTable(['Staff ID', 'Name', 'Net pay'], rows, { 2: 1 }));
+      htmlParts.push('<h3>' + U.esc(m) + ' — ' + U.money(sub, cur()) + '</h3>' + htmlTable('', ['Staff ID', 'Name', 'Net pay'], rows, { 2: 1 }));
+    });
+    csvRows.push(['GRAND TOTAL', '', '', grand]);
+    wrap.appendChild(el('p', { style: 'font-weight:700', text: 'Grand total net payable: ' + U.money(grand, cur()) }));
+    htmlParts.push('<p><b>Grand total net payable: ' + U.money(grand, cur()) + '</b></p>');
+    preview.appendChild(wrap);
+  }
+
+  /* ---- report helpers ---- */
+  function previewTable(heads, rows, moneyCols) {
+    var t = el('table', { class: 'data' });
+    t.appendChild(el('thead', {}, [el('tr', {}, heads.map(function (h) { return el('th', { text: h }); }))]));
+    var tb = el('tbody');
+    rows.forEach(function (row) { tb.appendChild(el('tr', {}, row.map(function (cell, i) { return el('td', { text: (moneyCols && moneyCols[i] && typeof cell === 'number') ? U.money(cell, cur()) : cell }); }))); });
+    t.appendChild(tb);
+    return el('div', { class: 'table-wrap' }, [t]);
+  }
+  function htmlTable(title, heads, rows, moneyCols) {
+    var h = title ? '<h3>' + U.esc(title) + '</h3>' : '';
+    h += '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr>' +
+      heads.map(function (x) { return '<th style="background:#0f5e5e;color:#fff;text-align:left">' + U.esc(x) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function (row) { h += '<tr>' + row.map(function (cell, i) { return '<td>' + U.esc((moneyCols && moneyCols[i] && typeof cell === 'number') ? U.money(cell, cur()) : cell) + '</td>'; }).join('') + '</tr>'; });
+    h += '</tbody></table><br>';
+    return h;
+  }
+  function printReport(title, innerHtml) {
+    var w = window.open('', '_blank');
+    w.document.write('<html><head><title>' + U.esc(title) + '</title><link rel="stylesheet" href="css/report.css"><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;margin-bottom:12px}th,td{border:1px solid #999;padding:4px;font-size:12px;text-align:left}th{background:#0f5e5e;color:#fff}h1,h2,h3{color:#0f5e5e}.report-card{page-break-after:always;margin-bottom:20px}</style></head><body>' + innerHtml + '</body></html>');
+    w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
+  }
+  function optSelect(opts) { var s = el('select'); opts.forEach(function (o) { s.appendChild(el('option', { value: o.value, text: o.label })); }); return s; }
+  function field(label, node) { return el('div', { class: 'field' }, [el('label', { text: label }), node]); }
+
   /* ================= Pay Structure (config) ================= */
   function tabStructure(panel) {
     getConfig().then(function (cfg) {
       var config = JSON.parse(JSON.stringify(cfg));
 
-      // ---- Filters & global ----
       var fc = el('div', { class: 'card' }, [el('h3', { text: '1. Filters & global settings' })]);
       var apply = checkRow('Apply SSNIT & PAYE automatically (statutory master switch)', config.apply_statutory !== false, function (v) { config.apply_statutory = v; });
       fc.appendChild(apply);
@@ -324,12 +486,10 @@
       fc.appendChild(listEditor('Employee types', config.employee_types));
       panel.appendChild(fc);
 
-      // ---- Section builders ----
       panel.appendChild(sectionCard('2. Earnings', 'earning', config, false));
       panel.appendChild(sectionCard('3. Statutory & other deductions', 'deduction', config, false));
       panel.appendChild(sectionCard('4. Employer contributions', 'employer_cost', config, true));
 
-      // ---- Save / reset ----
       panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'btn-row' }, [
         el('button', { class: 'btn gold', text: 'Save pay structure', onclick: function () {
           config.ssnit_ceiling = Number(ceil.readValues().ssnit_ceiling) || 0;
