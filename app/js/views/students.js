@@ -1,6 +1,7 @@
 /* ============================================================
  * students.js — Student & Academic: admissions, records,
  * parents (multi-child), class assignment, promotion, bulk admit.
+ * Parents get a read-only ward portal (select ward, view report + attendance).
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -9,6 +10,11 @@
 
   function render(container) {
     U.clear(container);
+    // ---- Parent portal: only their ward(s), read-only ----
+    if (App.user.role === 'Parent') {
+      container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'My Ward' })]));
+      var p = el('div'); container.appendChild(p); parentWard(p); return;
+    }
     container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'Students & Academic' })]));
     var tabs = ['Students', 'Parents / Guardians'];
     if (App.ctx.academic.current_term === App.ctx.academic.promotional_term) tabs.push('Promotion');
@@ -25,6 +31,106 @@
       else tabPromotion(panel);
     }
     draw();
+  }
+
+  /* ---------- Parent ward portal ---------- */
+  function parentWard(panel) {
+    Promise.all([DB.all('students'), DB.all('classes'), DB.all('scores'), DB.all('attendance'), DB.all('invoices'), DB.all('payments')]).then(function (r) {
+      var all = r[0], classes = r[1], scores = r[2], attendance = r[3], invoices = r[4], payments = r[5];
+      var ids = App.user.linked_student_ids || [];
+      var wards = all.filter(function (s) { return ids.indexOf(s.student_id) !== -1; });
+      if (!wards.length) { panel.appendChild(el('div', { class: 'empty', text: 'No ward is linked to your account yet. Please contact the school office.' })); return; }
+
+      var sel = el('select');
+      wards.forEach(function (s) { sel.appendChild(el('option', { value: s.student_id, text: (s.first_name + ' ' + s.last_name) + ' (' + s.student_id + ')' })); });
+      if (wards.length > 1) panel.appendChild(el('div', { class: 'toolbar' }, [el('span', { class: 'muted', text: 'Select ward:' }), sel]));
+      var area = el('div'); panel.appendChild(area);
+      sel.addEventListener('change', draw);
+      draw();
+
+      function draw() {
+        U.clear(area);
+        var s = wards.filter(function (w) { return w.student_id === sel.value; })[0] || wards[0];
+        var cls = classes.filter(function (c) { return c.id === s.class_id; })[0];
+        var term = App.ctx.academic.current_term; var cur = App.ctx.school.currency;
+
+        var prof = el('div', { class: 'card' });
+        prof.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem' }, [
+          el('h3', { text: (s.first_name + ' ' + s.last_name) }),
+          el('button', { class: 'btn sm', text: '⤓ Print / PDF report', onclick: function () { printWard(s, cls, term); } })
+        ]));
+        prof.appendChild(el('div', { class: 'grid cols-3' }, [
+          info('Student ID', s.student_id), info('Class', cls ? cls.name : '—'), info('Gender', s.gender || '—'),
+          info('Status', s.status || 'active'), info('Date of birth', s.dob ? U.fmtDate(s.dob) : '—'), info('Admitted', s.admitted_on ? U.fmtDate(s.admitted_on) : '—')
+        ]));
+        area.appendChild(prof);
+
+        var a = attStats(attendance, s.student_id);
+        area.appendChild(el('div', { class: 'card' }, [el('h3', { text: 'Attendance so far' }),
+          el('div', { class: 'grid cols-4' }, [stat(a.rate + '%', 'Attendance rate'), stat(a.present, 'Present'), stat(a.late, 'Late'), stat(a.absent, 'Absent')]),
+          el('div', { class: 'muted', style: 'margin-top:.4rem', text: a.total + ' school day(s) recorded this term.' })
+        ]));
+
+        var billed = sumFor(invoices, s.student_id, term, 'amount');
+        var paid = sumFor(payments, s.student_id, term, 'amount');
+        area.appendChild(el('div', { class: 'card' }, [el('h3', { text: 'Fees (' + App.termName() + ')' }),
+          el('div', { class: 'grid cols-3' }, [stat(U.money(billed, cur), 'Billed'), stat(U.money(paid, cur), 'Paid'), stat(U.money(billed - paid, cur), (billed - paid) > 0 ? 'Balance due' : 'Cleared')])
+        ]));
+
+        area.appendChild(scoresCard(scores, s.student_id, term));
+      }
+
+      function printWard(s, cls, term) {
+        var sch = App.ctx.school; var cur = sch.currency;
+        var a = attStats(attendance, s.student_id);
+        var billed = sumFor(invoices, s.student_id, term, 'amount'), paid = sumFor(payments, s.student_id, term, 'amount');
+        var sc = scores.filter(function (x) { return x.student_id === s.student_id && x.term === term; });
+        var G = global.Grading, w = App.ctx.weighting, bands = (App.ctx.gradeBands || []).slice().sort(function (x, y) { return y.min - x.min; });
+        var rows = sc.map(function (x) {
+          var total = G ? G.computeTotal(x.class_score || 0, x.exam_score || 0, w) : (Number(x.class_score || 0) + Number(x.exam_score || 0));
+          var band = G ? G.gradeFor(total, bands) : { grade: '', remark: '' };
+          return '<tr><td>' + U.esc(x.subject) + '</td><td>' + (x.class_score == null ? '' : x.class_score) + '</td><td>' + (x.exam_score == null ? '' : x.exam_score) + '</td><td>' + total + '</td><td>' + U.esc(band.grade + (band.remark ? ' · ' + band.remark : '')) + '</td></tr>';
+        }).join('');
+        var html = '<h1>' + U.esc(sch.name) + '</h1><h3>' + U.esc(App.termName()) + ' Report — ' + U.esc(sch.year || App.ctx.academic.year) + '</h3>' +
+          '<p><b>Name:</b> ' + U.esc(s.first_name + ' ' + s.last_name) + ' &nbsp; <b>ID:</b> ' + U.esc(s.student_id) + ' &nbsp; <b>Class:</b> ' + U.esc(cls ? cls.name : '') + '</p>' +
+          '<h2>Scores</h2><table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr><th>Subject</th><th>Class %</th><th>Exam %</th><th>Total %</th><th>Grade</th></tr></thead><tbody>' + (rows || '<tr><td colspan="5">No scores published yet.</td></tr>') + '</tbody></table>' +
+          '<h2>Attendance so far</h2><p>Rate: <b>' + a.rate + '%</b> &nbsp; Present: ' + a.present + ' &nbsp; Late: ' + a.late + ' &nbsp; Absent: ' + a.absent + ' &nbsp; (of ' + a.total + ' days)</p>' +
+          '<h2>Fees (' + U.esc(App.termName()) + ')</h2><p>Billed: ' + U.money(billed, cur) + ' &nbsp; Paid: ' + U.money(paid, cur) + ' &nbsp; <b>Balance: ' + U.money(billed - paid, cur) + '</b></p>';
+        printReport(sch.name + ' report', html);
+      }
+    });
+  }
+  function attStats(attendance, sid) {
+    var att = attendance.filter(function (x) { return x.student_id === sid; });
+    var present = att.filter(function (x) { return x.status === 'present'; }).length;
+    var late = att.filter(function (x) { return x.status === 'late'; }).length;
+    var absent = att.filter(function (x) { return x.status === 'absent'; }).length;
+    var total = att.length;
+    return { present: present, late: late, absent: absent, total: total, rate: total ? Math.round(present / total * 100) : 0 };
+  }
+  function sumFor(arr, sid, term, key) { return arr.filter(function (x) { return x.student_id === sid && x.term === term; }).reduce(function (a, x) { return a + Number(x[key] || 0); }, 0); }
+  function scoresCard(scores, sid, term) {
+    var sc = scores.filter(function (x) { return x.student_id === sid && x.term === term; });
+    var card = el('div', { class: 'card' }, [el('h3', { text: App.termName() + ' scores' })]);
+    if (!sc.length) { card.appendChild(el('div', { class: 'empty', text: 'No scores published yet.' })); return card; }
+    var G = global.Grading, w = App.ctx.weighting, bands = (App.ctx.gradeBands || []).slice().sort(function (a, b) { return b.min - a.min; });
+    var t = el('table', { class: 'data' });
+    t.appendChild(el('thead', {}, [el('tr', {}, ['Subject', 'Class %', 'Exam %', 'Total %', 'Grade'].map(function (h) { return el('th', { text: h }); }))]));
+    var tb = el('tbody');
+    sc.forEach(function (x) {
+      var total = G ? G.computeTotal(x.class_score || 0, x.exam_score || 0, w) : (Number(x.class_score || 0) + Number(x.exam_score || 0));
+      var band = G ? G.gradeFor(total, bands) : { grade: '', remark: '' };
+      tb.appendChild(el('tr', {}, [el('td', { text: x.subject }), el('td', { text: x.class_score == null ? '—' : x.class_score }), el('td', { text: x.exam_score == null ? '—' : x.exam_score }), el('td', { text: total }), el('td', { text: band.grade + (band.remark ? ' · ' + band.remark : '') })]));
+    });
+    t.appendChild(tb); card.appendChild(el('div', { class: 'table-wrap' }, [t]));
+    return card;
+  }
+  function info(l, v) { return el('div', {}, [el('div', { class: 'muted', style: 'font-size:.75rem', text: l }), el('div', { style: 'font-weight:600', text: v })]); }
+  function stat(n, l) { return el('div', { class: 'stat' }, [el('div', { class: 'n', text: n }), el('div', { class: 'l', text: l })]); }
+  function printReport(title, html) {
+    var wn = window.open('', '_blank');
+    wn.document.write('<html><head><title>' + U.esc(title) + '</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#1c2726}table{border-collapse:collapse;width:100%;margin-bottom:14px}th,td{border:1px solid #999;padding:5px;text-align:left;font-size:12px}th{background:#0f5e5e;color:#fff}h1,h2,h3{color:#0f5e5e;margin:.3rem 0}</style></head><body>' + html + '</body></html>');
+    wn.document.close(); wn.focus(); setTimeout(function () { wn.print(); }, 300);
   }
 
   /* ---------- Students ---------- */
@@ -49,11 +155,6 @@
         tools.appendChild(el('button', { class: 'btn gold', text: '⤒ Upload', onclick: function () { uploadAdmissions(classes, refresh); } }));
       }
       panel.appendChild(tools);
-
-      // Parent role sees only own children
-      if (ro && App.user.linked_student_ids) {
-        students = students.filter(function (s) { return App.user.linked_student_ids.indexOf(s.student_id) !== -1; });
-      }
 
       var tableCard = el('div', { class: 'card' });
       panel.appendChild(tableCard);
@@ -197,7 +298,6 @@
         v.student_ids = U.$all('input[type=checkbox]', sel).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
         var go = p ? DB.update('parents', p.id, v) : DB.insert('parents', v);
         go.then(function (saved) {
-          // sync student.parent_id
           DB.all('students').then(function (sts) {
             var ops = sts.map(function (s) {
               var should = v.student_ids.indexOf(s.student_id) !== -1;
@@ -217,7 +317,7 @@
   function tabPromotion(panel) {
     Promise.all([DB.all('students'), DB.all('classes')]).then(function (r) {
       var students = r[0], classes = r[1].sort(bySort);
-      panel.appendChild(el('div', { class: 'note', text: 'Promotional term (' + App.termName() + '). Each pupil defaults to “promoted to the next class”. Flag any who repeat. Basic 9 pupils complete (BECE / Alumni).' }));
+      panel.appendChild(el('div', { class: 'note', text: 'Promotional term (' + App.termName() + '). Each pupil defaults to promotion to the next class. Flag any who repeat. Basic 9 pupils complete (BECE / Alumni).' }));
       var decisions = {};
       classes.forEach(function (c) {
         var kids = students.filter(function (s) { return s.class_id === c.id && s.status === 'active'; });
@@ -277,7 +377,6 @@
         return { ok: true, value: { first_name: row.first_name, last_name: row.last_name, gender: row.gender || '', dob: row.dob || '', class_id: cls.id, parent_name: row.parent_name || '', parent_phone: row.parent_phone || '', status: 'active', admitted_on: U.todayISO() } };
       });
       Bulk.summaryModal('Import admissions', res, function (valid) {
-        // sequentially assign IDs
         var i = 0;
         function step() {
           if (i >= valid.length) { U.toast('Imported ' + valid.length + ' student(s).'); done(); return; }
