@@ -185,17 +185,26 @@
       (D.expenses || []).forEach(function (e) { var i = bucketIndex(buckets, e.date); if (i >= 0) expense[i] += Number(e.amount || 0); });
 
       var hasAtt = tot.some(function (v) { return v > 0; });
-      area.appendChild(chartBlock('Attendance rate (%)', hasAtt ? lineChart(attSeries, { color: '#0f5e5e', zero: true, fmt: function (v) { return Math.round(v) + '%'; } }) : el('div', { class: 'empty', text: 'No attendance recorded in this period yet.' })));
-      area.appendChild(chartBlock('Enrolment (cumulative)', lineChart(enrSeries, { color: '#2563eb', zero: true })));
-      if (showFinance) {
-        var hasFin = income.some(function (v) { return v > 0; }) || expense.some(function (v) { return v > 0; });
-        if (hasFin) {
-          area.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', barsChart(buckets, income, expense, { fmt: function (v) { return U.money(v, D.cur); } })));
-          area.appendChild(legend([['Income', '#0f5e5e'], ['Expenses', '#c99a2e']]));
-        } else {
-          area.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', el('div', { class: 'empty', text: 'No finance activity recorded in this period yet.' })));
-        }
+      var PANEL = 'border:1px solid var(--line);border-radius:12px;padding:.75rem';
+      var TITLE = 'font-weight:700;color:var(--brand,#0f5e5e);margin-bottom:.15rem';
+
+      // Side 1 — Attendance & Enrolment
+      var left = el('div', { style: PANEL }, [el('div', { style: TITLE, text: 'Attendance & Enrolment' })]);
+      left.appendChild(chartBlock('Attendance rate (%)', hasAtt ? lineChart(attSeries, { color: '#0f5e5e', zero: true, fmt: function (v) { return Math.round(v) + '%'; } }) : el('div', { class: 'empty', text: 'No attendance recorded in this period yet.' })));
+      left.appendChild(chartBlock('Enrolment (cumulative)', lineChart(enrSeries, { color: '#2563eb', zero: true })));
+
+      if (!showFinance) { area.appendChild(left); return; }
+
+      // Side 2 — Finance
+      var hasFin = income.some(function (v) { return v > 0; }) || expense.some(function (v) { return v > 0; });
+      var right = el('div', { style: PANEL }, [el('div', { style: TITLE, text: 'Finance' })]);
+      if (hasFin) {
+        right.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', barsChart(buckets, income, expense, { fmt: function (v) { return U.money(v, D.cur); } })));
+        right.appendChild(legend([['Income', '#0f5e5e'], ['Expenses', '#c99a2e']]));
+      } else {
+        right.appendChild(chartBlock('Income vs expenses (' + D.cur + ')', el('div', { class: 'empty', text: 'No finance activity recorded in this period yet.' })));
       }
+      area.appendChild(el('div', { class: 'grid cols-2' }, [left, right]));
     }
   }
 
