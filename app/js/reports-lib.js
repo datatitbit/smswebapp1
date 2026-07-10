@@ -5,8 +5,10 @@
  * ============================================================ */
 (function (global) {
   'use strict';
-  var U = global.U, App = global.App;
+  var U = global.U;
   var el = U.el;
+  // App is resolved lazily (reports-lib loads before app.js defines it).
+  function app() { return global.App; }
 
   function startOfWeek(d) { var x = new Date(d); var day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return x; }
   function iso(d) { return new Date(d).toISOString().slice(0, 10); }
@@ -18,7 +20,7 @@
     if (kind === 'month') { var ms = new Date(now.getFullYear(), now.getMonth(), 1); var me = new Date(now.getFullYear(), now.getMonth() + 1, 0); return { label: 'This month', from: iso(ms), to: iso(me) }; }
     if (kind === 'year') { return { label: 'This year', from: now.getFullYear() + '-01-01', to: now.getFullYear() + '-12-31' }; }
     if (kind === 'term') {
-      var ac = App.ctx.academic; var ct = ac.current_term;
+      var ac = app().ctx.academic; var ct = ac.current_term;
       var terms = ac.terms.slice().sort(function (a, b) { return a.n - b.n; });
       var cur = terms.filter(function (x) { return x.n === ct; })[0] || terms[terms.length - 1];
       var prev = terms.filter(function (x) { return x.n === ct - 1; })[0];
