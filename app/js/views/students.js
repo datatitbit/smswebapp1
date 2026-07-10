@@ -2,6 +2,7 @@
  * students.js — Student & Academic: admissions, records,
  * parents (multi-child), class assignment, promotion, bulk admit.
  * Parents get a read-only ward portal (select ward, view report + attendance).
+ * Admin can enable/disable each parent's portal access individually.
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -10,7 +11,6 @@
 
   function render(container) {
     U.clear(container);
-    // ---- Parent portal: only their ward(s), read-only ----
     if (App.user.role === 'Parent') {
       container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'My Ward' })]));
       var p = el('div'); container.appendChild(p); parentWard(p); return;
@@ -91,7 +91,7 @@
           var band = G ? G.gradeFor(total, bands) : { grade: '', remark: '' };
           return '<tr><td>' + U.esc(x.subject) + '</td><td>' + (x.class_score == null ? '' : x.class_score) + '</td><td>' + (x.exam_score == null ? '' : x.exam_score) + '</td><td>' + total + '</td><td>' + U.esc(band.grade + (band.remark ? ' · ' + band.remark : '')) + '</td></tr>';
         }).join('');
-        var html = '<h1>' + U.esc(sch.name) + '</h1><h3>' + U.esc(App.termName()) + ' Report — ' + U.esc(sch.year || App.ctx.academic.year) + '</h3>' +
+        var html = '<h1>' + U.esc(sch.name) + '</h1><h3>' + U.esc(App.termName()) + ' Report — ' + U.esc(App.ctx.academic.year) + '</h3>' +
           '<p><b>Name:</b> ' + U.esc(s.first_name + ' ' + s.last_name) + ' &nbsp; <b>ID:</b> ' + U.esc(s.student_id) + ' &nbsp; <b>Class:</b> ' + U.esc(cls ? cls.name : '') + '</p>' +
           '<h2>Scores</h2><table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr><th>Subject</th><th>Class %</th><th>Exam %</th><th>Total %</th><th>Grade</th></tr></thead><tbody>' + (rows || '<tr><td colspan="5">No scores published yet.</td></tr>') + '</tbody></table>' +
           '<h2>Attendance so far</h2><p>Rate: <b>' + a.rate + '%</b> &nbsp; Present: ' + a.present + ' &nbsp; Late: ' + a.late + ' &nbsp; Absent: ' + a.absent + ' &nbsp; (of ' + a.total + ' days)</p>' +
@@ -138,7 +138,7 @@
     Promise.all([DB.all('students'), DB.all('classes'), DB.all('parents')]).then(function (r) {
       var students = r[0], classes = r[1].sort(bySort), parents = r[2];
       var filterClass = '', q = '';
-      var ro = App.readOnly;
+      var canEdit = App.canEdit('Students');
 
       var tools = el('div', { class: 'toolbar' });
       var search = el('input', { type: 'text', class: 'search', placeholder: 'Search name or ID…' });
@@ -149,7 +149,7 @@
       clsSel.addEventListener('change', function () { filterClass = clsSel.value; drawTable(); });
       tools.appendChild(search); tools.appendChild(clsSel);
       tools.appendChild(el('div', { style: 'flex:1' }));
-      if (!ro) {
+      if (canEdit) {
         tools.appendChild(el('button', { class: 'btn', text: '+ Admit student', onclick: function () { editStudent(null, classes, parents, refresh); } }));
         tools.appendChild(el('button', { class: 'btn ghost', text: '⤓ Template', onclick: function () { downloadTemplate(classes); } }));
         tools.appendChild(el('button', { class: 'btn gold', text: '⤒ Upload', onclick: function () { uploadAdmissions(classes, refresh); } }));
@@ -176,10 +176,10 @@
           var cls = classes.filter(function (c) { return c.id === s.class_id; })[0];
           var par = parents.filter(function (p) { return p.id === s.parent_id; })[0];
           var actions = el('div', { class: 'wrap-actions' });
-          if (!ro) {
+          if (canEdit) {
             actions.appendChild(el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editStudent(s, classes, parents, refresh); } }));
             actions.appendChild(el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Withdraw/delete ' + s.first_name + '?', function () { DB.remove('students', s.id).then(refresh); }); } }));
-          } else actions.appendChild(el('span', { class: 'muted', text: 'read-only' }));
+          } else actions.appendChild(el('span', { class: 'muted', text: 'view only' }));
           tb.appendChild(el('tr', {}, [
             el('td', { text: s.student_id }),
             el('td', { text: (s.first_name + ' ' + s.last_name) }),
@@ -251,28 +251,36 @@
   /* ---------- Parents ---------- */
   function tabParents(panel) {
     Promise.all([DB.all('parents'), DB.all('students')]).then(function (r) {
-      var parents = r[0], students = r[1], ro = App.readOnly;
+      var parents = r[0], students = r[1], canEdit = App.canEdit('Students');
       var tools = el('div', { class: 'toolbar' });
-      if (!ro) tools.appendChild(el('button', { class: 'btn', text: '+ Add parent / guardian', onclick: function () { editParent(null, students, refresh); } }));
+      if (canEdit) tools.appendChild(el('button', { class: 'btn', text: '+ Add parent / guardian', onclick: function () { editParent(null, students, refresh); } }));
       panel.appendChild(tools);
       var c = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
-      t.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'Phone', 'WhatsApp', 'Children', ''].map(function (h) { return el('th', { text: h }); }))]));
+      t.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'Phone', 'WhatsApp', 'Children', 'Portal access', ''].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
       parents.forEach(function (p) {
         var kids = students.filter(function (s) { return (p.student_ids || []).indexOf(s.student_id) !== -1; })
           .map(function (s) { return s.first_name + ' ' + s.last_name; }).join(', ') || '—';
+        var enabled = p.portal_enabled !== false;
         var act = el('div', { class: 'wrap-actions' });
-        if (!ro) {
+        if (canEdit) {
           act.appendChild(el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editParent(p, students, refresh); } }));
+          act.appendChild(el('button', { class: 'btn sm ' + (enabled ? 'ghost' : 'gold'), text: enabled ? 'Disable access' : 'Enable access', onclick: function () {
+            DB.update('parents', p.id, { portal_enabled: !enabled }).then(function () { U.toast('Portal ' + (enabled ? 'disabled' : 'enabled') + ' for ' + p.name + '.'); App.refresh(); refresh(); });
+          } }));
           act.appendChild(el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Delete parent ' + p.name + '?', function () { DB.remove('parents', p.id).then(refresh); }); } }));
         }
-        tb.appendChild(el('tr', {}, [el('td', { text: p.name }), el('td', { text: p.phone || '—' }), el('td', { text: p.whatsapp || '—' }), el('td', { text: kids }), el('td', {}, [act])]));
+        tb.appendChild(el('tr', {}, [
+          el('td', { text: p.name }), el('td', { text: p.phone || '—' }), el('td', { text: p.whatsapp || '—' }), el('td', { text: kids }),
+          el('td', {}, [el('span', { class: 'tag ' + (enabled ? '' : 'muted'), text: enabled ? 'Enabled' : 'Disabled' })]),
+          el('td', {}, [act])
+        ]));
       });
       t.appendChild(tb);
       c.appendChild(el('div', { class: 'table-wrap' }, [t]));
       panel.appendChild(c);
-      panel.appendChild(el('div', { class: 'note', text: 'One parent links to several children — a single message or login covers all of them.' }));
+      panel.appendChild(el('div', { class: 'note', text: 'One parent links to several children — a single login covers all of them. Use "Disable access" to switch off an individual parent\'s portal.' }));
     });
     function refresh() { U.clear(panel); tabParents(panel); }
   }
@@ -338,7 +346,7 @@
         });
         panel.appendChild(el('div', { class: 'card' }, [el('h3', { text: c.name + (nextC ? ' → ' + nextC.name : ' (final class)') }), body]));
       });
-      if (App.readOnly) return;
+      if (!App.canEdit('Students')) return;
       panel.appendChild(el('button', { class: 'btn gold', text: 'Apply promotions', onclick: function () {
         U.confirm('Apply all promotion decisions? This updates class assignments.', function () {
           var ops = Object.keys(decisions).map(function (id) {

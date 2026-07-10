@@ -45,11 +45,11 @@
       DB.singleton('school'), DB.singleton('academic'), DB.singleton('idRules'),
       DB.singleton('weighting'), DB.singleton('labels'),
       DB.all('permissions'), DB.all('gradeBands'), DB.all('categories'),
-      DB.all('classes'), DB.all('reportTemplates'), DB.all('feeTypes')
+      DB.all('classes'), DB.all('reportTemplates'), DB.all('feeTypes'), DB.all('parents')
     ]).then(function (r) {
       App.ctx = {
         school: r[0], academic: r[1], idRules: r[2], weighting: r[3], labels: r[4],
-        gradeBands: r[6], categories: r[7], classes: r[8], reportTemplates: r[9], feeTypes: r[10]
+        gradeBands: r[6], categories: r[7], classes: r[8], reportTemplates: r[9], feeTypes: r[10], parents: r[11]
       };
       // permissions stored as array of {role, perms} OR object — normalise
       App.permissions = normalisePerms(r[5]);
@@ -65,13 +65,25 @@
     return defaultPerms();
   }
 
+  // The parents record backing the signed-in Parent user (matched by linked ward).
+  function parentRecordFor(user) {
+    var ids = (user && user.linked_student_ids) || [];
+    return (App.ctx.parents || []).filter(function (p) {
+      return (p.student_ids || []).some(function (c) { return ids.indexOf(c) !== -1; });
+    })[0];
+  }
+  App.parentRecord = function () { return parentRecordFor(App.user); };
+
   App.can = function (module) {
     if (!App.user) return false;
     if (App.user.role === 'Admin') return true;      // Admin always full
-    // Parent portal can be switched off by the admin (untick Parent in Settings → Roles).
-    if (App.ctx.labels && App.ctx.labels.parent_access === false && App.user.role === 'Parent') return false;
-    var pr = App.permissions[App.user.role] || {};
-    return !!pr[module];
+    if (App.user.role === 'Parent') {
+      // Admin can switch OFF an individual parent's portal (Students → Parents).
+      var pr = parentRecordFor(App.user);
+      if (pr && pr.portal_enabled === false) return false;
+    }
+    var perms = App.permissions[App.user.role] || {};
+    return !!perms[module];
   };
 
   // Can this role EDIT (create/update/delete) in the given module?
