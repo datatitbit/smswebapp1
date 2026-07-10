@@ -17,11 +17,26 @@
     Inventory: 'inventory', Accounting: 'accounting', Payroll: 'payroll', Settings: 'settings'
   };
 
+  // Default role -> module access. Admin always full. Director sees all
+  // (view + download, no edit — enforced via App.readOnly). Other staff is the
+  // finance/accounts role; Teacher is class-scoped; Parent sees only their ward.
+  function defaultPerms() {
+    function mk(list) { var o = {}; MODULES.forEach(function (m) { o[m] = list.indexOf(m) !== -1; }); return o; }
+    return {
+      'Admin': mk(MODULES),
+      'Director': mk(MODULES),
+      'Teacher': mk(['Dashboard', 'Students', 'Assessment', 'Attendance']),
+      'Other staff': mk(['Dashboard', 'Finance', 'Inventory', 'Accounting', 'Payroll']),
+      'Parent': mk(['Dashboard', 'Students'])
+    };
+  }
+
   var App = {
     ctx: {},        // cached settings/context
     user: null,
     permissions: {},
-    get readOnly() { return App.user && App.user.role === 'Parent'; }
+    // View-only roles: Parent and Director can view & download but never edit.
+    get readOnly() { return App.user && (App.user.role === 'Parent' || App.user.role === 'Director'); }
   };
 
   // ---- Load shared context (settings used everywhere) ----
@@ -47,14 +62,27 @@
       var o = {}; p.forEach(function (row) { o[row.role] = row.perms; });
       if (Object.keys(o).length) return o;
     }
-    return global.SMS_SEED.permissions;
+    return defaultPerms();
   }
 
   App.can = function (module) {
     if (!App.user) return false;
     if (App.user.role === 'Admin') return true;      // Admin always full
+    // Parent portal can be switched off by the admin (untick Parent in Settings → Roles).
+    if (App.ctx.labels && App.ctx.labels.parent_access === false && App.user.role === 'Parent') return false;
     var pr = App.permissions[App.user.role] || {};
     return !!pr[module];
+  };
+
+  // Can this role EDIT (create/update/delete) in the given module?
+  App.canEdit = function (module) {
+    if (!App.user) return false;
+    var role = App.user.role;
+    if (role === 'Admin') return true;                         // edit everywhere
+    if (role === 'Director' || role === 'Parent') return false; // view / download only
+    if (role === 'Teacher') return module === 'Assessment' || module === 'Attendance';
+    if (role === 'Other staff') return ['Finance', 'Accounting', 'Payroll', 'Inventory'].indexOf(module) !== -1;
+    return false;
   };
 
   App.className = function (id) {
@@ -73,16 +101,22 @@
   }
   function saveSession(u) { localStorage.setItem('sms_session', JSON.stringify(u)); }
 
+  function initials(name) {
+    return (name || 'School').split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+  }
+
   function chooseRole() {
     DB.all('users').then(function (users) {
       var root = U.clear(U.$('#root'));
       var wrap = U.el('div', { class: 'login-wrap' });
       var card = U.el('div', { class: 'card' });
-      card.appendChild(U.el('h1', { text: App.ctx.school ? App.ctx.school.name : 'School Management System' }));
-      card.appendChild(U.el('p', { class: 'muted', text: 'Demo sign-in — choose a role to explore (real login added at deployment).' }));
+      var sName = App.ctx.school ? App.ctx.school.name : 'School Management System';
+      card.appendChild(U.el('div', { class: 'login-badge', text: initials(sName) }));
+      card.appendChild(U.el('h1', { text: sName }));
+      card.appendChild(U.el('p', { class: 'muted', text: 'Choose a role to sign in and explore (secure login is added at deployment).' }));
       var grid = U.el('div', { class: 'role-grid' });
       users.forEach(function (u) {
-        grid.appendChild(U.el('button', { text: u.role + ' (' + u.name + ')', onclick: function () {
+        grid.appendChild(U.el('button', { html: '<b>' + U.esc(u.role) + '</b><br><span style="font-weight:400;font-size:.78rem;color:var(--muted)">' + U.esc(u.name) + '</span>', onclick: function () {
           App.user = u; saveSession(u); boot();
         } }));
       });
