@@ -1,0 +1,118 @@
+/* ============================================================
+ * license-lib.js — offline licence & free-trial engine.
+ * Dependency-free. Verifies cryptographically-signed licence keys
+ * with the browser's built-in WebCrypto (ECDSA P-256 / SHA-256).
+ * The matching PRIVATE key lives only in Zetranova's generator tool,
+ * so keys cannot be forged. Public key below is safe to ship.
+ * ============================================================ */
+(function (global) {
+  'use strict';
+  var DB = global.DB;
+
+  // Public verification key (safe to publish).
+  var PUBLIC_JWK = { kty: 'EC', crv: 'P-256', x: 'Ri2HWiYBSXnd0CtpXcIJZUANUK3uGw2MMIML4c7s_Xc', y: 'MG-kk2yycEkCqT2TLRjGhSDq7ow8dyb1S1AdpWWtPXA' };
+
+  var TRIAL_DAYS = 30;
+  var CURRENCY = 'GHS';
+  // Plans: enrolment cap + termly / annual (3-term prepay) price in GHS. Tune freely.
+  var PLANS = {
+    starter:  { label: 'Starter',  max: 150,    term: 600,  year: 1500 },
+    standard: { label: 'Standard', max: 400,    term: 1200, year: 3000 },
+    premium:  { label: 'Premium',  max: 100000, term: 2000, year: 5000 }
+  };
+
+  function b64uToBytes(s) {
+    s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    var bin = global.atob(s), b = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    return b;
+  }
+  function asciiBytes(s) { var b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xff; return b; }
+  function decodePayload(head) {
+    var bytes = b64uToBytes(head), json;
+    if (global.TextDecoder) json = new global.TextDecoder().decode(bytes);
+    else { var s = ''; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); json = decodeURIComponent(escape(s)); }
+    return JSON.parse(json);
+  }
+
+  var keyPromise = null;
+  function pubKey() {
+    if (!keyPromise) {
+      keyPromise = (global.crypto && global.crypto.subtle)
+        ? global.crypto.subtle.importKey('jwk', PUBLIC_JWK, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
+        : Promise.reject(new Error('WebCrypto unavailable'));
+    }
+    return keyPromise;
+  }
+
+  // verify(token) -> Promise<{valid, payload}>
+  function verify(token) {
+    try {
+      var parts = String(token || '').trim().split('.');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) return Promise.resolve({ valid: false });
+      var head = parts[0], sig = b64uToBytes(parts[1]), data = asciiBytes(head);
+      return pubKey()
+        .then(function (k) { return global.crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, k, sig, data); })
+        .then(function (ok) { return { valid: !!ok, payload: ok ? decodePayload(head) : null }; })
+        .catch(function () { return { valid: false }; });
+    } catch (e) { return Promise.resolve({ valid: false }); }
+  }
+
+  function todayISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function daysBetween(aISO, bISO) { return Math.floor((Date.parse(bISO + 'T00:00:00') - Date.parse(aISO + 'T00:00:00')) / 86400000); }
+  function addDaysISO(aISO, n) { var d = new Date(Date.parse(aISO + 'T00:00:00') + n * 86400000); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+  function finalize(st) {
+    st.planLabel = (st.plan && PLANS[st.plan]) ? PLANS[st.plan].label : (st.trial ? 'Free trial' : '—');
+    st.locked = (st.state === 'expired');
+    return st;
+  }
+  function localTrial(rec, today) {
+    var start = rec.trial_start, save = Promise.resolve(rec);
+    if (!start) { start = today; save = DB.setSingleton('license', Object.assign({}, rec, { trial_start: start })); }
+    return save.then(function () {
+      var left = TRIAL_DAYS - daysBetween(start, today);
+      return finalize({ state: left >= 0 ? 'trialing' : 'expired', plan: null, school: '', expires: addDaysISO(start, TRIAL_DAYS), daysLeft: left, trial: true, source: 'local' });
+    });
+  }
+
+  // resolve() -> Promise<state>  { state, plan, planLabel, school, expires, daysLeft, trial, source, locked }
+  function resolve() {
+    return DB.singleton('license').then(function (rec) {
+      rec = rec || {};
+      var today = todayISO();
+      if (rec.token) {
+        return verify(rec.token).then(function (res) {
+          if (res.valid && res.payload) {
+            var p = res.payload, exp = p.expires || '2100-01-01', left = daysBetween(today, exp);
+            return finalize({ state: left >= 0 ? (p.trial ? 'trialing' : 'active') : 'expired', plan: p.plan || 'standard', school: p.school || '', expires: exp, daysLeft: left, trial: !!p.trial, source: 'key' });
+          }
+          return localTrial(rec, today); // bad/foreign key -> fall back to trial (never lock on a bad paste)
+        });
+      }
+      return localTrial(rec, today);
+    }).catch(function () {
+      return finalize({ state: 'trialing', plan: null, school: '', expires: '', daysLeft: TRIAL_DAYS, trial: true, source: 'error' });
+    });
+  }
+
+  // activate(token) -> Promise<{ok, payload, error}>
+  function activate(token) {
+    return verify(token).then(function (res) {
+      if (!res.valid || !res.payload) return { ok: false, error: 'That key is not valid. Please paste the whole key exactly as sent.' };
+      var exp = res.payload.expires || '2100-01-01';
+      if (daysBetween(todayISO(), exp) < 0) return { ok: false, error: 'That key expired on ' + exp + '. Ask for a fresh key.' };
+      return DB.singleton('license').then(function (rec) {
+        return DB.setSingleton('license', Object.assign({}, rec || {}, { token: String(token).trim() })).then(function () { return { ok: true, payload: res.payload }; });
+      });
+    });
+  }
+  function deactivate() { return DB.singleton('license').then(function (rec) { rec = rec || {}; delete rec.token; return DB.setSingleton('license', rec); }); }
+
+  global.License = {
+    PLANS: PLANS, TRIAL_DAYS: TRIAL_DAYS, CURRENCY: CURRENCY,
+    verify: verify, resolve: resolve, activate: activate, deactivate: deactivate,
+    todayISO: todayISO, daysBetween: daysBetween
+  };
+})(window);

@@ -9,12 +9,12 @@
   var ICONS = {
     Dashboard: '▤', Students: '👥', Assessment: '✎', Finance: '₵', Attendance: '✓',
     Communication: '✉', Administration: '⚙', Inventory: '▦',
-    Accounting: '∑', Payroll: '💼', Settings: '⚙'
+    Accounting: '∑', Payroll: '💼', Settings: '⚙', Subscription: '★'
   };
   var ROUTES = {
     Dashboard: 'dashboard', Students: 'students', Assessment: 'assessment', Finance: 'finance',
     Attendance: 'attendance', Communication: 'communication', Administration: 'administration',
-    Inventory: 'inventory', Accounting: 'accounting', Payroll: 'payroll', Settings: 'settings'
+    Inventory: 'inventory', Accounting: 'accounting', Payroll: 'payroll', Settings: 'settings', Subscription: 'subscription'
   };
 
   // Default role -> module access. Admin always full. Director sees all
@@ -35,8 +35,11 @@
     ctx: {},        // cached settings/context
     user: null,
     permissions: {},
+    license: null,  // licence/trial state, set at boot by License.resolve()
     // View-only roles: Parent and Director can view & download but never edit.
-    get readOnly() { return App.user && (App.user.role === 'Parent' || App.user.role === 'Director'); }
+    get readOnly() { return App.user && (App.user.role === 'Parent' || App.user.role === 'Director'); },
+    // When the free trial / subscription has lapsed the whole app becomes read-only.
+    get locked() { return !!(App.license && App.license.locked); }
   };
 
   // ---- Load shared context (settings used everywhere) ----
@@ -89,6 +92,7 @@
   // Can this role EDIT (create/update/delete) in the given module?
   App.canEdit = function (module) {
     if (!App.user) return false;
+    if (App.locked) return false;                 // trial/subscription lapsed → read-only
     var role = App.user.role;
     if (role === 'Admin') return true;                         // edit everywhere
     if (role === 'Director' || role === 'Parent') return false; // view / download only
@@ -138,6 +142,20 @@
     });
   }
 
+  // ---- Licence/trial banner ----
+  function licenseBanner() {
+    var lic = App.license; if (!lic || lic.state === 'active') return null;
+    var trial = lic.state === 'trialing';
+    var style = 'display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.45rem .8rem;font-size:.85rem;font-weight:600;flex-wrap:wrap;'
+      + (trial ? 'background:#fff7e6;color:#7a5b00;border-bottom:1px solid #f0d98c' : 'background:#fde8e8;color:#8a1c1c;border-bottom:1px solid #f3b4b4');
+    var msg = trial
+      ? 'Free trial — ' + (lic.daysLeft >= 0 ? lic.daysLeft : 0) + ' day' + (lic.daysLeft === 1 ? '' : 's') + ' left'
+      : 'Your trial has ended — the app is read-only until a licence is activated.';
+    var bar = U.el('div', { style: style }, [U.el('span', { text: msg })]);
+    if (App.user && App.user.role === 'Admin') bar.appendChild(U.el('button', { class: 'btn sm', text: trial ? 'Manage subscription' : 'Activate now', onclick: function () { location.hash = '#/subscription'; } }));
+    return bar;
+  }
+
   // ---- Shell ----
   function renderShell() {
     var root = U.clear(U.$('#root'));
@@ -165,6 +183,11 @@
       else a.addEventListener('click', closeSidebar);
       nav.appendChild(a);
     });
+    if (App.user.role === 'Admin') {
+      var subA = U.el('a', { href: '#/subscription', 'data-mod': 'Subscription' }, [U.el('span', { class: 'ico', text: ICONS.Subscription }), document.createTextNode('Subscription')]);
+      subA.addEventListener('click', closeSidebar);
+      nav.appendChild(subA);
+    }
     sidebar.appendChild(nav);
     sidebar.appendChild(U.el('div', { style: 'margin-top:auto;padding:1rem;font-size:.72rem;opacity:.6', text: 'v1.0 · ' + (DB.isApi ? 'API mode' : 'Local mode') }));
 
@@ -172,6 +195,7 @@
     var main = U.el('main', { class: 'main', id: 'view' });
 
     root.appendChild(topbar);
+    var lb = licenseBanner(); if (lb) root.appendChild(lb);
     root.appendChild(sidebar);
     root.appendChild(backdrop);
     root.appendChild(main);
@@ -220,6 +244,9 @@
 
   function boot() {
     App.refresh().then(function () {
+      return (global.License ? global.License.resolve() : Promise.resolve(null));
+    }).then(function (lic) {
+      App.license = lic;
       renderShell();
       router();
       // Automation "night clerk": routine admin done automatically (Settings → Automation).
