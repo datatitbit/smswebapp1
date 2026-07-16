@@ -6,7 +6,23 @@
 (function (global) {
   'use strict';
 
-  var SCHOOL_ID = 'sch-1';
+  // Generated once per install and persisted separately from the main DB blob,
+  // so a "Reset to Ghana defaults" doesn't change it. Every deployment of this
+  // codebase previously shared the literal 'sch-1' for every school — fine for
+  // one-install-per-school today, but a real collision risk if two schools'
+  // data were ever merged into a shared database. Falls back to 'sch-1' only
+  // if localStorage is unavailable (e.g. some automated test environments).
+  var SCHOOL_ID = (function () {
+    try {
+      var KEY = 'sms_school_id';
+      var id = window.localStorage.getItem(KEY);
+      if (!id) {
+        id = 'sch-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        window.localStorage.setItem(KEY, id);
+      }
+      return id;
+    } catch (e) { return 'sch-1'; }
+  })();
 
   // ---- Modules used by the permission matrix / sidebar ----
   var MODULES = ['Dashboard', 'Students', 'Assessment', 'Finance',
@@ -20,11 +36,13 @@
   function row(vals) {
     var o = {}; MODULES.forEach(function (m, i) { o[m] = vals[i]; }); return o;
   }
+  // 'Other staff' = the Account/Finance office: stock (Inventory), payroll, fees
+  // (Finance/Accounting), student & staff data. Not Assessment or Settings.
   var permissions = {
     'Admin':       row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true]),
     'Director':    row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false]),
     'Teacher':     row([true,  true,  true,  false, true,  false, false, false, false, false, false]),
-    'Other staff': row([true,  true,  false, false, true,  true,  false, true,  false, false, false]),
+    'Other staff': row([true,  true,  false, true,  true,  true,  true,  true,  true,  true,  false]),
     'Parent':      row([true,  true,  true,  true,  true,  true,  false, false, false, false, false])
   };
 
@@ -42,7 +60,9 @@
     logo: '',                                         // PLACEHOLDER — empty => initials badge
     signature: '',                                    // head teacher signature image (data URI)
     stamp: '',                                        // school stamp image (data URI)
-    currency: 'GHS'
+    currency: 'GHS',
+    theme_primary: '',                                // empty => default deep-teal brand
+    theme_accent: ''                                  // empty => default warm-gold accent
   };
 
   // ---- Academic year & terms ----
@@ -305,12 +325,20 @@
   ];
 
   // ---- Default users (one per role) for demo login ----
+  // Passwords are PBKDF2-SHA256 hashed (see auth-lib.js), never stored in plaintext.
+  // DEMO PASSWORDS (change at go-live — see README "Placeholders"):
+  //   admin/admin123, director/director123, teacher/teacher123, staff/staff123, parent/parent123
   var users = [
-    { id: 'u-admin',   school_id: SCHOOL_ID, name: 'School Administrator', username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [] },
-    { id: 'u-dir',     school_id: SCHOOL_ID, name: 'The Director',          username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [] },
-    { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [] },
-    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [] },
-    { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001'] }
+    { id: 'u-admin',   school_id: SCHOOL_ID, name: 'School Administrator', username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [],
+      password_salt: 'bdd6096a9cccf365986520af2c6c38cd', password_hash: '5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764', must_change_password: true },
+    { id: 'u-dir',     school_id: SCHOOL_ID, name: 'The Director',          username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [],
+      password_salt: '7ff64936b8ce0f27cbdeed5a5cc765d4', password_hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c', must_change_password: true },
+    { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [],
+      password_salt: '04676b70f2981d9df4f2d798b15da396', password_hash: 'c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da', must_change_password: true },
+    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [],
+      password_salt: 'a4e321aa36c33a28e0c94c9b8cdf62cf', password_hash: '119570daabe181e0cfbebf03cc76afcccc5d6bf1721b7b1d8902102ed146b019', must_change_password: true },
+    { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001'],
+      password_salt: 'bd118eecf734755b7e7691fc18b52c14', password_hash: 'ba3af436dd8f9363645143b03709483a4ea07da9b6b7fe7c43cb541617ece706', must_change_password: true }
   ];
 
   // ---- Staff records ----
