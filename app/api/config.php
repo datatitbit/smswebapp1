@@ -18,8 +18,10 @@ return [
     'MYSQL_PASS'    => getenv('SMS_DB_PASS') ?: 'CHANGE_ME_PLACEHOLDER',
     'MYSQL_CHARSET' => 'utf8mb4',
 
-    // One install = one school. This is its tenant id.
-    'SCHOOL_ID' => 'sch-1',
+    // One install = one school. This is its tenant id — change it to something
+    // unique per client install (e.g. 'sch-<clientslug>') before going live;
+    // never reuse 'sch-1' across two real schools sharing infrastructure.
+    'SCHOOL_ID' => getenv('SMS_SCHOOL_ID') ?: 'sch-1',
 
     // External services run in TEST MODE until real keys are added.
     'PAYMENTS' => [

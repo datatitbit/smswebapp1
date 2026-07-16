@@ -25,10 +25,21 @@
   LocalAdapter.prototype._read = function () {
     var raw = localStorage.getItem(this.key);
     if (!raw) { this._write(clone(global.SMS_SEED)); raw = localStorage.getItem(this.key); }
-    return JSON.parse(raw);
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      console.error('sms_db_v2 was corrupted; restoring Ghana defaults.', e);
+      this._write(clone(global.SMS_SEED));
+      return JSON.parse(localStorage.getItem(this.key));
+    }
   };
   LocalAdapter.prototype._write = function (data) {
-    localStorage.setItem(this.key, JSON.stringify(data));
+    try {
+      localStorage.setItem(this.key, JSON.stringify(data));
+    } catch (e) {
+      if (global.U && global.U.toast) global.U.toast('Could not save: browser storage is full. Export your data (Settings → Data) and free up space.', 'err');
+      throw e;
+    }
   };
   LocalAdapter.prototype.reset = function () {
     localStorage.removeItem(this.key); this._read(); return Promise.resolve(true);
@@ -82,7 +93,11 @@
     var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
     return fetch(this.base + '?r=' + encodeURIComponent(path), opts).then(function (r) {
+      if (!r.ok) throw new Error('API request failed (' + r.status + '): ' + path);
       return r.json();
+    }).catch(function (e) {
+      if (global.U && global.U.toast) global.U.toast('Network/API error — check your connection.', 'err');
+      throw e;
     });
   };
   ApiAdapter.prototype.all = function (coll) { return this._req('GET', coll); };

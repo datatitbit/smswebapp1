@@ -34,7 +34,7 @@
 
   // ---- Toast / save confirmations ----
   function toast(msg, kind) {
-    var host = $('#toast-host') || document.body.appendChild(el('div', { id: 'toast-host' }));
+    var host = $('#toast-host') || document.body.appendChild(el('div', { id: 'toast-host', 'aria-live': 'polite', role: 'status' }));
     var t = el('div', { class: 'toast ' + (kind || 'ok'), text: msg });
     host.appendChild(t);
     setTimeout(function () { t.classList.add('show'); }, 10);
@@ -157,6 +157,20 @@
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  // shade('#0f5e5e', -0.25) darkens 25% toward black; shade(c, 0.9) lightens 90% toward white.
+  function shade(hex, pct) {
+    hex = String(hex || '').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#000000';
+    var n = parseInt(hex, 16);
+    var r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+    var t = pct < 0 ? 0 : 255, p = Math.abs(pct);
+    r = Math.round((t - r) * p) + r; g = Math.round((t - g) * p) + g; b = Math.round((t - b) * p) + b;
+    function h2(x) { var s = x.toString(16); return s.length < 2 ? '0' + s : s; }
+    return '#' + h2(r) + h2(g) + h2(b);
+  }
+  function isHexColor(s) { return /^#[0-9a-fA-F]{6}$/.test(String(s || '')); }
+
   function debounce(fn, ms) {
     var t; return function () { var a = arguments, c = this; clearTimeout(t); t = setTimeout(function () { fn.apply(c, a); }, ms || 250); };
   }
@@ -164,6 +178,7 @@
   global.U = {
     el: el, $: $, $all: $all, clear: clear, esc: esc,
     toast: toast, modal: modal, confirm: confirmDialog, form: form,
-    money: money, todayISO: todayISO, fmtDate: fmtDate, debounce: debounce
+    money: money, todayISO: todayISO, fmtDate: fmtDate, debounce: debounce,
+    shade: shade, isHexColor: isHexColor
   };
 })(window);

@@ -1,0 +1,30 @@
+# ============================================================
+# render.yaml — Render Blueprint for the SMS webapp.
+#
+# Deploys the browser app in ./app as a free Static Site.
+# The app runs in localStorage mode (no backend needed), so
+# anyone with the URL can open and test it in their browser.
+#
+# To use: Render Dashboard -> New + -> Blueprint -> pick this
+# repo. Render reads this file and creates the static site.
+#
+# SECURITY: Render's static host serves files as-is — it does
+# NOT execute PHP. app/api/ (config.php, db.php, the dev SQLite
+# file) is only used by the optional cPanel/PHP deployment path
+# (see README §3) and is never read by this static site (useApi
+# stays false here), so the build step below removes it from the
+# published output. This prevents app/api/config.php (and any
+# real credentials pasted into it for a cPanel install) from ever
+# being served as plaintext to site visitors.
+# ============================================================
+services:
+  - type: web
+    name: smswebapp
+    runtime: static
+    buildCommand: rm -rf app/api
+    staticPublishPath: ./app
+    # Single-page app: send any unknown path to index.html.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
