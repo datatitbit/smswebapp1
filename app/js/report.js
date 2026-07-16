@@ -18,7 +18,7 @@
     // ---- Header ----
     var head = elx('div', 'rc-head');
     var logo = elx('div', 'rc-logo');
-    if (school.logo) { var img = document.createElement('img'); img.src = school.logo; img.className = 'rc-logo'; logo = img; }
+    if (school.logo) { var img = document.createElement('img'); img.src = school.logo; img.className = 'rc-logo'; img.alt = school.name + ' logo'; logo = img; }
     else logo.textContent = initials(school.name);
     var titles = elx('div', 'rc-titles');
     titles.appendChild(elx('div', 'rc-school', school.name.toUpperCase()));
@@ -86,15 +86,15 @@
       var rf = t.remarkFields || {};
       ['conduct', 'attitude', 'interest', 'overall'].forEach(function (k) {
         var f = rf[k]; if (!f || f.show === false) return;
-        var val = sel[k] || '………………………………………………';
+        var val = sel[k] || '…………………………………………………………';
         lines.appendChild(elx('div', '', f.label + ': ' + val));
       });
       var fr = t.freeRemarks || {};
       if (fr.teacher && fr.teacher.show !== false) {
-        lines.appendChild(elx('div', '', fr.teacher.label + ': ' + (sel.teacher_remark || '………………………………………………………………')));
+        lines.appendChild(elx('div', '', fr.teacher.label + ': ' + (sel.teacher_remark || '……………………………………………………………………')));
       }
       if (fr.head && fr.head.show !== false) {
-        lines.appendChild(elx('div', '', fr.head.label + ': ' + '………………………………………………'));
+        lines.appendChild(elx('div', '', fr.head.label + ': ' + '…………………………………………………………'));
       }
       card.appendChild(lines);
     }
@@ -114,7 +114,7 @@
 
     // ---- Overall remarks / signature ----
     if (t.kind === 'A') {
-      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: ………………………………………………………………………')).parentNode);
+      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: …………………………………………………………………………………')).parentNode);
     }
     // Signature area — skipped for Template B when the conduct block already
     // renders the teacher remark + head signature lines.
@@ -130,13 +130,13 @@
       var imgRow = elx('div', 'rc-sign');
       if (school.signature) {
         var sigWrap = document.createElement('div');
-        var sig = document.createElement('img'); sig.src = school.signature; sig.style.maxHeight = '46px'; sigWrap.appendChild(sig);
+        var sig = document.createElement('img'); sig.src = school.signature; sig.style.maxHeight = '46px'; sig.alt = "Head Teacher's signature"; sigWrap.appendChild(sig);
         sigWrap.appendChild(elx('div', '', "Head Teacher's Signature"));
         imgRow.appendChild(sigWrap);
       }
       if (school.stamp) {
         var stWrap = document.createElement('div');
-        var st = document.createElement('img'); st.src = school.stamp; st.style.maxHeight = '60px'; stWrap.appendChild(st);
+        var st = document.createElement('img'); st.src = school.stamp; st.style.maxHeight = '60px'; st.alt = 'School stamp'; stWrap.appendChild(st);
         stWrap.appendChild(elx('div', '', 'School Stamp'));
         imgRow.appendChild(stWrap);
       }

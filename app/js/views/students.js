@@ -139,7 +139,8 @@
   function stat(n, l) { return el('div', { class: 'stat' }, [el('div', { class: 'n', text: n }), el('div', { class: 'l', text: l })]); }
   function printReport(title, html) {
     var wn = window.open('', '_blank');
-    wn.document.write('<html><head><title>' + U.esc(title) + '</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#1c2726}table{border-collapse:collapse;width:100%;margin-bottom:14px}th,td{border:1px solid #999;padding:5px;text-align:left;font-size:12px}th{background:#0f5e5e;color:#fff}h1,h2,h3{color:#0f5e5e;margin:.3rem 0}</style></head><body>' + html + '</body></html>');
+    var brand = (App.themeHex ? App.themeHex().primary : '#0f5e5e');
+    wn.document.write('<html><head><title>' + U.esc(title) + '</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#1c2726}table{border-collapse:collapse;width:100%;margin-bottom:14px}th,td{border:1px solid #999;padding:5px;text-align:left;font-size:12px}th{background:' + brand + ';color:#fff}h1,h2,h3{color:' + brand + ';margin:.3rem 0}</style></head><body>' + html + '</body></html>');
     wn.document.close(); wn.focus(); setTimeout(function () { wn.print(); }, 300);
   }
 
@@ -230,13 +231,19 @@
         if (s) {
           DB.update('students', s.id, v).then(function () { linkParent(s.id, v.parent_id, s.parent_id).then(function () { x(); U.toast('Student updated.'); done(); }); });
         } else {
-          var go = (v.student_id && v.student_id.trim())
-            ? Promise.resolve(v.student_id.trim())
-            : DB.nextCode('student', rules.student_prefix, rules.digits);
+          var manualCode = v.student_id && v.student_id.trim();
+          var go = manualCode ? Promise.resolve(manualCode) : DB.nextCode('student', rules.student_prefix, rules.digits);
           go.then(function (code) {
+            if (!manualCode) { proceed(code); return; }
+            DB.all('students').then(function (all) {
+              if (all.some(function (x2) { return x2.student_id === code; })) return U.toast('Student ID "' + code + '" is already in use — choose a different ID.', 'err');
+              proceed(code);
+            });
+          });
+          function proceed(code) {
             v.student_id = code; v.id = 'stu-' + code;
             DB.insert('students', v).then(function () { linkParent(v.id, v.parent_id, null).then(function () { x(); U.toast('Admitted as ' + code); done(); }); });
-          });
+          }
         }
       } }
     ] });
