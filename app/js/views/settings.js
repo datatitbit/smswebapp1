@@ -83,7 +83,44 @@
           App.refresh().then(function () { U.toast('School profile saved.'); });
         });
       }));
+
+      panel.appendChild(themeCard(s));
     });
+  }
+
+  function themeCard(s) {
+    var def = { primary: '#0f5e5e', accent: '#e0ab2b' };
+    var primary = U.isHexColor(s.theme_primary) ? s.theme_primary : def.primary;
+    var accent = U.isHexColor(s.theme_accent) ? s.theme_accent : def.accent;
+    var pInp = el('input', { type: 'color', value: primary });
+    var aInp = el('input', { type: 'color', value: accent });
+    var c = el('div', { class: 'card' }, [
+      el('h2', { text: 'Branding — Theme colors' }),
+      el('div', { class: 'help', text: 'Sets the primary and accent colors used across the app, printed reports, and receipts. Leave at the defaults to keep the standard Zetranova look.' }),
+      el('div', { class: 'grid cols-2' }, [
+        el('div', { class: 'field' }, [el('label', { text: 'Primary color' }), pInp]),
+        el('div', { class: 'field' }, [el('label', { text: 'Accent color' }), aInp])
+      ])
+    ]);
+    c.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
+      el('button', { class: 'btn gold', text: 'Save colors', onclick: function () {
+        DB.singleton('school').then(function (cur) {
+          return DB.setSingleton('school', Object.assign({}, cur, { theme_primary: pInp.value, theme_accent: aInp.value }));
+        }).then(function () { App.refresh().then(function () { U.toast('Theme colors saved.'); }); });
+      } }),
+      el('button', { class: 'btn ghost', text: 'Reset colors to default', onclick: function () {
+        DB.singleton('school').then(function (cur) {
+          return DB.setSingleton('school', Object.assign({}, cur, { theme_primary: '', theme_accent: '' }));
+        }).then(function () {
+          App.refresh().then(function () {
+            U.toast('Theme colors reset to default.');
+            var panel = U.$('#settings-panel');
+            if (panel) { U.clear(panel); tabProfile(panel); }
+          });
+        });
+      } })
+    ]));
+    return c;
   }
 
   function imageUploader(label, key, imgs) {
@@ -92,7 +129,7 @@
     var preview = el('div', { style: 'height:90px;display:flex;align-items:center;justify-content:center;margin:.4rem 0;background:#faf8f3;border-radius:6px;overflow:hidden' });
     function draw() {
       U.clear(preview);
-      if (imgs[key]) { var img = el('img'); img.src = imgs[key]; img.style.maxHeight = '88px'; img.style.maxWidth = '100%'; preview.appendChild(img); }
+      if (imgs[key]) { var img = el('img'); img.src = imgs[key]; img.alt = label + ' preview'; img.style.maxHeight = '88px'; img.style.maxWidth = '100%'; preview.appendChild(img); }
       else preview.appendChild(el('span', { class: 'muted', text: 'No image' }));
     }
     draw();
@@ -276,13 +313,13 @@
       bands = bands.slice().sort(function (a, b) { return b.min - a.min; });
       var rows = bands.map(function (b) {
         return [b.level != null ? b.level : '—', b.grade, b.min + '% – ' + b.max + '%', b.remark, el('div', { class: 'wrap-actions' }, [
-          el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editBand(b, refresh); } }),
+          el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editBand(b, bands, refresh); } }),
           el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Delete grade ' + b.grade + '?', function () { DB.remove('gradeBands', b.id).then(function () { App.refresh(); refresh(); }); }); } })
         ])];
       });
       body.appendChild(listTable(['Level', 'Grade', 'Range', 'Meaning', ''], rows));
       body.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.5rem' }, [
-        el('button', { class: 'btn sm', text: '+ Add grade band', onclick: function () { editBand(null, refresh); } }),
+        el('button', { class: 'btn sm', text: '+ Add grade band', onclick: function () { editBand(null, bands, refresh); } }),
         el('button', { class: 'btn sm ghost', text: 'Reset to Option A default', onclick: function () {
           U.confirm('Replace all grade bands with the Option A default?', function () {
             DB.replaceAll('gradeBands', JSON.parse(JSON.stringify(global.SMS_SEED.gradeBands))).then(function () { App.refresh(); U.toast('Grading reset to Option A.'); refresh(); });
@@ -293,7 +330,7 @@
     });
     function refresh() { U.clear(panel); tabGrading(panel); }
   }
-  function editBand(b, done) {
+  function editBand(b, allBands, done) {
     var f = U.form([
       { name: 'level', label: 'Proficiency level', type: 'number', min: 1, max: 99 },
       { name: 'grade', label: 'Grade code (e.g. A1)', required: true },
@@ -306,8 +343,17 @@
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var v = f.readValues();
-        var p = b ? DB.update('gradeBands', b.id, v) : DB.insert('gradeBands', v);
-        p.then(function () { x(); App.refresh(); U.toast('Saved.'); done(); });
+        var min = Number(v.min), max = Number(v.max);
+        if (!v.grade.trim()) return U.toast('Grade code is required.', 'err');
+        if (isNaN(min) || isNaN(max) || min > max) return U.toast('Min % cannot be greater than Max %.', 'err');
+        var others = (allBands || []).filter(function (x2) { return !b || x2.id !== b.id; });
+        var overlaps = others.some(function (x2) { return min <= Number(x2.max) && max >= Number(x2.min); });
+        var proceed = function () {
+          var p = b ? DB.update('gradeBands', b.id, v) : DB.insert('gradeBands', v);
+          p.then(function () { x(); App.refresh(); U.toast('Saved.'); done(); });
+        };
+        if (overlaps) U.confirm('This range overlaps another grade band — scores in the overlap could be graded inconsistently. Save anyway?', proceed);
+        else proceed();
       } }
     ] });
   }
@@ -346,6 +392,9 @@
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var v = form.readValues(); if (!v.name.trim()) return U.toast('Name required', 'err');
+        var amt = Number(v.amount);
+        if (isNaN(amt) || amt < 0) return U.toast('Amount must be a number of 0 or more.', 'err');
+        v.amount = amt;
         var p = f ? DB.update('feeTypes', f.id, v) : DB.insert('feeTypes', v);
         p.then(function () { x(); App.refresh(); U.toast('Saved.'); done(); });
       } }
@@ -444,7 +493,7 @@
     body.appendChild(el('div', { class: 'divider' }));
     body.appendChild(textField('Footer note', t, 'footer'));
     body.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
-      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); }); } }),
+      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); } ); } }),
       el('button', { class: 'btn ghost', text: 'Reset fields & remarks to default', onclick: function () {
         U.confirm('Reset Template B columns, remark options and labels to default?', function () {
           var def = seedTemplateB();
@@ -574,7 +623,7 @@
       t.appendChild(tb);
       var body = el('div', { class: 'table-wrap' }, [t]);
       var c = card('Roles & Permission Matrix', body);
-      c.appendChild(el('div', { class: 'help', text: 'Admin is always full access. Toggle module access for the other roles. Parent is read-only by design.' }));
+      c.appendChild(el('div', { class: 'help', text: 'Admin is always full access. These toggles control which modules each role can OPEN AND VIEW. What a role can edit inside a module it can see follows its fixed job function and does not change here: Director and Parent are always view/download-only; Teacher can only edit Assessment and Attendance; Other staff (Account/Finance office) can only edit Finance, Accounting, Payroll, Inventory, Students and Administration.' }));
       c.appendChild(saveBtn(function () {
         // ensure Admin full
         perms['Admin'] = {}; MODULES.forEach(function (m) { perms['Admin'][m] = true; });
@@ -702,12 +751,79 @@
   }
 
 
+  /* ---------------- Login accounts (password management, Admin only) ---------------- */
+  function resetPasswordModal(u, onDone) {
+    var body = el('div');
+    var next = el('input', { type: 'password', placeholder: 'New password (min 6 characters)' });
+    var next2 = el('input', { type: 'password', placeholder: 'Confirm new password' });
+    body.appendChild(el('div', { class: 'field' }, [el('label', { text: 'New password for ' + u.name }), next]));
+    body.appendChild(el('div', { class: 'field' }, [el('label', { text: 'Confirm' }), next2]));
+    var errBox = el('div', { style: 'color:#b3261e;font-size:.85rem;display:none' });
+    body.appendChild(errBox);
+    U.modal({
+      title: 'Reset password', body: body,
+      actions: [
+        { label: 'Cancel', onClick: function (c) { c(); } },
+        { label: 'Save', kind: 'gold', onClick: function (c) {
+          errBox.style.display = 'none';
+          if (next.value.length < 6) { errBox.textContent = 'Password must be at least 6 characters.'; errBox.style.display = 'block'; return; }
+          if (next.value !== next2.value) { errBox.textContent = 'Passwords do not match.'; errBox.style.display = 'block'; return; }
+          global.Auth.hashPassword(next.value).then(function (r) {
+            return DB.update('users', u.id, { password_salt: r.salt, password_hash: r.hash, must_change_password: true });
+          }).then(function () { U.toast('Password reset for ' + u.name + '.'); c(); if (onDone) onDone(); });
+        } }
+      ]
+    });
+  }
+
+  function addAccountModal(staffList, parentsList, onDone) {
+    var roleSel = el('select');
+    ['Admin', 'Director', 'Teacher', 'Other staff', 'Parent'].forEach(function (r) { roleSel.appendChild(el('option', { value: r, text: r })); });
+    var linkSel = el('select');
+    function refreshLink() {
+      U.clear(linkSel);
+      linkSel.appendChild(el('option', { value: '', text: '(none)' }));
+      var list = roleSel.value === 'Parent' ? parentsList : staffList.filter(function (s) { return s.role === roleSel.value; });
+      list.forEach(function (x) { linkSel.appendChild(el('option', { value: x.id, text: x.name })); });
+    }
+    roleSel.addEventListener('change', refreshLink); refreshLink();
+    var nameInput = el('input', { type: 'text', placeholder: 'Full name' });
+    var userInput = el('input', { type: 'text', placeholder: 'Username (e.g. first initial + last name)' });
+    var passInput = el('input', { type: 'password', placeholder: 'Initial password (min 6 characters)' });
+    var body = el('div');
+    [['Full name', nameInput], ['User type', roleSel], ['Link to staff/parent record', linkSel],
+      ['Username', userInput], ['Initial password', passInput]].forEach(function (f) {
+      body.appendChild(el('div', { class: 'field' }, [el('label', { text: f[0] }), f[1]]));
+    });
+    var errBox = el('div', { style: 'color:#b3261e;font-size:.85rem;display:none' });
+    body.appendChild(errBox);
+    U.modal({
+      title: 'Add login account', body: body,
+      actions: [
+        { label: 'Cancel', onClick: function (c) { c(); } },
+        { label: 'Create', kind: 'gold', onClick: function (c) {
+          errBox.style.display = 'none';
+          if (!nameInput.value.trim() || !userInput.value.trim()) { errBox.textContent = 'Name and username are required.'; errBox.style.display = 'block'; return; }
+          if (passInput.value.length < 6) { errBox.textContent = 'Password must be at least 6 characters.'; errBox.style.display = 'block'; return; }
+          global.Auth.hashPassword(passInput.value).then(function (r) {
+            var rec = { name: nameInput.value.trim(), username: userInput.value.trim(), role: roleSel.value,
+              password_salt: r.salt, password_hash: r.hash, must_change_password: true, linked_student_ids: [] };
+            if (roleSel.value === 'Parent') { if (linkSel.value) rec.linked_student_ids = (parentsList.filter(function (p) { return p.id === linkSel.value; })[0] || {}).student_ids || []; }
+            else if (linkSel.value) rec.staff_id = (staffList.filter(function (s) { return s.id === linkSel.value; })[0] || {}).staff_id;
+            return DB.insert('users', rec);
+          }).then(function () { U.toast('Login account created.'); c(); if (onDone) onDone(); });
+        } }
+      ]
+    });
+  }
+
   /* ---------------- Access Control (Admin only) ---------------- */
   function tabAccess(panel) {
     if (App.user.role !== 'Admin') { panel.appendChild(el('div', { class: 'empty', text: 'Access Control is available to the Administrator only.' })); return; }
-    Promise.all([DB.all('parents'), DB.all('classes'), DB.singleton('access')]).then(function (r) {
+    Promise.all([DB.all('parents'), DB.all('classes'), DB.singleton('access'), DB.all('users'), DB.all('staff')]).then(function (r) {
       var parents = r[0], classes = r[1].slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
       var access = r[2] || {}; var byClass = access.report_download_by_class || {};
+      var users = r[3], staffList = r[4];
 
       // ---- Parent report download control (whole-school / by class / per parent) ----
       var dcard = el('div', { class: 'card' }, [el('h2', { text: 'Parent report download' })]);
@@ -753,6 +869,27 @@
       t.appendChild(tb);
       pcard.appendChild(el('div', { class: 'table-wrap' }, [t]));
       panel.appendChild(pcard);
+
+      // ---- Login accounts: password reset + create new accounts ----
+      var ucard = el('div', { class: 'card' }, [el('h2', { text: 'Login accounts' })]);
+      ucard.appendChild(el('div', { class: 'help', text: 'Everyone signs in with the school name, their user type, and their own password. Reset a password if someone forgets it, or add a login for a new staff member or parent.' }));
+      var ut = el('table', { class: 'data' });
+      ut.appendChild(el('thead', {}, [el('tr', {}, ['Name', 'User type', 'Username', ''].map(function (h) { return el('th', { text: h }); }))]));
+      var utb = el('tbody');
+      users.forEach(function (u) {
+        utb.appendChild(el('tr', {}, [
+          el('td', { text: u.name }),
+          el('td', {}, [el('span', { class: 'tag', text: u.role })]),
+          el('td', { text: u.username || '—' }),
+          el('td', {}, [el('button', { class: 'btn sm ghost', text: 'Reset password', onclick: function () { resetPasswordModal(u, function () { U.clear(panel); tabAccess(panel); }); } })])
+        ]));
+      });
+      ut.appendChild(utb);
+      ucard.appendChild(el('div', { class: 'table-wrap' }, [ut]));
+      ucard.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
+        el('button', { class: 'btn', text: '+ Add login account', onclick: function () { addAccountModal(staffList, parents, function () { U.clear(panel); tabAccess(panel); }); } })
+      ]));
+      panel.appendChild(ucard);
 
       panel.appendChild(el('div', { class: 'note', html: 'Which modules each role can open is managed on the <b>Roles</b> tab. This Access Control area is visible to the Administrator only.' }));
     });
