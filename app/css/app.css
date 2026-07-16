@@ -213,6 +213,8 @@ table.data td.actions { white-space: nowrap; }
 }
 .role-grid button:hover { border-color: var(--teal); background: var(--teal-light); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 .role-grid button::after { content:"\203a"; position:absolute; right:.7rem; top:50%; transform:translateY(-50%); color: var(--gold-dark); font-size:1.3rem; font-weight:700; opacity:.7; }
+.login-form .btn { width:100%; margin-top:.3rem; }
+.login-error { background:#fde8e8; border:1px solid #f3b4b4; border-radius:8px; padding:.5rem .7rem; }
 
 /* loader */
 .loader { text-align:center; padding:2.4rem; color:var(--muted); }
