@@ -119,7 +119,7 @@
       t.appendChild(el('thead', {}, [el('tr', {}, ['Date', 'Category', 'Description', 'Amount', ''].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
       entries.slice(0, 100).forEach(function (x) {
-        var canDelete = (App.user.role === 'Admin' || App.user.role === 'Director') && x.source !== 'payroll';
+        var canDelete = !App.readOnly && x.source !== 'payroll';
         tb.appendChild(el('tr', {}, [
           el('td', { text: U.fmtDate(x.date) }),
           el('td', { text: x.category || '—' }),
@@ -141,8 +141,8 @@
 
   /* ---------------- Categories ---------------- */
   function tabCategories(panel) {
-    if (App.user.role !== 'Admin' && App.user.role !== 'Director') {
-      panel.appendChild(el('div', { class: 'empty', text: 'Only Admin / Director can edit categories.' })); return;
+    if (App.readOnly) {
+      panel.appendChild(el('div', { class: 'empty', text: 'View-only role: categories cannot be edited.' })); return;
     }
     [['expenseCategories', 'Expense categories'], ['incomeCategories', 'Other-income categories']].forEach(function (pair) {
       var coll = pair[0];

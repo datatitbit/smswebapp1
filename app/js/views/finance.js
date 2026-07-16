@@ -30,7 +30,7 @@
     classes.forEach(function (c) { clsSel.appendChild(el('option', { value: c.id, text: c.name })); });
     tools.appendChild(el('span', { class: 'muted', text: 'Class:' })); tools.appendChild(clsSel);
     tools.appendChild(el('div', { style: 'flex:1' }));
-    tools.appendChild(el('button', { class: 'btn', text: 'Generate term bills', onclick: function () { generateBills(clsSel.value, term); } }));
+    if (!App.readOnly) tools.appendChild(el('button', { class: 'btn', text: 'Generate term bills', onclick: function () { generateBills(clsSel.value, term); } }));
     panel.appendChild(tools);
     var area = el('div'); panel.appendChild(area);
     clsSel.addEventListener('change', function () { drawList(); });
@@ -71,6 +71,7 @@
   }
 
   function generateBills(classId, term) {
+    if (App.readOnly) return;
     U.confirm('Generate per-term bills from your fee types for ' + (classId ? App.className(classId) : 'all classes') + '? Existing identical bills are skipped.', function () {
       Promise.all([DB.all('students'), DB.all('invoices'), DB.all('feeTypes')]).then(function (r) {
         var students = r[0].filter(function (s) { return s.status === 'active' && (!classId || s.class_id === classId); });
@@ -152,7 +153,7 @@
     var sc = App.ctx.school;
     var body = el('div', { class: 'report-card', style: 'width:auto' });
     body.appendChild(el('div', { class: 'rc-term', text: sc.name + ' — PAYMENT RECEIPT' }));
-    body.appendChild(el('p', { html: '<b>Receipt:</b> ' + p.receipt_no + '<br><b>Date:</b> ' + U.fmtDate(p.created_on) + '<br><b>Pupil:</b> ' + (s ? s.first_name + ' ' + s.last_name + ' (' + s.student_id + ')' : p.student_id) + '<br><b>Amount:</b> ' + U.money(p.amount, cur()) + '<br><b>Method:</b> ' + p.method + '<br><b>Received by:</b> ' + (p.by || '—') }));
+    body.appendChild(el('p', { html: '<b>Receipt:</b> ' + U.esc(p.receipt_no) + '<br><b>Date:</b> ' + U.esc(U.fmtDate(p.created_on)) + '<br><b>Pupil:</b> ' + U.esc(s ? s.first_name + ' ' + s.last_name + ' (' + s.student_id + ')' : p.student_id) + '<br><b>Amount:</b> ' + U.esc(U.money(p.amount, cur())) + '<br><b>Method:</b> ' + U.esc(p.method) + '<br><b>Received by:</b> ' + U.esc(p.by || '—') }));
     if (gw && gw.test_mode) body.appendChild(el('p', { class: 'muted', text: gw.message }));
     body.appendChild(el('p', { class: 'rc-foot', text: 'Thank you. Keep this receipt as proof of payment.' }));
     U.modal({ title: 'Receipt', body: body, actions: [

@@ -12,7 +12,9 @@
     "logo": "",
     "signature": "",
     "stamp": "",
-    "currency": "GHS"
+    "currency": "GHS",
+    "theme_primary": "",
+    "theme_accent": ""
   },
   "academic": {
     "id": "ay-1",
@@ -42,1382 +44,207 @@
     ]
   },
   "categories": [
-    {
-      "id": "cat-pre",
-      "school_id": "sch-1",
-      "name": "Preschool",
-      "sort": 1
-    },
-    {
-      "id": "cat-lower",
-      "school_id": "sch-1",
-      "name": "Lower Primary",
-      "sort": 2
-    },
-    {
-      "id": "cat-upper",
-      "school_id": "sch-1",
-      "name": "Upper Primary",
-      "sort": 3
-    },
-    {
-      "id": "cat-jhs",
-      "school_id": "sch-1",
-      "name": "Junior High School",
-      "sort": 4
-    }
+    { "id": "cat-pre", "school_id": "sch-1", "name": "Preschool", "sort": 1 },
+    { "id": "cat-lower", "school_id": "sch-1", "name": "Lower Primary", "sort": 2 },
+    { "id": "cat-upper", "school_id": "sch-1", "name": "Upper Primary", "sort": 3 },
+    { "id": "cat-jhs", "school_id": "sch-1", "name": "Junior High School", "sort": 4 }
   ],
   "classes": [
-    {
-      "id": "cl-creche",
-      "school_id": "sch-1",
-      "category_id": "cat-pre",
-      "name": "Creche",
-      "template": "A",
-      "subjects": [
-        "Literacy",
-        "Numeracy",
-        "Creativity",
-        "Picture Reading"
-      ],
-      "sort": 1
-    },
-    {
-      "id": "cl-nur1",
-      "school_id": "sch-1",
-      "category_id": "cat-pre",
-      "name": "Nursery 1",
-      "template": "B",
-      "subjects": [
-        "Language & Literacy",
-        "Writing",
-        "Numeracy",
-        "Creative Arts",
-        "Our World Our People"
-      ],
-      "sort": 2
-    },
-    {
-      "id": "cl-nur2",
-      "school_id": "sch-1",
-      "category_id": "cat-pre",
-      "name": "Nursery 2",
-      "template": "B",
-      "subjects": [
-        "Language & Literacy",
-        "Writing",
-        "Numeracy",
-        "Creative Arts",
-        "Our World Our People"
-      ],
-      "sort": 3
-    },
-    {
-      "id": "cl-kg1",
-      "school_id": "sch-1",
-      "category_id": "cat-pre",
-      "name": "KG 1",
-      "template": "B",
-      "subjects": [
-        "Language & Literacy",
-        "Writing",
-        "Numeracy",
-        "Creative Arts",
-        "Our World Our People"
-      ],
-      "sort": 4
-    },
-    {
-      "id": "cl-kg2",
-      "school_id": "sch-1",
-      "category_id": "cat-pre",
-      "name": "KG 2",
-      "template": "B",
-      "subjects": [
-        "Language & Literacy",
-        "Writing",
-        "Numeracy",
-        "Creative Arts",
-        "Our World Our People"
-      ],
-      "sort": 5
-    },
-    {
-      "id": "cl-b1",
-      "school_id": "sch-1",
-      "category_id": "cat-lower",
-      "name": "Basic 1",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Creative Arts",
-        "History",
-        "Our World Our People",
-        "RME",
-        "Fantse"
-      ],
-      "sort": 6
-    },
-    {
-      "id": "cl-b2",
-      "school_id": "sch-1",
-      "category_id": "cat-lower",
-      "name": "Basic 2",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Creative Arts",
-        "History",
-        "Our World Our People",
-        "RME",
-        "Fantse"
-      ],
-      "sort": 7
-    },
-    {
-      "id": "cl-b3",
-      "school_id": "sch-1",
-      "category_id": "cat-lower",
-      "name": "Basic 3",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Creative Arts",
-        "History",
-        "Our World Our People",
-        "RME",
-        "Fantse"
-      ],
-      "sort": 8
-    },
-    {
-      "id": "cl-b4",
-      "school_id": "sch-1",
-      "category_id": "cat-upper",
-      "name": "Basic 4",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "History",
-        "Creative Arts",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 9
-    },
-    {
-      "id": "cl-b5",
-      "school_id": "sch-1",
-      "category_id": "cat-upper",
-      "name": "Basic 5",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "History",
-        "Creative Arts",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 10
-    },
-    {
-      "id": "cl-b6",
-      "school_id": "sch-1",
-      "category_id": "cat-upper",
-      "name": "Basic 6",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "History",
-        "Creative Arts",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 11
-    },
-    {
-      "id": "cl-b7",
-      "school_id": "sch-1",
-      "category_id": "cat-jhs",
-      "name": "Basic 7",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Career Technology",
-        "Creative Art & Design",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 12
-    },
-    {
-      "id": "cl-b8",
-      "school_id": "sch-1",
-      "category_id": "cat-jhs",
-      "name": "Basic 8",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Career Technology",
-        "Creative Art & Design",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 13
-    },
-    {
-      "id": "cl-b9",
-      "school_id": "sch-1",
-      "category_id": "cat-jhs",
-      "name": "Basic 9",
-      "template": "B",
-      "subjects": [
-        "English Language",
-        "Mathematics",
-        "Science",
-        "Career Technology",
-        "Creative Art & Design",
-        "Our World Our People",
-        "RME",
-        "Computing",
-        "Fantse"
-      ],
-      "sort": 14
-    }
+    { "id": "cl-creche", "school_id": "sch-1", "category_id": "cat-pre", "name": "Creche", "template": "A", "subjects": ["Literacy", "Numeracy", "Creativity", "Picture Reading"], "sort": 1 },
+    { "id": "cl-nur1", "school_id": "sch-1", "category_id": "cat-pre", "name": "Nursery 1", "template": "B", "subjects": ["Language & Literacy", "Writing", "Numeracy", "Creative Arts", "Our World Our People"], "sort": 2 },
+    { "id": "cl-nur2", "school_id": "sch-1", "category_id": "cat-pre", "name": "Nursery 2", "template": "B", "subjects": ["Language & Literacy", "Writing", "Numeracy", "Creative Arts", "Our World Our People"], "sort": 3 },
+    { "id": "cl-kg1", "school_id": "sch-1", "category_id": "cat-pre", "name": "KG 1", "template": "B", "subjects": ["Language & Literacy", "Writing", "Numeracy", "Creative Arts", "Our World Our People"], "sort": 4 },
+    { "id": "cl-kg2", "school_id": "sch-1", "category_id": "cat-pre", "name": "KG 2", "template": "B", "subjects": ["Language & Literacy", "Writing", "Numeracy", "Creative Arts", "Our World Our People"], "sort": 5 },
+    { "id": "cl-b1", "school_id": "sch-1", "category_id": "cat-lower", "name": "Basic 1", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Creative Arts", "History", "Our World Our People", "RME", "Fantse"], "sort": 6 },
+    { "id": "cl-b2", "school_id": "sch-1", "category_id": "cat-lower", "name": "Basic 2", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Creative Arts", "History", "Our World Our People", "RME", "Fantse"], "sort": 7 },
+    { "id": "cl-b3", "school_id": "sch-1", "category_id": "cat-lower", "name": "Basic 3", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Creative Arts", "History", "Our World Our People", "RME", "Fantse"], "sort": 8 },
+    { "id": "cl-b4", "school_id": "sch-1", "category_id": "cat-upper", "name": "Basic 4", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "History", "Creative Arts", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 9 },
+    { "id": "cl-b5", "school_id": "sch-1", "category_id": "cat-upper", "name": "Basic 5", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "History", "Creative Arts", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 10 },
+    { "id": "cl-b6", "school_id": "sch-1", "category_id": "cat-upper", "name": "Basic 6", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "History", "Creative Arts", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 11 },
+    { "id": "cl-b7", "school_id": "sch-1", "category_id": "cat-jhs", "name": "Basic 7", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Career Technology", "Creative Art & Design", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 12 },
+    { "id": "cl-b8", "school_id": "sch-1", "category_id": "cat-jhs", "name": "Basic 8", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Career Technology", "Creative Art & Design", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 13 },
+    { "id": "cl-b9", "school_id": "sch-1", "category_id": "cat-jhs", "name": "Basic 9", "template": "B", "subjects": ["English Language", "Mathematics", "Science", "Career Technology", "Creative Art & Design", "Our World Our People", "RME", "Computing", "Fantse"], "sort": 14 }
   ],
   "gradeBands": [
-    {
-      "id": "g1",
-      "school_id": "sch-1",
-      "level": 1,
-      "grade": "A1",
-      "min": 90,
-      "max": 100,
-      "remark": "EXCELLENT"
-    },
-    {
-      "id": "g2",
-      "school_id": "sch-1",
-      "level": 2,
-      "grade": "B2",
-      "min": 80,
-      "max": 89,
-      "remark": "VERY GOOD"
-    },
-    {
-      "id": "g3",
-      "school_id": "sch-1",
-      "level": 3,
-      "grade": "B3",
-      "min": 75,
-      "max": 79,
-      "remark": "GOOD"
-    },
-    {
-      "id": "g4",
-      "school_id": "sch-1",
-      "level": 4,
-      "grade": "C4",
-      "min": 70,
-      "max": 74,
-      "remark": "FAIRLY GOOD"
-    },
-    {
-      "id": "g5",
-      "school_id": "sch-1",
-      "level": 5,
-      "grade": "C5",
-      "min": 65,
-      "max": 69,
-      "remark": "AVERAGE"
-    },
-    {
-      "id": "g6",
-      "school_id": "sch-1",
-      "level": 6,
-      "grade": "D6",
-      "min": 60,
-      "max": 64,
-      "remark": "BELOW AVERAGE"
-    },
-    {
-      "id": "g7",
-      "school_id": "sch-1",
-      "level": 7,
-      "grade": "D7",
-      "min": 55,
-      "max": 59,
-      "remark": "CREDIT"
-    },
-    {
-      "id": "g8",
-      "school_id": "sch-1",
-      "level": 8,
-      "grade": "E8",
-      "min": 50,
-      "max": 54,
-      "remark": "PASS"
-    },
-    {
-      "id": "g9",
-      "school_id": "sch-1",
-      "level": 9,
-      "grade": "E9",
-      "min": 0,
-      "max": 49,
-      "remark": "BEGINNING"
-    }
+    { "id": "g1", "school_id": "sch-1", "level": 1, "grade": "A1", "min": 90, "max": 100, "remark": "EXCELLENT" },
+    { "id": "g2", "school_id": "sch-1", "level": 2, "grade": "B2", "min": 80, "max": 89, "remark": "VERY GOOD" },
+    { "id": "g3", "school_id": "sch-1", "level": 3, "grade": "B3", "min": 75, "max": 79, "remark": "GOOD" },
+    { "id": "g4", "school_id": "sch-1", "level": 4, "grade": "C4", "min": 70, "max": 74, "remark": "FAIRLY GOOD" },
+    { "id": "g5", "school_id": "sch-1", "level": 5, "grade": "C5", "min": 65, "max": 69, "remark": "AVERAGE" },
+    { "id": "g6", "school_id": "sch-1", "level": 6, "grade": "D6", "min": 60, "max": 64, "remark": "BELOW AVERAGE" },
+    { "id": "g7", "school_id": "sch-1", "level": 7, "grade": "D7", "min": 55, "max": 59, "remark": "CREDIT" },
+    { "id": "g8", "school_id": "sch-1", "level": 8, "grade": "E8", "min": 50, "max": 54, "remark": "PASS" },
+    { "id": "g9", "school_id": "sch-1", "level": 9, "grade": "E9", "min": 0, "max": 49, "remark": "BEGINNING" }
   ],
   "feeTypes": [
-    {
-      "id": "fe-tui",
-      "school_id": "sch-1",
-      "name": "Tuition",
-      "amount": 600,
-      "applies_to": "all",
-      "frequency": "per_term",
-      "required": true
-    },
-    {
-      "id": "fe-pta",
-      "school_id": "sch-1",
-      "name": "PTA Dues",
-      "amount": 30,
-      "applies_to": "all",
-      "frequency": "per_term",
-      "required": true
-    },
-    {
-      "id": "fe-exam",
-      "school_id": "sch-1",
-      "name": "Examination Fee",
-      "amount": 50,
-      "applies_to": "all",
-      "frequency": "per_term",
-      "required": true
-    },
-    {
-      "id": "fe-ict",
-      "school_id": "sch-1",
-      "name": "ICT Fee",
-      "amount": 40,
-      "applies_to": "all",
-      "frequency": "per_term",
-      "required": false
-    },
-    {
-      "id": "fe-feed",
-      "school_id": "sch-1",
-      "name": "Feeding",
-      "amount": 300,
-      "applies_to": "all",
-      "frequency": "per_term",
-      "required": false
-    }
+    { "id": "fe-tui", "school_id": "sch-1", "name": "Tuition", "amount": 600, "applies_to": "all", "frequency": "per_term", "required": true },
+    { "id": "fe-pta", "school_id": "sch-1", "name": "PTA Dues", "amount": 30, "applies_to": "all", "frequency": "per_term", "required": true },
+    { "id": "fe-exam", "school_id": "sch-1", "name": "Examination Fee", "amount": 50, "applies_to": "all", "frequency": "per_term", "required": true },
+    { "id": "fe-ict", "school_id": "sch-1", "name": "ICT Fee", "amount": 40, "applies_to": "all", "frequency": "per_term", "required": false },
+    { "id": "fe-feed", "school_id": "sch-1", "name": "Feeding", "amount": 300, "applies_to": "all", "frequency": "per_term", "required": false }
   ],
   "inventoryCategories": [
-    {
-      "id": "inc-0",
-      "school_id": "sch-1",
-      "name": "Stationery"
-    },
-    {
-      "id": "inc-1",
-      "school_id": "sch-1",
-      "name": "Textbooks"
-    },
-    {
-      "id": "inc-2",
-      "school_id": "sch-1",
-      "name": "Uniforms"
-    },
-    {
-      "id": "inc-3",
-      "school_id": "sch-1",
-      "name": "ICT Equipment"
-    },
-    {
-      "id": "inc-4",
-      "school_id": "sch-1",
-      "name": "Furniture"
-    },
-    {
-      "id": "inc-5",
-      "school_id": "sch-1",
-      "name": "Cleaning Supplies"
-    },
-    {
-      "id": "inc-6",
-      "school_id": "sch-1",
-      "name": "Sports Equipment"
-    },
-    {
-      "id": "inc-7",
-      "school_id": "sch-1",
-      "name": "First Aid"
-    },
-    {
-      "id": "inc-8",
-      "school_id": "sch-1",
-      "name": "Office Supplies"
-    },
-    {
-      "id": "inc-9",
-      "school_id": "sch-1",
-      "name": "Science Lab"
-    }
+    { "id": "inc-0", "school_id": "sch-1", "name": "Stationery" },
+    { "id": "inc-1", "school_id": "sch-1", "name": "Textbooks" },
+    { "id": "inc-2", "school_id": "sch-1", "name": "Uniforms" },
+    { "id": "inc-3", "school_id": "sch-1", "name": "ICT Equipment" },
+    { "id": "inc-4", "school_id": "sch-1", "name": "Furniture" },
+    { "id": "inc-5", "school_id": "sch-1", "name": "Cleaning Supplies" },
+    { "id": "inc-6", "school_id": "sch-1", "name": "Sports Equipment" },
+    { "id": "inc-7", "school_id": "sch-1", "name": "First Aid" },
+    { "id": "inc-8", "school_id": "sch-1", "name": "Office Supplies" },
+    { "id": "inc-9", "school_id": "sch-1", "name": "Science Lab" }
   ],
   "inventorySettings": {
-    "id": "inv-1",
-    "school_id": "sch-1",
-    "toggles": {
-      "supplierDetails": false,
-      "batchTracking": false,
-      "multiCampus": false,
-      "auditSnapshot": false
-    },
-    "storeLocations": [
-      "Main Admin Store",
-      "Bookshop"
-    ],
-    "reasonCodes": [
-      "New Supply / Restock",
-      "Damaged / Torn",
-      "Classroom Allocation",
-      "Physical Count Discrepancy",
-      "Theft / Loss",
-      "Student Sale",
-      "Staff Issue"
-    ],
-    "paymentStatuses": [
-      "Cash/MoMo Paid",
-      "Billed to School Fees Ledger",
-      "Not Applicable (Staff Internal Use)"
-    ],
-    "branches": [
-      "Main Campus"
-    ]
+    "id": "inv-1", "school_id": "sch-1",
+    "toggles": { "supplierDetails": false, "batchTracking": false, "multiCampus": false, "auditSnapshot": false },
+    "storeLocations": ["Main Admin Store", "Bookshop"],
+    "reasonCodes": ["New Supply / Restock", "Damaged / Torn", "Classroom Allocation", "Physical Count Discrepancy", "Theft / Loss", "Student Sale", "Staff Issue"],
+    "paymentStatuses": ["Cash/MoMo Paid", "Billed to School Fees Ledger", "Not Applicable (Staff Internal Use)"],
+    "branches": ["Main Campus"]
   },
   "expenseCategories": [
-    {
-      "id": "exc-0",
-      "school_id": "sch-1",
-      "name": "Salaries & Wages"
-    },
-    {
-      "id": "exc-1",
-      "school_id": "sch-1",
-      "name": "Utilities (ECG/Water)"
-    },
-    {
-      "id": "exc-2",
-      "school_id": "sch-1",
-      "name": "Rent"
-    },
-    {
-      "id": "exc-3",
-      "school_id": "sch-1",
-      "name": "Teaching & Learning Materials"
-    },
-    {
-      "id": "exc-4",
-      "school_id": "sch-1",
-      "name": "Repairs & Maintenance"
-    },
-    {
-      "id": "exc-5",
-      "school_id": "sch-1",
-      "name": "Transport & Fuel"
-    },
-    {
-      "id": "exc-6",
-      "school_id": "sch-1",
-      "name": "Feeding / Canteen"
-    },
-    {
-      "id": "exc-7",
-      "school_id": "sch-1",
-      "name": "Printing & Stationery"
-    },
-    {
-      "id": "exc-8",
-      "school_id": "sch-1",
-      "name": "Marketing"
-    },
-    {
-      "id": "exc-9",
-      "school_id": "sch-1",
-      "name": "Levies & Licences"
-    },
-    {
-      "id": "exc-10",
-      "school_id": "sch-1",
-      "name": "Miscellaneous"
-    }
+    { "id": "exc-0", "school_id": "sch-1", "name": "Salaries & Wages" },
+    { "id": "exc-1", "school_id": "sch-1", "name": "Utilities (ECG/Water)" },
+    { "id": "exc-2", "school_id": "sch-1", "name": "Rent" },
+    { "id": "exc-3", "school_id": "sch-1", "name": "Teaching & Learning Materials" },
+    { "id": "exc-4", "school_id": "sch-1", "name": "Repairs & Maintenance" },
+    { "id": "exc-5", "school_id": "sch-1", "name": "Transport & Fuel" },
+    { "id": "exc-6", "school_id": "sch-1", "name": "Feeding / Canteen" },
+    { "id": "exc-7", "school_id": "sch-1", "name": "Printing & Stationery" },
+    { "id": "exc-8", "school_id": "sch-1", "name": "Marketing" },
+    { "id": "exc-9", "school_id": "sch-1", "name": "Levies & Licences" },
+    { "id": "exc-10", "school_id": "sch-1", "name": "Miscellaneous" }
   ],
   "incomeCategories": [
-    {
-      "id": "ino-0",
-      "school_id": "sch-1",
-      "name": "Donations"
-    },
-    {
-      "id": "ino-1",
-      "school_id": "sch-1",
-      "name": "Uniform Sales"
-    },
-    {
-      "id": "ino-2",
-      "school_id": "sch-1",
-      "name": "Canteen Sales"
-    },
-    {
-      "id": "ino-3",
-      "school_id": "sch-1",
-      "name": "Bus Fees"
-    },
-    {
-      "id": "ino-4",
-      "school_id": "sch-1",
-      "name": "Facility Rental"
-    },
-    {
-      "id": "ino-5",
-      "school_id": "sch-1",
-      "name": "Miscellaneous"
-    }
+    { "id": "ino-0", "school_id": "sch-1", "name": "Donations" },
+    { "id": "ino-1", "school_id": "sch-1", "name": "Uniform Sales" },
+    { "id": "ino-2", "school_id": "sch-1", "name": "Canteen Sales" },
+    { "id": "ino-3", "school_id": "sch-1", "name": "Bus Fees" },
+    { "id": "ino-4", "school_id": "sch-1", "name": "Facility Rental" },
+    { "id": "ino-5", "school_id": "sch-1", "name": "Miscellaneous" }
   ],
   "payrollSettings": {
-    "id": "ps-1",
-    "school_id": "sch-1",
-    "version": 2,
-    "apply_statutory": true,
-    "employer_section_enabled": true,
-    "ssnit_ceiling": 0,
-    "payment_methods": [
-      "Bank",
-      "MoMo",
-      "Cash"
-    ],
-    "employee_types": [
-      "Full-time",
-      "Part-time",
-      "Other"
-    ],
+    "id": "ps-1", "school_id": "sch-1", "version": 2, "apply_statutory": true, "employer_section_enabled": true, "ssnit_ceiling": 0,
+    "payment_methods": ["Bank", "MoMo", "Cash"],
+    "employee_types": ["Full-time", "Part-time", "Other"],
     "paye_monthly_bands": [
-      {
-        "chunk": 490,
-        "rate": 0
-      },
-      {
-        "chunk": 110,
-        "rate": 5
-      },
-      {
-        "chunk": 130,
-        "rate": 10
-      },
-      {
-        "chunk": 3166.67,
-        "rate": 17.5
-      },
-      {
-        "chunk": 16000,
-        "rate": 25
-      },
-      {
-        "chunk": 30520,
-        "rate": 30
-      },
-      {
-        "chunk": null,
-        "rate": 35
-      }
+      { "chunk": 490, "rate": 0 },
+      { "chunk": 110, "rate": 5 },
+      { "chunk": 130, "rate": 10 },
+      { "chunk": 3166.67, "rate": 17.5 },
+      { "chunk": 16000, "rate": 25 },
+      { "chunk": 30520, "rate": 30 },
+      { "chunk": null, "rate": 35 }
     ],
     "fields": [
-      {
-        "key": "basic",
-        "name": "Basic salary",
-        "type": "earning",
-        "kind": "amount",
-        "basis": "flat",
-        "default": 0,
-        "enabled": true,
-        "editable": false,
-        "locked_on": true,
-        "source": "staff",
-        "order": 1
-      },
-      {
-        "key": "allowances",
-        "name": "Allowances",
-        "type": "earning",
-        "kind": "amount",
-        "basis": "flat",
-        "default": 0,
-        "enabled": true,
-        "editable": true,
-        "source": "staff",
-        "order": 2
-      },
-      {
-        "key": "bonus",
-        "name": "Bonus",
-        "type": "earning",
-        "kind": "amount",
-        "basis": "flat",
-        "default": 0,
-        "enabled": true,
-        "editable": true,
-        "order": 3
-      },
-      {
-        "key": "other",
-        "name": "Other",
-        "type": "earning",
-        "kind": "amount",
-        "basis": "flat",
-        "default": 0,
-        "enabled": true,
-        "editable": true,
-        "order": 4
-      },
-      {
-        "key": "ssnit_t1",
-        "name": "SSNIT Tier 1 (employee)",
-        "type": "deduction",
-        "kind": "percent",
-        "basis": "basic",
-        "default": 5.5,
-        "enabled": true,
-        "editable": true,
-        "locked_on": true,
-        "statutory": true,
-        "pre_tax": true,
-        "order": 5
-      },
-      {
-        "key": "paye",
-        "name": "PAYE (income tax)",
-        "type": "deduction",
-        "kind": "graduated",
-        "basis": "taxable",
-        "default": 0,
-        "enabled": true,
-        "editable": false,
-        "locked_on": true,
-        "statutory": true,
-        "pre_tax": false,
-        "order": 6
-      },
-      {
-        "key": "tier2",
-        "name": "Tier 2 pension",
-        "type": "deduction",
-        "kind": "percent",
-        "basis": "basic",
-        "default": 5,
-        "enabled": true,
-        "editable": true,
-        "pre_tax": true,
-        "order": 7
-      },
-      {
-        "key": "tier3",
-        "name": "Tier 3 pension (voluntary)",
-        "type": "deduction",
-        "kind": "percent",
-        "basis": "basic",
-        "default": 0,
-        "enabled": false,
-        "editable": true,
-        "pre_tax": true,
-        "max_pct": 16.5,
-        "order": 8
-      },
-      {
-        "key": "emp_ssnit_t1",
-        "name": "SSNIT Tier 1 (employer)",
-        "type": "employer_cost",
-        "kind": "percent",
-        "basis": "basic",
-        "default": 13,
-        "enabled": true,
-        "editable": true,
-        "order": 9
-      },
-      {
-        "key": "emp_tier2",
-        "name": "Tier 2 (employer)",
-        "type": "employer_cost",
-        "kind": "percent",
-        "basis": "basic",
-        "default": 5,
-        "enabled": true,
-        "editable": true,
-        "order": 10
-      }
+      { "key": "basic", "name": "Basic salary", "type": "earning", "kind": "amount", "basis": "flat", "default": 0, "enabled": true, "editable": false, "locked_on": true, "source": "staff", "order": 1 },
+      { "key": "allowances", "name": "Allowances", "type": "earning", "kind": "amount", "basis": "flat", "default": 0, "enabled": true, "editable": true, "source": "staff", "order": 2 },
+      { "key": "bonus", "name": "Bonus", "type": "earning", "kind": "amount", "basis": "flat", "default": 0, "enabled": true, "editable": true, "order": 3 },
+      { "key": "other", "name": "Other", "type": "earning", "kind": "amount", "basis": "flat", "default": 0, "enabled": true, "editable": true, "order": 4 },
+      { "key": "ssnit_t1", "name": "SSNIT Tier 1 (employee)", "type": "deduction", "kind": "percent", "basis": "basic", "default": 5.5, "enabled": true, "editable": true, "locked_on": true, "statutory": true, "pre_tax": true, "order": 5 },
+      { "key": "paye", "name": "PAYE (income tax)", "type": "deduction", "kind": "graduated", "basis": "taxable", "default": 0, "enabled": true, "editable": false, "locked_on": true, "statutory": true, "pre_tax": false, "order": 6 },
+      { "key": "tier2", "name": "Tier 2 pension", "type": "deduction", "kind": "percent", "basis": "basic", "default": 5, "enabled": true, "editable": true, "pre_tax": true, "order": 7 },
+      { "key": "tier3", "name": "Tier 3 pension (voluntary)", "type": "deduction", "kind": "percent", "basis": "basic", "default": 0, "enabled": false, "editable": true, "pre_tax": true, "max_pct": 16.5, "order": 8 },
+      { "key": "emp_ssnit_t1", "name": "SSNIT Tier 1 (employer)", "type": "employer_cost", "kind": "percent", "basis": "basic", "default": 13, "enabled": true, "editable": true, "order": 9 },
+      { "key": "emp_tier2", "name": "Tier 2 (employer)", "type": "employer_cost", "kind": "percent", "basis": "basic", "default": 5, "enabled": true, "editable": true, "order": 10 }
     ],
     "note": "Ghana defaults. SSNIT (Tier 1/2/3) is deducted before PAYE. Verify GRA PAYE bands and the SSNIT insurable ceiling each January and edit in Payroll → Pay Structure."
   },
   "automation": {
-    "id": "auto-1",
-    "school_id": "sch-1",
-    "enabled": true,
-    "auto_billing": true,
-    "fee_reminders": true,
-    "fee_reminder_days": 7,
-    "absence_notify": true,
-    "low_stock_alerts": true,
-    "payroll_reminder": true,
-    "payroll_reminder_day": 25,
-    "report_ready_notify": false
+    "id": "auto-1", "school_id": "sch-1", "enabled": true, "auto_billing": true, "fee_reminders": true, "fee_reminder_days": 7,
+    "absence_notify": true, "low_stock_alerts": true, "payroll_reminder": true, "payroll_reminder_day": 25, "report_ready_notify": false
   },
   "reportTemplates": [
     {
-      "id": "A",
-      "school_id": "sch-1",
-      "kind": "A",
-      "name": "Template A (Creche)",
-      "blocks": {
-        "checklist": true,
-        "scoresTable": true,
-        "conduct": false,
-        "feesBlock": true
-      },
+      "id": "A", "school_id": "sch-1", "kind": "A", "name": "Template A (Creche)",
+      "blocks": { "checklist": true, "scoresTable": true, "conduct": false, "feesBlock": true },
       "checklistDomains": [
-        {
-          "name": "Health & Physical Development",
-          "indicators": [
-            "Shows good physical coordination",
-            "Eats tidily and independently",
-            "Washes and cleans hands after toilet, meals etc."
-          ]
-        },
-        {
-          "name": "Emotional & Social Development",
-          "indicators": [
-            "Is active and enjoys outdoor activities",
-            "Remains cheerful and sociable",
-            "Takes part in all class activities"
-          ]
-        },
-        {
-          "name": "Cognitive & Language Development",
-          "indicators": [
-            "Can identify simple colours and shapes",
-            "Follows activity to the conclusion",
-            "Can recite rhymes",
-            "Understands and uses simple words, sentences and gestures",
-            "Can count from 1 to 10",
-            "Can sort items and scribble simple lines"
-          ]
-        }
+        { "name": "Health & Physical Development", "indicators": ["Shows good physical coordination", "Eats tidily and independently", "Washes and cleans hands after toilet, meals etc."] },
+        { "name": "Emotional & Social Development", "indicators": ["Is active and enjoys outdoor activities", "Remains cheerful and sociable", "Takes part in all class activities"] },
+        { "name": "Cognitive & Language Development", "indicators": ["Can identify simple colours and shapes", "Follows activity to the conclusion", "Can recite rhymes", "Understands and uses simple words, sentences and gestures", "Can count from 1 to 10", "Can sort items and scribble simple lines"] }
       ],
-      "labels": {
-        "classScore": "Class Score %",
-        "examScore": "Exam Score %",
-        "total": "Total %",
-        "remarks": "Remarks"
-      },
+      "labels": { "classScore": "Class Score %", "examScore": "Exam Score %", "total": "Total %", "remarks": "Remarks" },
       "keysLegend": "KEYS: YES = Yes   PAR = Partially / Sometimes   NES = Needs effort / Special attention",
       "footer": "Any erasure on this report invalidates it."
     },
     {
-      "id": "B",
-      "school_id": "sch-1",
-      "kind": "B",
-      "name": "Template B (Standard)",
-      "blocks": {
-        "checklist": false,
-        "scoresTable": true,
-        "conduct": true,
-        "feesBlock": true
-      },
+      "id": "B", "school_id": "sch-1", "kind": "B", "name": "Template B (Standard)",
+      "blocks": { "checklist": false, "scoresTable": true, "conduct": true, "feesBlock": true },
       "fields": {
-        "grade": {
-          "show": true,
-          "label": "Grade"
-        },
-        "positionInSubject": {
-          "show": true,
-          "label": "Position in Subject"
-        },
-        "overallPosition": {
-          "show": true,
-          "label": "Position"
-        },
-        "remarks": {
-          "show": true,
-          "label": "Remarks"
-        }
+        "grade": { "show": true, "label": "Grade" },
+        "positionInSubject": { "show": true, "label": "Position in Subject" },
+        "overallPosition": { "show": true, "label": "Position" },
+        "remarks": { "show": true, "label": "Remarks" }
       },
       "remarkFields": {
-        "conduct": {
-          "show": true,
-          "label": "Conduct",
-          "options": [
-            "SATISFACTORY",
-            "EXCELLENT",
-            "FAIRLY GOOD",
-            "GENERALLY ACTIVE",
-            "ENERGETIC",
-            "UNPREDICTABLE"
-          ]
-        },
-        "attitude": {
-          "show": true,
-          "label": "Attitude",
-          "options": [
-            "CALM",
-            "ADVENTUROUS",
-            "SOCIABLE",
-            "RESERVED",
-            "WELL BEHAVED",
-            "DISCIPLINED"
-          ]
-        },
-        "interest": {
-          "show": true,
-          "label": "Interest",
-          "options": [
-            "READING/ENGLISH",
-            "MATHEMATICS",
-            "SCIENCE",
-            "SPORTS/GAMES",
-            "MUSIC/DANCE",
-            "MAKING ARTWORK",
-            "COMPUTING",
-            "MULTI-TALENTED",
-            "INDOOR ACTIVITIES",
-            "OUTDOOR ACTIVITIES"
-          ]
-        },
-        "overall": {
-          "show": true,
-          "label": "Overall Remark",
-          "options": [
-            "EXCEEDS EXPECTATIONS",
-            "MEETS EXPECTATIONS",
-            "APPROACHING EXPECTATIONS",
-            "NEEDS IMPROVEMENT",
-            "BELOW EXPECTATIONS"
-          ]
-        }
+        "conduct": { "show": true, "label": "Conduct", "options": ["SATISFACTORY", "EXCELLENT", "FAIRLY GOOD", "GENERALLY ACTIVE", "ENERGETIC", "UNPREDICTABLE"] },
+        "attitude": { "show": true, "label": "Attitude", "options": ["CALM", "ADVENTUROUS", "SOCIABLE", "RESERVED", "WELL BEHAVED", "DISCIPLINED"] },
+        "interest": { "show": true, "label": "Interest", "options": ["READING/ENGLISH", "MATHEMATICS", "SCIENCE", "SPORTS/GAMES", "MUSIC/DANCE", "MAKING ARTWORK", "COMPUTING", "MULTI-TALENTED", "INDOOR ACTIVITIES", "OUTDOOR ACTIVITIES"] },
+        "overall": { "show": true, "label": "Overall Remark", "options": ["EXCEEDS EXPECTATIONS", "MEETS EXPECTATIONS", "APPROACHING EXPECTATIONS", "NEEDS IMPROVEMENT", "BELOW EXPECTATIONS"] }
       },
-      "freeRemarks": {
-        "teacher": {
-          "show": true,
-          "label": "Class Teacher's Remark"
-        },
-        "head": {
-          "show": true,
-          "label": "Head Teacher's Signature / Stamp"
-        }
-      },
+      "freeRemarks": { "teacher": { "show": true, "label": "Class Teacher's Remark" }, "head": { "show": true, "label": "Head Teacher's Signature / Stamp" } },
       "keysLegend": "",
       "footer": "Any erasure on this report invalidates it."
     }
   ],
-  "idRules": {
-    "id": "idr-1",
-    "school_id": "sch-1",
-    "student_prefix": "ST",
-    "staff_prefix": "SF",
-    "digits": 4,
-    "auto_generate": true,
-    "allow_manual": false
-  },
-  "weighting": {
-    "id": "w-1",
-    "school_id": "sch-1",
-    "class_pct": 50,
-    "exam_pct": 50
-  },
-  "labels": {
-    "id": "lab-1",
-    "school_id": "sch-1",
-    "fees_arrears": "School Fees Arrears",
-    "fees_next": "Next Term's School Fees",
-    "fees_payable": "Total Payable",
-    "roll": "Number on Roll",
-    "attendance": "Attendance",
-    "out_of": "Out of"
-  },
+  "idRules": { "id": "idr-1", "school_id": "sch-1", "student_prefix": "ST", "staff_prefix": "SF", "digits": 4, "auto_generate": true, "allow_manual": false },
+  "weighting": { "id": "w-1", "school_id": "sch-1", "class_pct": 50, "exam_pct": 50 },
+  "labels": { "id": "lab-1", "school_id": "sch-1", "fees_arrears": "School Fees Arrears", "fees_next": "Next Term's School Fees", "fees_payable": "Total Payable", "roll": "Number on Roll", "attendance": "Attendance", "out_of": "Out of" },
   "messageTemplates": [
-    {
-      "id": "mt-fee",
-      "school_id": "sch-1",
-      "name": "Fee Reminder",
-      "body": "Dear {parent}, this is a reminder that {student} has an outstanding balance of {currency}{balance} for {term}. Thank you. - {school}"
-    },
-    {
-      "id": "mt-report",
-      "school_id": "sch-1",
-      "name": "Report Ready",
-      "body": "Dear {parent}, the {term} report for {student} is ready. Please visit the school. - {school}"
-    },
-    {
-      "id": "mt-announce",
-      "school_id": "sch-1",
-      "name": "General Announcement",
-      "body": "Dear {parent}, {message} - {school}"
-    }
+    { "id": "mt-fee", "school_id": "sch-1", "name": "Fee Reminder", "body": "Dear {parent}, this is a reminder that {student} has an outstanding balance of {currency}{balance} for {term}. Thank you. - {school}" },
+    { "id": "mt-report", "school_id": "sch-1", "name": "Report Ready", "body": "Dear {parent}, the {term} report for {student} is ready. Please visit the school. - {school}" },
+    { "id": "mt-announce", "school_id": "sch-1", "name": "General Announcement", "body": "Dear {parent}, {message} - {school}" }
   ],
   "permissions": {
-    "Admin": {
-      "Dashboard": true,
-      "Students": true,
-      "Assessment": true,
-      "Finance": true,
-      "Attendance": true,
-      "Communication": true,
-      "Administration": true,
-      "Inventory": true,
-      "Accounting": true,
-      "Payroll": true,
-      "Settings": true
-    },
-    "Director": {
-      "Dashboard": true,
-      "Students": true,
-      "Assessment": true,
-      "Finance": true,
-      "Attendance": true,
-      "Communication": true,
-      "Administration": true,
-      "Inventory": true,
-      "Accounting": true,
-      "Payroll": true,
-      "Settings": false
-    },
-    "Teacher": {
-      "Dashboard": true,
-      "Students": true,
-      "Assessment": true,
-      "Finance": false,
-      "Attendance": true,
-      "Communication": false,
-      "Administration": false,
-      "Inventory": false,
-      "Accounting": false,
-      "Payroll": false,
-      "Settings": false
-    },
-    "Other staff": {
-      "Dashboard": true,
-      "Students": true,
-      "Assessment": false,
-      "Finance": false,
-      "Attendance": true,
-      "Communication": true,
-      "Administration": false,
-      "Inventory": true,
-      "Accounting": false,
-      "Payroll": false,
-      "Settings": false
-    },
-    "Parent": {
-      "Dashboard": true,
-      "Students": true,
-      "Assessment": true,
-      "Finance": true,
-      "Attendance": true,
-      "Communication": true,
-      "Administration": false,
-      "Inventory": false,
-      "Accounting": false,
-      "Payroll": false,
-      "Settings": false
-    }
+    "Admin": { "Dashboard": true, "Students": true, "Assessment": true, "Finance": true, "Attendance": true, "Communication": true, "Administration": true, "Inventory": true, "Accounting": true, "Payroll": true, "Settings": true },
+    "Director": { "Dashboard": true, "Students": true, "Assessment": true, "Finance": true, "Attendance": true, "Communication": true, "Administration": true, "Inventory": true, "Accounting": true, "Payroll": true, "Settings": false },
+    "Teacher": { "Dashboard": true, "Students": true, "Assessment": true, "Finance": false, "Attendance": true, "Communication": false, "Administration": false, "Inventory": false, "Accounting": false, "Payroll": false, "Settings": false },
+    "Other staff": { "Dashboard": true, "Students": true, "Assessment": false, "Finance": true, "Attendance": true, "Communication": true, "Administration": true, "Inventory": true, "Accounting": true, "Payroll": true, "Settings": false },
+    "Parent": { "Dashboard": true, "Students": true, "Assessment": true, "Finance": true, "Attendance": true, "Communication": true, "Administration": false, "Inventory": false, "Accounting": false, "Payroll": false, "Settings": false }
   },
   "users": [
-    {
-      "id": "u-admin",
-      "school_id": "sch-1",
-      "name": "School Administrator",
-      "username": "admin",
-      "role": "Admin",
-      "staff_id": "SF0001",
-      "linked_student_ids": []
-    },
-    {
-      "id": "u-dir",
-      "school_id": "sch-1",
-      "name": "The Director",
-      "username": "director",
-      "role": "Director",
-      "staff_id": "SF0002",
-      "linked_student_ids": []
-    },
-    {
-      "id": "u-teacher",
-      "school_id": "sch-1",
-      "name": "Class Teacher",
-      "username": "teacher",
-      "role": "Teacher",
-      "staff_id": "SF0003",
-      "class_ids": [
-        "cl-b1"
-      ],
-      "linked_student_ids": []
-    },
-    {
-      "id": "u-staff",
-      "school_id": "sch-1",
-      "name": "Front Desk",
-      "username": "staff",
-      "role": "Other staff",
-      "staff_id": "SF0004",
-      "linked_student_ids": []
-    },
-    {
-      "id": "u-parent",
-      "school_id": "sch-1",
-      "name": "A Parent",
-      "username": "parent",
-      "role": "Parent",
-      "linked_student_ids": [
-        "ST0001"
-      ]
-    }
+    { "id": "u-admin", "school_id": "sch-1", "name": "School Administrator", "username": "admin", "role": "Admin", "staff_id": "SF0001", "linked_student_ids": [], "password_salt": "bdd6096a9cccf365986520af2c6c38cd", "password_hash": "5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764", "must_change_password": true },
+    { "id": "u-dir", "school_id": "sch-1", "name": "The Director", "username": "director", "role": "Director", "staff_id": "SF0002", "linked_student_ids": [], "password_salt": "7ff64936b8ce0f27cbdeed5a5cc765d4", "password_hash": "84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c", "must_change_password": true },
+    { "id": "u-teacher", "school_id": "sch-1", "name": "Class Teacher", "username": "teacher", "role": "Teacher", "staff_id": "SF0003", "class_ids": ["cl-b1"], "linked_student_ids": [], "password_salt": "04676b70f2981d9df4f2d798b15da396", "password_hash": "c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da", "must_change_password": true },
+    { "id": "u-staff", "school_id": "sch-1", "name": "Front Desk", "username": "staff", "role": "Other staff", "staff_id": "SF0004", "linked_student_ids": [], "password_salt": "a4e321aa36c33a28e0c94c9b8cdf62cf", "password_hash": "119570daabe181e0cfbebf03cc76afcccc5d6bf1721b7b1d8902102ed146b019", "must_change_password": true },
+    { "id": "u-parent", "school_id": "sch-1", "name": "A Parent", "username": "parent", "role": "Parent", "linked_student_ids": ["ST0001"], "password_salt": "bd118eecf734755b7e7691fc18b52c14", "password_hash": "ba3af436dd8f9363645143b03709483a4ea07da9b6b7fe7c43cb541617ece706", "must_change_password": true }
   ],
   "staff": [
-    {
-      "id": "st-1",
-      "school_id": "sch-1",
-      "staff_id": "SF0001",
-      "name": "School Administrator",
-      "role": "Admin",
-      "phone": "+233 00 000 0001",
-      "class_ids": [],
-      "basic_salary": 2500,
-      "allowances": 300,
-      "employee_type": "Full-time",
-      "payment_method": "Bank",
-      "payroll_overrides": {}
-    },
-    {
-      "id": "st-2",
-      "school_id": "sch-1",
-      "staff_id": "SF0002",
-      "name": "The Director",
-      "role": "Director",
-      "phone": "+233 00 000 0002",
-      "class_ids": [],
-      "basic_salary": 4000,
-      "allowances": 500,
-      "employee_type": "Full-time",
-      "payment_method": "Bank",
-      "payroll_overrides": {}
-    },
-    {
-      "id": "st-3",
-      "school_id": "sch-1",
-      "staff_id": "SF0003",
-      "name": "Class Teacher",
-      "role": "Teacher",
-      "phone": "+233 00 000 0003",
-      "class_ids": [
-        "cl-b1"
-      ],
-      "basic_salary": 1800,
-      "allowances": 200,
-      "employee_type": "Full-time",
-      "payment_method": "MoMo",
-      "payroll_overrides": {}
-    },
-    {
-      "id": "st-4",
-      "school_id": "sch-1",
-      "staff_id": "SF0004",
-      "name": "Front Desk",
-      "role": "Other staff",
-      "phone": "+233 00 000 0004",
-      "class_ids": [],
-      "basic_salary": 1200,
-      "allowances": 100,
-      "employee_type": "Part-time",
-      "payment_method": "Cash",
-      "payroll_overrides": {}
-    }
+    { "id": "st-1", "school_id": "sch-1", "staff_id": "SF0001", "name": "School Administrator", "role": "Admin", "phone": "+233 00 000 0001", "class_ids": [], "basic_salary": 2500, "allowances": 300, "employee_type": "Full-time", "payment_method": "Bank", "payroll_overrides": {} },
+    { "id": "st-2", "school_id": "sch-1", "staff_id": "SF0002", "name": "The Director", "role": "Director", "phone": "+233 00 000 0002", "class_ids": [], "basic_salary": 4000, "allowances": 500, "employee_type": "Full-time", "payment_method": "Bank", "payroll_overrides": {} },
+    { "id": "st-3", "school_id": "sch-1", "staff_id": "SF0003", "name": "Class Teacher", "role": "Teacher", "phone": "+233 00 000 0003", "class_ids": ["cl-b1"], "basic_salary": 1800, "allowances": 200, "employee_type": "Full-time", "payment_method": "MoMo", "payroll_overrides": {} },
+    { "id": "st-4", "school_id": "sch-1", "staff_id": "SF0004", "name": "Front Desk", "role": "Other staff", "phone": "+233 00 000 0004", "class_ids": [], "basic_salary": 1200, "allowances": 100, "employee_type": "Part-time", "payment_method": "Cash", "payroll_overrides": {} }
   ],
   "parents": [
-    {
-      "id": "pa-1",
-      "school_id": "sch-1",
-      "name": "Kwame Mensah",
-      "phone": "+233 24 111 1111",
-      "whatsapp": "+233 24 111 1111",
-      "email": "kmensah@example.com",
-      "student_ids": [
-        "ST0001",
-        "ST0002"
-      ]
-    },
-    {
-      "id": "pa-2",
-      "school_id": "sch-1",
-      "name": "Ama Owusu",
-      "phone": "+233 24 222 2222",
-      "whatsapp": "+233 24 222 2222",
-      "email": "aowusu@example.com",
-      "student_ids": [
-        "ST0003"
-      ]
-    },
-    {
-      "id": "pa-3",
-      "school_id": "sch-1",
-      "name": "Yaw Boateng",
-      "phone": "+233 24 333 3333",
-      "whatsapp": "+233 24 333 3333",
-      "email": "",
-      "student_ids": [
-        "ST0004"
-      ]
-    }
+    { "id": "pa-1", "school_id": "sch-1", "name": "Kwame Mensah", "phone": "+233 24 111 1111", "whatsapp": "+233 24 111 1111", "email": "kmensah@example.com", "student_ids": ["ST0001", "ST0002"] },
+    { "id": "pa-2", "school_id": "sch-1", "name": "Ama Owusu", "phone": "+233 24 222 2222", "whatsapp": "+233 24 222 2222", "email": "aowusu@example.com", "student_ids": ["ST0003"] },
+    { "id": "pa-3", "school_id": "sch-1", "name": "Yaw Boateng", "phone": "+233 24 333 3333", "whatsapp": "+233 24 333 3333", "email": "", "student_ids": ["ST0004"] }
   ],
   "students": [
-    {
-      "id": "stu-ST0001",
-      "school_id": "sch-1",
-      "student_id": "ST0001",
-      "first_name": "Adwoa",
-      "last_name": "Mensah",
-      "class_id": "cl-b1",
-      "gender": "F",
-      "dob": "",
-      "parent_id": "pa-1",
-      "status": "active",
-      "admitted_on": "2025-09-09"
-    },
-    {
-      "id": "stu-ST0002",
-      "school_id": "sch-1",
-      "student_id": "ST0002",
-      "first_name": "Kojo",
-      "last_name": "Mensah",
-      "class_id": "cl-b1",
-      "gender": "M",
-      "dob": "",
-      "parent_id": "pa-1",
-      "status": "active",
-      "admitted_on": "2025-09-09"
-    },
-    {
-      "id": "stu-ST0003",
-      "school_id": "sch-1",
-      "student_id": "ST0003",
-      "first_name": "Efua",
-      "last_name": "Owusu",
-      "class_id": "cl-b1",
-      "gender": "F",
-      "dob": "",
-      "parent_id": "pa-2",
-      "status": "active",
-      "admitted_on": "2025-09-09"
-    },
-    {
-      "id": "stu-ST0004",
-      "school_id": "sch-1",
-      "student_id": "ST0004",
-      "first_name": "Kofi",
-      "last_name": "Boateng",
-      "class_id": "cl-creche",
-      "gender": "M",
-      "dob": "",
-      "parent_id": "pa-3",
-      "status": "active",
-      "admitted_on": "2025-09-09"
-    },
-    {
-      "id": "stu-ST0005",
-      "school_id": "sch-1",
-      "student_id": "ST0005",
-      "first_name": "Akosua",
-      "last_name": "Asante",
-      "class_id": "cl-b1",
-      "gender": "F",
-      "dob": "",
-      "parent_id": null,
-      "status": "active",
-      "admitted_on": "2025-09-09"
-    }
+    { "id": "stu-ST0001", "school_id": "sch-1", "student_id": "ST0001", "first_name": "Adwoa", "last_name": "Mensah", "class_id": "cl-b1", "gender": "F", "dob": "", "parent_id": "pa-1", "status": "active", "admitted_on": "2025-09-09" },
+    { "id": "stu-ST0002", "school_id": "sch-1", "student_id": "ST0002", "first_name": "Kojo", "last_name": "Mensah", "class_id": "cl-b1", "gender": "M", "dob": "", "parent_id": "pa-1", "status": "active", "admitted_on": "2025-09-09" },
+    { "id": "stu-ST0003", "school_id": "sch-1", "student_id": "ST0003", "first_name": "Efua", "last_name": "Owusu", "class_id": "cl-b1", "gender": "F", "dob": "", "parent_id": "pa-2", "status": "active", "admitted_on": "2025-09-09" },
+    { "id": "stu-ST0004", "school_id": "sch-1", "student_id": "ST0004", "first_name": "Kofi", "last_name": "Boateng", "class_id": "cl-creche", "gender": "M", "dob": "", "parent_id": "pa-3", "status": "active", "admitted_on": "2025-09-09" },
+    { "id": "stu-ST0005", "school_id": "sch-1", "student_id": "ST0005", "first_name": "Akosua", "last_name": "Asante", "class_id": "cl-b1", "gender": "F", "dob": "", "parent_id": null, "status": "active", "admitted_on": "2025-09-09" }
   ],
-  "scores": [],
-  "attendance": [],
-  "staffAttendance": [],
-  "studentRemarks": [],
-  "conduct": [],
-  "invoices": [],
-  "payments": [],
+  "scores": [], "attendance": [], "staffAttendance": [], "studentRemarks": [], "conduct": [], "invoices": [], "payments": [],
   "inventoryItems": [
-    {
-      "id": "itm-1",
-      "school_id": "sch-1",
-      "sku": "UNI-BRN-14",
-      "name": "Brown Uniform - Size 14",
-      "inventory_type": "resale",
-      "category": "Uniforms",
-      "target_class": "cl-b1",
-      "cost_price": 45,
-      "selling_price": 70,
-      "unit_cost": 45,
-      "unit": "set",
-      "low_threshold": 10,
-      "qty": 40,
-      "supplier": {
-        "name": "",
-        "contact": "",
-        "location": ""
-      },
-      "archived": false
-    },
-    {
-      "id": "itm-2",
-      "school_id": "sch-1",
-      "sku": "BK-MAT-B9",
-      "name": "Mathematics Textbook - Basic 9",
-      "inventory_type": "resale",
-      "category": "Textbooks",
-      "target_class": "cl-b9",
-      "cost_price": 30,
-      "selling_price": 45,
-      "unit_cost": 30,
-      "unit": "copy",
-      "low_threshold": 15,
-      "qty": 60,
-      "supplier": {
-        "name": "",
-        "contact": "",
-        "location": ""
-      },
-      "archived": false
-    },
-    {
-      "id": "itm-3",
-      "school_id": "sch-1",
-      "sku": "ICT-LAP-01",
-      "name": "ICT Lab Laptop",
-      "inventory_type": "asset",
-      "category": "ICT Equipment",
-      "target_class": "",
-      "cost_price": 4500,
-      "selling_price": 0,
-      "unit_cost": 4500,
-      "unit": "unit",
-      "low_threshold": 2,
-      "qty": 12,
-      "supplier": {
-        "name": "",
-        "contact": "",
-        "location": ""
-      },
-      "archived": false
-    }
+    { "id": "itm-1", "school_id": "sch-1", "sku": "UNI-BRN-14", "name": "Brown Uniform - Size 14", "inventory_type": "resale", "category": "Uniforms", "target_class": "cl-b1", "cost_price": 45, "selling_price": 70, "unit_cost": 45, "unit": "set", "low_threshold": 10, "qty": 40, "supplier": { "name": "", "contact": "", "location": "" }, "archived": false },
+    { "id": "itm-2", "school_id": "sch-1", "sku": "BK-MAT-B9", "name": "Mathematics Textbook - Basic 9", "inventory_type": "resale", "category": "Textbooks", "target_class": "cl-b9", "cost_price": 30, "selling_price": 45, "unit_cost": 30, "unit": "copy", "low_threshold": 15, "qty": 60, "supplier": { "name": "", "contact": "", "location": "" }, "archived": false },
+    { "id": "itm-3", "school_id": "sch-1", "sku": "ICT-LAP-01", "name": "ICT Lab Laptop", "inventory_type": "asset", "category": "ICT Equipment", "target_class": "", "cost_price": 4500, "selling_price": 0, "unit_cost": 4500, "unit": "unit", "low_threshold": 2, "qty": 12, "supplier": { "name": "", "contact": "", "location": "" }, "archived": false }
   ],
   "stockMovements": [],
   "inventoryStock": [
-    {
-      "id": "stk-1",
-      "school_id": "sch-1",
-      "item_id": "itm-1",
-      "item_name": "Brown Uniform - Size 14",
-      "location": "Bookshop",
-      "qoh": 40,
-      "allocated": 5,
-      "reorder_level": 10,
-      "batch": {},
-      "archived": false
-    },
-    {
-      "id": "stk-2",
-      "school_id": "sch-1",
-      "item_id": "itm-2",
-      "item_name": "Mathematics Textbook - Basic 9",
-      "location": "Bookshop",
-      "qoh": 60,
-      "allocated": 0,
-      "reorder_level": 15,
-      "batch": {},
-      "archived": false
-    },
-    {
-      "id": "stk-3",
-      "school_id": "sch-1",
-      "item_id": "itm-3",
-      "item_name": "ICT Lab Laptop",
-      "location": "Main Admin Store",
-      "qoh": 12,
-      "allocated": 0,
-      "reorder_level": 2,
-      "batch": {},
-      "archived": false
-    }
+    { "id": "stk-1", "school_id": "sch-1", "item_id": "itm-1", "item_name": "Brown Uniform - Size 14", "location": "Bookshop", "qoh": 40, "allocated": 5, "reorder_level": 10, "batch": {}, "archived": false },
+    { "id": "stk-2", "school_id": "sch-1", "item_id": "itm-2", "item_name": "Mathematics Textbook - Basic 9", "location": "Bookshop", "qoh": 60, "allocated": 0, "reorder_level": 15, "batch": {}, "archived": false },
+    { "id": "stk-3", "school_id": "sch-1", "item_id": "itm-3", "item_name": "ICT Lab Laptop", "location": "Main Admin Store", "qoh": 12, "allocated": 0, "reorder_level": 2, "batch": {}, "archived": false }
   ],
-  "inventoryTransactions": [],
-  "inventoryAudit": [],
-  "announcements": [],
-  "messages": [],
-  "expenses": [],
-  "otherIncome": [],
-  "payrollRuns": [],
-  "automationLog": [],
-  "meta": {
-    "seq": {
-      "student": 5,
-      "staff": 4,
-      "invtxn": 0
-    }
-  },
+  "inventoryTransactions": [], "inventoryAudit": [], "announcements": [], "messages": [], "expenses": [], "otherIncome": [], "payrollRuns": [], "automationLog": [],
+  "meta": { "seq": { "student": 5, "staff": 4, "invtxn": 0 } },
   "constants": {
-    "MODULES": [
-      "Dashboard",
-      "Students",
-      "Assessment",
-      "Finance",
-      "Attendance",
-      "Communication",
-      "Administration",
-      "Inventory",
-      "Accounting",
-      "Payroll",
-      "Settings"
-    ],
-    "ROLES": [
-      "Admin",
-      "Director",
-      "Teacher",
-      "Other staff",
-      "Parent"
-    ],
+    "MODULES": ["Dashboard", "Students", "Assessment", "Finance", "Attendance", "Communication", "Administration", "Inventory", "Accounting", "Payroll", "Settings"],
+    "ROLES": ["Admin", "Director", "Teacher", "Other staff", "Parent"],
     "SCHOOL_ID": "sch-1"
   }
 }
