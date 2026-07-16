@@ -27,6 +27,10 @@ Theme: deep teal primary, warm gold accent, off-white background, system fonts.
 | **Administration & Reporting** | Role-aware dashboard, staff records (`SF0001`), exam/finance/attendance reports with day/week/month/term/year filters + CSV export |
 | **Inventory / Stock** | Items, stock in/out, low-stock view, stock report with time filters + CSV |
 | **Bulk file entry** | Download template / Upload filled (CSV) on score entry, attendance, admissions, fee billing — every row validated, bad rows rejected with reasons, **no silent overwrites** |
+| **Accounting** | Income (auto from Finance + manual other-income) vs. expenses (manual + auto-posted payroll), time-filtered overview, editable expense/income categories, CSV export |
+| **Payroll** | Per-staff pay setup (basic/allowances/bonus/other/deductions), configurable pay structure (SSNIT/PAYE bands, employer contributions, custom fields), run & finalise monthly payroll (posts to Accounting), payslips, history, reports |
+| **Access Control** (Settings, Admin-only) | Per-parent login enable/disable, parent report-download control (school-wide/by-class/per-parent), and **Login accounts**: reset any user's password or add a new login for a staff member/parent |
+| **Subscription / Licensing** | 30-day free trial, offline plan activation via signed licence key (ECDSA/WebCrypto), read-only lock on expiry |
 
 **Architecture** — a single **swappable data-access layer** (`app/js/store.js`) with two adapters:
 - `LocalAdapter` (default): browser `localStorage`. The app runs by just opening `index.html`.
@@ -41,8 +45,10 @@ Screens never change between the two — flip one flag (`useApi`). Every record 
 
 ### A) Instant local preview (no server) — Local mode
 1. Open `app/index.html` in a modern browser (Chrome/Edge/Firefox/Safari).
-2. Pick a role on the demo sign-in (Admin sees everything). Ghana defaults are pre-seeded.
-3. Settings → Data → "Reset to Ghana defaults" restores seed data at any time.
+2. Sign in with the school name, a user type, and that account's password — see the demo
+   passwords table below (Admin sees everything). Ghana defaults are pre-seeded.
+3. Settings → Data → "Reset to Ghana defaults" restores seed data (incl. demo login accounts)
+   at any time.
 
 > Local mode stores data in your browser only. Use it for demos/training.
 
@@ -72,7 +78,12 @@ Screens never change between the two — flip one flag (`useApi`). Every record 
 5. **Switch the front end to API mode**: in `index.html` set `useApi: true`.
 6. **Secure**: `api/data/` ships with an `.htaccess` denying web access (used only by SQLite dev);
    on MySQL it is unused. Keep `config.php` out of any public listing (it is plain PHP, not served).
-7. Visit your domain. Done.
+7. **Before going live, protect the API itself**: `api/index.php` has no authentication of its
+   own — any request to it (including `import`/`reset`, which overwrite/wipe the whole dataset)
+   is currently accepted from anyone who can reach the URL. At minimum, restrict `public_html/api/`
+   with HTTP Basic Auth (cPanel → Directory Privacy) or an IP allowlist before enabling API mode
+   on a public domain. (This is why `useApi` defaults to `false` / Local mode.)
+8. Visit your domain. Done.
 
 **Go-live (real providers):** replace the placeholder keys in `api/config.php` (and
 `app/js/services.js` for the front-end fallback) and implement the two functions in
@@ -115,14 +126,48 @@ SMS gateway calls. The front-end and API contracts do not change.
 | Payment provider | `mock` test mode, `sk_test_PLACEHOLDER` | `api/config.php` + `api/services-stub.php`; `app/js/services.js` |
 | SMS gateway | `mock` test mode, `sms_test_PLACEHOLDER` | same as above |
 | MySQL credentials | `cpaneluser_*`, `CHANGE_ME_PLACEHOLDER` | `api/config.php` |
-| Demo users/login | role picker (no passwords) | replace with real auth at deployment (see Limitations) |
+| Demo login passwords | `admin/admin123`, `director/director123`, `teacher/teacher123`, `staff/staff123`, `parent/parent123` (school name = the seeded school name) | Settings → Access Control → Login accounts → Reset password (do this before going live) |
 | Sample data | 5 students, 3 parents, 4 staff | Settings → Data → Reset, or edit `seed.js` |
 | Creche checklist indicators | seeded from the sample report | Settings → Report Templates → Template A → Edit checklist domains |
 
+## 5b. New client setup (cloning this as a base template)
+
+This codebase is the standard base for every school client — each subscribing school gets its
+own install/deployment (its own browser/localStorage instance, or its own MySQL database in API
+mode), never a shared database with another school. Recommended order for onboarding a new
+client:
+
+1. **Deploy a fresh copy** (new Render static site / new cPanel install). If using the PHP API,
+   set a unique `SCHOOL_ID` env var (`SMS_SCHOOL_ID`) per client — never reuse `sch-1` across two
+   real schools sharing infrastructure. Local mode generates a unique per-install ID automatically.
+2. **Admin signs in** with the seeded demo credentials (§5 above), then immediately:
+   - Settings → Profile: school name, motto, contact details, logo/signature/stamp, **Branding →
+     Theme colors** (primary + accent — used across the app, printed reports, and receipts).
+   - Settings → Access Control → Login accounts: reset every demo password (or delete the demo
+     accounts and add real ones) before handing off to the school.
+   - Settings → Classes & Subjects, Grading, Fees, Academic, Identity: adjust to the client's
+     actual structure — none of this requires a code change.
+3. **Bulk-load existing rosters** rather than typing them in one at a time: Students → "Download
+   template" / "Upload filled", and Administration → Staff → "Download template" / "Upload
+   filled". Both templates are generated from THIS install's own classes, so they only work
+   correctly after step 2's class list is set up. Inventory → Item Master has the same
+   download-template/upload-filled pattern for stock items. Every upload validates row-by-row and
+   only imports valid rows — bad rows are rejected with a reason, nothing is silently overwritten.
+4. **Parent access**: Settings → Access Control lets Admin enable/disable an individual parent's
+   login and control report-card download, school-wide or per class or per parent.
+5. Anything not covered by a Settings screen today (theme is now covered; the payment/SMS
+   provider, and the Payroll statutory engine's Ghana-specific shape, are not) requires a code
+   change — see "Known limitations" below before promising a client those are self-service.
+
 ## 6. Known limitations / stubs (by design for this build)
 
-- **Authentication** is a demo role-picker (no passwords). A `users` table with `password_hash`
-  exists in the schema; wire real login + sessions at deployment.
+- **Authentication is client-side only.** Login requires school name + user type + password
+  (PBKDF2-SHA256 hashed via WebCrypto, `app/js/auth-lib.js`) — this stops casual access and
+  protects passwords from plaintext inspection, but there is no server enforcing it: in Local
+  mode, anyone with local access to the browser/device could still edit `localStorage` directly
+  to bypass it. Treat this as "keep honest users honest and deter casual snooping," not as
+  server-grade security. Real server-side session auth (via the PHP API) is the next step for a
+  true multi-device/shared-hosting deployment, and is not built in this pass.
 - **Payments & SMS** are test-mode stubs — they never move money or send real texts.
 - **PDF output** uses the browser's Print → "Save as PDF" (no heavy PDF library, to keep pages
   light). Report cards are styled to one page per pupil.
@@ -132,6 +177,15 @@ SMS gateway calls. The front-end and API contracts do not change.
   layer, no framework) so a service-worker/PWA layer can be added later without redesign.
 - **"By school" report filter** is reserved for the future subscriber/SaaS phase.
 - Local mode keeps data in one browser; use API/MySQL mode for shared, multi-device use.
+- **Payment receipts** use a fixed layout (`app/js/views/finance.js`) — unlike the exam report
+  card, there is no Settings-driven receipt template yet. A client can't reorder/relabel/rebrand
+  the receipt without a code change.
+- **Payroll's statutory engine** (SSNIT/PAYE terminology and calculation order in
+  `app/js/payroll-lib.js`) is shaped for Ghana. Rates and bands are editable in Settings →
+  Pay Structure, but modeling a different country's statutory scheme (e.g. Nigeria's
+  PAYE+Pension+NHF) needs engineering work, not just data entry.
+- **Dashboard KPI cards** (Enrolment, Fees collected, Attendance rate, etc.) are a fixed set —
+  not yet Settings-configurable.
 
 ---
 

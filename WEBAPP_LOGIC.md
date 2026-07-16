@@ -1,6 +1,29 @@
 # WEBAPP LOGIC — School Management System (Ghanaian Private Basic School)
 _Single source of truth. Paste into an AI builder to reconstruct the app without further guidance._
-_Last updated: 2026-06-26 (living document — updated at the end of each change)._
+_Last updated: 2026-07-16 (living document — updated at the end of each change)._
+
+> **Drift note (2026-07-16):** sections below describe the original Phase 1–11 build and predate
+> several shipped modules — **Accounting**, **Payroll**, **Settings → Access Control**, and
+> **Subscription/Licensing** (`app/js/license-lib.js`, `app/js/auth-lib.js`, `views/accounting.js`,
+> `views/payroll.js`, `views/subscription.js`). It also predates real login (see below). Treat this
+> file as the original architectural spec, and README.md's module table as the current feature
+> list, until this file is fully re-authored.
+>
+> **Authentication (added 2026-07-16):** login is now school name + user type + password, not a
+> no-password role picker. Each `users` record carries `password_salt`/`password_hash` (PBKDF2-
+> SHA256 via `app/js/auth-lib.js`, WebCrypto) and `must_change_password`. Session (`sms_session`)
+> stores only `{id, role, name}` — never the hash. This is still client-side-only enforcement
+> (see README §6 "Known limitations") — a real server-side session layer is future work.
+>
+> **Multi-client templating (added 2026-07-16):** `seed.js`'s `SCHOOL_ID` is now generated once
+> per install (persisted under the separate `sms_school_id` localStorage key) instead of a shared
+> literal `'sch-1'` baked into the codebase — see README §5b "New client setup". The `school`
+> singleton gained `theme_primary`/`theme_accent` (Settings → Profile → Branding), applied at boot
+> via `App.themeHex()`/`applyTheme()` in `app.js` as CSS custom-property overrides. `App.permissions`
+> now reads `seed.js`'s `permissions` object directly as the real default (previously it silently
+> fell back to a second, separately-hardcoded matrix in `app.js` until the first Settings → Roles
+> save). Students, Staff, and Inventory Item Master all have a download-template/upload-filled CSV
+> pattern (`app/js/bulk.js`); Finance/Accounting bulk import does not exist yet.
 
 ## 0. One-paragraph brief
 Build a mobile-first, low-bandwidth School Management System sold and installed **per school**
