@@ -121,27 +121,33 @@
 
   /* ---------------- Staff ---------------- */
   function tabStaff(panel) {
+    var canEdit = App.canEdit('Administration');
     Promise.all([DB.all('staff'), DB.all('classes')]).then(function (r) {
       var staff = r[0], classes = r[1].sort(function (a, b) { return a.sort - b.sort; });
-      var tools = el('div', { class: 'toolbar' });
-      tools.appendChild(el('button', { class: 'btn', text: '+ Add staff', onclick: function () { editStaff(null, classes, refresh); } }));
-      panel.appendChild(tools);
+      if (canEdit) {
+        var tools = el('div', { class: 'toolbar' });
+        tools.appendChild(el('button', { class: 'btn', text: '+ Add staff', onclick: function () { editStaff(null, classes, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ Download template', onclick: function () { downloadStaffTemplate(classes); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤒ Upload filled', onclick: function () { uploadStaff(classes, refresh); } }));
+        panel.appendChild(tools);
+      }
       var c = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
       t.appendChild(el('thead', {}, [el('tr', {}, ['Staff ID', 'Name', 'Role', 'Phone', 'Classes', ''].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
       staff.forEach(function (s) {
         var cnames = (s.class_ids || []).map(function (id) { return App.className(id); }).join(', ') || '—';
-        tb.appendChild(el('tr', {}, [el('td', { text: s.staff_id }), el('td', { text: s.name }), el('td', {}, [el('span', { class: 'tag', text: s.role })]), el('td', { text: s.phone || '—' }), el('td', { text: cnames }), el('td', {}, [el('div', { class: 'wrap-actions' }, [
+        tb.appendChild(el('tr', {}, [el('td', { text: s.staff_id }), el('td', { text: s.name }), el('td', {}, [el('span', { class: 'tag', text: s.role })]), el('td', { text: s.phone || '—' }), el('td', { text: cnames }), el('td', {}, [canEdit ? el('div', { class: 'wrap-actions' }, [
           el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editStaff(s, classes, refresh); } }),
           el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Delete ' + s.name + '?', function () { DB.remove('staff', s.id).then(refresh); }); } })
-        ])])]));
+        ]) : null])]));
       });
       t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); panel.appendChild(c);
     });
     function refresh() { U.clear(panel); tabStaff(panel); }
   }
   function editStaff(s, classes, done) {
+    if (!App.canEdit('Administration')) return;
     var rules = App.ctx.idRules;
     var fields = [
       { name: 'name', label: 'Full name', required: true },
@@ -161,11 +167,64 @@
         v.class_ids = U.$all('input[type=checkbox]', sel).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
         if (s) DB.update('staff', s.id, v).then(function () { x(); U.toast('Saved.'); done(); });
         else {
-          var go = (v.staff_id && v.staff_id.trim()) ? Promise.resolve(v.staff_id.trim()) : DB.nextCode('staff', rules.staff_prefix, rules.digits);
-          go.then(function (code) { v.staff_id = code; DB.insert('staff', v).then(function () { x(); U.toast('Added ' + code); done(); }); });
+          var manualCode = v.staff_id && v.staff_id.trim();
+          var go = manualCode ? Promise.resolve(manualCode) : DB.nextCode('staff', rules.staff_prefix, rules.digits);
+          go.then(function (code) {
+            if (!manualCode) { proceed(code); return; }
+            DB.all('staff').then(function (all) {
+              if (all.some(function (x2) { return x2.staff_id === code; })) return U.toast('Staff ID "' + code + '" is already in use — choose a different ID.', 'err');
+              proceed(code);
+            });
+          });
+          function proceed(code) { v.staff_id = code; DB.insert('staff', v).then(function () { x(); U.toast('Added ' + code); done(); }); }
         }
       } }
     ] });
+  }
+
+  /* ---------- Bulk staff upload ---------- */
+  function downloadStaffTemplate(classes) {
+    var roles = global.SMS_SEED.constants.ROLES.filter(function (r) { return r !== 'Parent'; });
+    var rows = [['name', 'role', 'phone', 'class_names']];
+    rows.push(['Sample Teacher', 'Teacher', '+233...', classes[0] ? classes[0].name : '']);
+    Bulk.download('staff-template.csv', rows);
+    U.toast('Template downloaded. Role must be one of: ' + roles.join(', ') + '. class_names is only used for Teachers — separate multiple classes with a semicolon.');
+  }
+  function uploadStaff(classes, done) {
+    var rules = App.ctx.idRules;
+    var roles = global.SMS_SEED.constants.ROLES.filter(function (r) { return r !== 'Parent'; });
+    Bulk.pickFile().then(function (file) {
+      var res = Bulk.processUpload(file.rows, ['name', 'role'], function (row) {
+        var errs = [];
+        if (!row.name) errs.push('name missing');
+        if (roles.indexOf(row.role) === -1) errs.push('role must be one of: ' + roles.join(', '));
+        var classIds = [];
+        if (row.class_names) {
+          row.class_names.split(';').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (cn) {
+            var m = classes.filter(function (c) { return c.name.toLowerCase() === cn.toLowerCase(); })[0];
+            if (!m) errs.push('unknown class "' + cn + '"'); else classIds.push(m.id);
+          });
+        }
+        if (errs.length) return { ok: false, errors: errs };
+        return { ok: true, value: { name: row.name, role: row.role, phone: row.phone || '', class_ids: classIds } };
+      });
+      Bulk.summaryModal('Import staff', res, function (valid) {
+        DB.all('staff').then(function (existing) {
+          var used = {}; existing.forEach(function (s) { used[s.staff_id] = true; });
+          var i = 0;
+          function step() {
+            if (i >= valid.length) { U.toast('Imported ' + valid.length + ' staff record(s).'); done(); return; }
+            var v = valid[i++];
+            DB.nextCode('staff', rules.staff_prefix, rules.digits).then(function (code) {
+              while (used[code]) code = rules.staff_prefix + (parseInt(code.replace(rules.staff_prefix, ''), 10) + 1);
+              used[code] = true; v.staff_id = code;
+              DB.insert('staff', v).then(step);
+            });
+          }
+          step();
+        });
+      });
+    }).catch(function () { /* user cancelled file picker */ });
   }
 
   function tabPerms(panel) {
