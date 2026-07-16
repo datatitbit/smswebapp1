@@ -13,8 +13,6 @@
   var el = U.el;
   var cur = function () { return App.ctx.school.currency; };
 
-  function isManager() { return App.user.role === 'Admin' || App.user.role === 'Director'; }
-
   function getConfig() {
     return DB.singleton('payrollSettings').then(function (s) { return PL.normalizeConfig(s); });
   }
@@ -31,10 +29,7 @@
   function render(container) {
     U.clear(container);
     container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'Payroll' })]));
-    if (!isManager()) {
-      container.appendChild(el('div', { class: 'empty', text: 'Only Admin / Director can run payroll. (Grant access via Settings → Roles if a bursar needs it.)' }));
-      return;
-    }
+    if (App.readOnly) container.appendChild(el('div', { class: 'note', text: 'View-only: you can see payroll figures and print reports, but cannot run or edit payroll.' }));
     var bar = el('div', { class: 'tabs' }); var panel = el('div'); var active = 'Run Payroll';
     ['Run Payroll', 'History', 'Staff Pay Setup', 'Reports', 'Pay Structure'].forEach(function (t) {
       var b = el('button', { text: t, onclick: function () { active = t; draw(); } }); b._t = t; bar.appendChild(b);
@@ -128,7 +123,7 @@
       typeSel.addEventListener('change', draw);
       draw();
 
-      card.appendChild(el('button', { class: 'btn gold', text: 'Finalise payroll for this month', onclick: function () {
+      if (!App.readOnly) card.appendChild(el('button', { class: 'btn gold', text: 'Finalise payroll for this month', onclick: function () {
         var month = monthInp.value;
         if (!month) return U.toast('Choose a month', 'err');
         if (runs.some(function (x) { return x.month === month && x.status === 'finalized'; }))
@@ -251,11 +246,12 @@
         var typeSel = selectFrom(config.employee_types, s.employee_type || 'Full-time');
         var methSel = selectFrom(config.payment_methods, s.payment_method || (config.payment_methods[0] || 'Bank'));
         var b = payInp(s.basic_salary), a = payInp(s.allowances), bo = payInp(s.bonus), ot = payInp(s.other), od = payInp(s.other_deductions);
+        if (App.readOnly) { [typeSel, methSel, b, a, bo, ot, od].forEach(function (n) { n.disabled = true; }); }
         tb.appendChild(el('tr', {}, [
           el('td', { text: s.name }), el('td', { text: s.role }),
           el('td', {}, [typeSel]), el('td', {}, [methSel]),
           el('td', {}, [b]), el('td', {}, [a]), el('td', {}, [bo]), el('td', {}, [ot]), el('td', {}, [od]),
-          el('td', {}, [el('div', { class: 'wrap-actions' }, [
+          el('td', {}, [App.readOnly ? null : el('div', { class: 'wrap-actions' }, [
             el('button', { class: 'btn sm gold', text: 'Save', onclick: function () {
               DB.update('staff', s.id, { basic_salary: Number(b.value) || 0, allowances: Number(a.value) || 0,
                 bonus: Number(bo.value) || 0, other: Number(ot.value) || 0, other_deductions: Number(od.value) || 0,
@@ -457,16 +453,18 @@
     return el('div', { class: 'table-wrap' }, [t]);
   }
   function htmlTable(title, heads, rows, moneyCols) {
+    var brand = (App.themeHex ? App.themeHex().primary : '#0f5e5e');
     var h = title ? '<h3>' + U.esc(title) + '</h3>' : '';
     h += '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr>' +
-      heads.map(function (x) { return '<th style="background:#0f5e5e;color:#fff;text-align:left">' + U.esc(x) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      heads.map(function (x) { return '<th style="background:' + brand + ';color:#fff;text-align:left">' + U.esc(x) + '</th>'; }).join('') + '</tr></thead><tbody>';
     rows.forEach(function (row) { h += '<tr>' + row.map(function (cell, i) { return '<td>' + U.esc((moneyCols && moneyCols[i] && typeof cell === 'number') ? U.money(cell, cur()) : cell) + '</td>'; }).join('') + '</tr>'; });
     h += '</tbody></table><br>';
     return h;
   }
   function printReport(title, innerHtml) {
     var w = window.open('', '_blank');
-    w.document.write('<html><head><title>' + U.esc(title) + '</title><link rel="stylesheet" href="css/report.css"><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;margin-bottom:12px}th,td{border:1px solid #999;padding:4px;font-size:12px;text-align:left}th{background:#0f5e5e;color:#fff}h1,h2,h3{color:#0f5e5e}.report-card{page-break-after:always;margin-bottom:20px}</style></head><body>' + innerHtml + '</body></html>');
+    var brand = (App.themeHex ? App.themeHex().primary : '#0f5e5e');
+    w.document.write('<html><head><title>' + U.esc(title) + '</title><link rel="stylesheet" href="css/report.css"><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;margin-bottom:12px}th,td{border:1px solid #999;padding:4px;font-size:12px;text-align:left}th{background:' + brand + ';color:#fff}h1,h2,h3{color:' + brand + '}.report-card{page-break-after:always;margin-bottom:20px}</style></head><body>' + innerHtml + '</body></html>');
     w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
   }
   function optSelect(opts) { var s = el('select'); opts.forEach(function (o) { s.appendChild(el('option', { value: o.value, text: o.label })); }); return s; }
@@ -489,6 +487,8 @@
       panel.appendChild(sectionCard('2. Earnings', 'earning', config, false));
       panel.appendChild(sectionCard('3. Statutory & other deductions', 'deduction', config, false));
       panel.appendChild(sectionCard('4. Employer contributions', 'employer_cost', config, true));
+
+      if (App.readOnly) { panel.appendChild(el('div', { class: 'note', text: 'View-only: changes on this tab are not saved for your role.' })); return; }
 
       panel.appendChild(el('div', { class: 'card' }, [el('div', { class: 'btn-row' }, [
         el('button', { class: 'btn gold', text: 'Save pay structure', onclick: function () {
