@@ -121,7 +121,11 @@
       var state = { type: '', cat: '', cls: '', showArchived: false };
 
       var tools = el('div', { class: 'toolbar' });
-      if (!App.readOnly) tools.appendChild(el('button', { class: 'btn', text: '+ Add item', onclick: function () { editItem(null, cats, classes, S, refresh); } }));
+      if (!App.readOnly) {
+        tools.appendChild(el('button', { class: 'btn', text: '+ Add item', onclick: function () { editItem(null, cats, classes, S, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ Download template', onclick: function () { downloadItemTemplate(cats); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤒ Upload filled', onclick: function () { uploadItems(cats, refresh); } }));
+      }
       // filters
       var typeSel = filterSelect('All types', [['resale', 'Resale Item (Sold to Parents)'], ['asset', 'School Asset / Property']], function (v) { state.type = v; draw(); });
       var catSel = filterSelect('All categories', cats.map(function (c) { return [c.name, c.name]; }), function (v) { state.cat = v; draw(); });
@@ -221,6 +225,46 @@
         p.then(function () { x(); U.toast('Saved.'); done(); });
       } }
     ] });
+  }
+
+  /* ---------- Bulk item upload ---------- */
+  function downloadItemTemplate(cats) {
+    var rows = [['sku', 'name', 'inventory_type', 'category', 'unit', 'cost_price', 'selling_price', 'low_threshold']];
+    rows.push(['BK-SAMPLE', 'Sample Textbook', 'resale', cats[0] ? cats[0].name : '', 'pcs', '15', '20', '5']);
+    Bulk.download('inventory-items-template.csv', rows);
+    U.toast('Template downloaded. Fill it and upload. (Type: "resale" or "asset". Category must match an existing Inventory category, or leave blank.)');
+  }
+  function uploadItems(cats, done) {
+    Bulk.pickFile().then(function (file) {
+      var res = Bulk.processUpload(file.rows, ['name'], function (row) {
+        var errs = [];
+        if (!row.name) errs.push('name missing');
+        var type = (row.inventory_type || 'resale').toLowerCase();
+        if (type !== 'resale' && type !== 'asset') errs.push('inventory_type must be "resale" or "asset"');
+        var cat = '';
+        if (row.category) {
+          var match = cats.filter(function (c) { return c.name.toLowerCase() === row.category.toLowerCase(); })[0];
+          if (!match) errs.push('unknown category "' + row.category + '"');
+          else cat = match.name;
+        }
+        var cost = row.cost_price === '' ? 0 : Number(row.cost_price);
+        var sell = row.selling_price === '' ? 0 : Number(row.selling_price);
+        var low = row.low_threshold === '' ? 0 : Number(row.low_threshold);
+        if (isNaN(cost) || cost < 0) errs.push('cost_price must be a number >= 0');
+        if (isNaN(sell) || sell < 0) errs.push('selling_price must be a number >= 0');
+        if (isNaN(low) || low < 0) errs.push('low_threshold must be a number >= 0');
+        if (errs.length) return { ok: false, errors: errs };
+        return { ok: true, value: {
+          sku: row.sku || '', name: row.name, inventory_type: type, category: cat, unit: row.unit || '',
+          cost_price: cost, selling_price: type === 'asset' ? 0 : sell, unit_cost: cost,
+          low_threshold: low, qty: 0, archived: false
+        } };
+      });
+      Bulk.summaryModal('Import inventory items', res, function (valid) {
+        Promise.all(valid.map(function (v) { return DB.insert('inventoryItems', v); }))
+          .then(function () { U.toast('Imported ' + valid.length + ' item(s). Add opening stock quantities in Stock Levels.'); done(); });
+      });
+    }).catch(function () { /* user cancelled file picker */ });
   }
 
   /* ============ SECTION 2: STOCK LEVELS ============ */
@@ -632,10 +676,11 @@
       blocks.forEach(function (b) { rows.push([b.title]); rows.push(b.headers); b.rows.forEach(function (r) { rows.push(r); }); rows.push([]); });
       return Bulk.download('inventory-report-' + U.todayISO() + '.csv', rows);
     }
+    var brand = (App.themeHex ? App.themeHex().primary : '#0f5e5e');
     var html = '<h1>' + U.esc(sc.name) + '</h1><h3>Inventory Report — ' + U.esc(range.label) + ' · ' + U.fmtDate(U.todayISO()) + '</h3>';
     blocks.forEach(function (b) {
       html += '<h2>' + U.esc(b.title) + '</h2><table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%"><thead><tr>' +
-        b.headers.map(function (h) { return '<th style="background:#0f5e5e;color:#fff;text-align:left">' + U.esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>';
+        b.headers.map(function (h) { return '<th style="background:' + brand + ';color:#fff;text-align:left">' + U.esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>';
       b.rows.forEach(function (r) { html += '<tr>' + r.map(function (c) { return '<td>' + U.esc(c) + '</td>'; }).join('') + '</tr>'; });
       if (!b.rows.length) html += '<tr><td colspan="' + b.headers.length + '">No data.</td></tr>';
       html += '</tbody></table><br>';
@@ -648,7 +693,7 @@
     }
     // pdf via print window
     var w = window.open('', '_blank');
-    w.document.write('<html><head><title>Inventory Report</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:24px}table{border-collapse:collapse;width:100%;margin-bottom:16px}th,td{border:1px solid #999;padding:4px;text-align:left;font-size:12px}th{background:#0f5e5e;color:#fff}h1,h2,h3{color:#0f5e5e}</style></head><body>' + html + '</body></html>');
+    w.document.write('<html><head><title>Inventory Report</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:24px}table{border-collapse:collapse;width:100%;margin-bottom:16px}th,td{border:1px solid #999;padding:4px;text-align:left;font-size:12px}th{background:' + brand + ';color:#fff}h1,h2,h3{color:' + brand + '}</style></head><body>' + html + '</body></html>');
     w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
   }
 
