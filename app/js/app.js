@@ -163,6 +163,39 @@
 
   function logout() { App.user = null; clearSession(); chooseRole(); }
 
+  // Fingerprint of each seeded demo account's UNCHANGED password hash -> its known
+  // demo password. These 5 passwords are already public (README, seed.js comments) —
+  // fine to auto-fill for convenience. The moment any of these 5 accounts' password is
+  // reset or changed (by anyone, on any device), its stored hash changes forever and
+  // stops matching here, so auto-fill silently and permanently stops for that account.
+  // It never applies to accounts the school creates itself (Settings -> Access Control).
+  var DEMO_CREDS = {
+    'u-admin':   { hash: '5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764', password: 'admin123' },
+    'u-dir':     { hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c', password: 'director123' },
+    'u-teacher': { hash: 'c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da', password: 'teacher123' },
+    'u-staff':   { hash: '119570daabe181e0cfbebf03cc76afcccc5d6bf1721b7b1d8902102ed146b019', password: 'staff123' },
+    'u-parent':  { hash: 'ba3af436dd8f9363645143b03709483a4ea07da9b6b7fe7c43cb541617ece706', password: 'parent123' }
+  };
+  function knownDemoPassword(user) {
+    var d = user && DEMO_CREDS[user.id];
+    return (d && d.hash === user.password_hash) ? d.password : null;
+  }
+
+  // Try a password against every account sharing a role (no separate "which user" step —
+  // the password itself, individually salted/hashed per account, identifies the account).
+  // Note: if two people on the same role pick the same password, whichever is checked
+  // first wins the ambiguity — schools should keep each person's password unique.
+  function verifyAgainstAny(candidates, password) {
+    function tryNext(i) {
+      if (i >= candidates.length) return Promise.resolve(null);
+      var u = candidates[i];
+      return global.Auth.verifyPassword(password, u.password_salt, u.password_hash).then(function (ok) {
+        return ok ? u : tryNext(i + 1);
+      });
+    }
+    return tryNext(0);
+  }
+
   // ---- Login: school name + user type + password (per-account, PBKDF2-hashed) ----
   function chooseRole() {
     DB.all('users').then(function (users) {
@@ -178,29 +211,21 @@
 
       function field(labelText, inputEl) { return U.el('div', { class: 'field' }, [U.el('label', { text: labelText }), inputEl]); }
 
-      var schoolInput = U.el('input', { type: 'text', autocomplete: 'organization', placeholder: sName });
+      var schoolInput = U.el('input', { type: 'text', autocomplete: 'organization', value: sName });
       var roleSelect = U.el('select');
       roleSelect.appendChild(U.el('option', { value: '', text: 'Select user type…' }));
       var rolesSeen = [];
       users.forEach(function (u) { if (rolesSeen.indexOf(u.role) === -1) rolesSeen.push(u.role); });
       rolesSeen.forEach(function (r) { roleSelect.appendChild(U.el('option', { value: r, text: r })); });
 
-      var nameSelect = U.el('select', { disabled: true });
-      nameSelect.appendChild(U.el('option', { value: '', text: 'Select user type first…' }));
-
       var passInput = U.el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password' });
 
+      // If exactly one account for the chosen role is still on its untouched demo
+      // password, fill it in — the user can still overwrite it with a real password.
       roleSelect.addEventListener('change', function () {
-        U.clear(nameSelect);
         var matches = users.filter(function (u) { return u.role === roleSelect.value; });
-        if (!matches.length) {
-          nameSelect.appendChild(U.el('option', { value: '', text: 'No accounts found' }));
-          nameSelect.disabled = true;
-          return;
-        }
-        matches.forEach(function (u) { nameSelect.appendChild(U.el('option', { value: u.id, text: u.name })); });
-        nameSelect.disabled = false;
-        if (matches.length === 1) nameSelect.value = matches[0].id;
+        var demoMatches = matches.map(knownDemoPassword).filter(Boolean);
+        passInput.value = (demoMatches.length === 1) ? demoMatches[0] : '';
       });
 
       function showError(msg) { errBox.textContent = msg; errBox.style.display = 'block'; }
@@ -211,18 +236,17 @@
         errBox.style.display = 'none';
         var schoolVal = schoolInput.value.trim();
         var roleVal = roleSelect.value;
-        var userId = nameSelect.value;
         var passVal = passInput.value;
-        if (!schoolVal || !roleVal || !userId || !passVal) { showError('Please fill in all fields.'); return; }
+        if (!schoolVal || !roleVal || !passVal) { showError('Please fill in all fields.'); return; }
         var realSchoolName = ((App.ctx.school && App.ctx.school.name) || '').trim();
-        var user = users.filter(function (u) { return u.id === userId && u.role === roleVal; })[0];
-        if (schoolVal.toLowerCase() !== realSchoolName.toLowerCase() || !user) {
+        if (schoolVal.toLowerCase() !== realSchoolName.toLowerCase()) {
           showError('Incorrect school name, user type, or password.'); return;
         }
+        var candidates = users.filter(function (u) { return u.role === roleVal; });
         submitBtn.disabled = true; submitBtn.textContent = 'Signing in…';
-        global.Auth.verifyPassword(passVal, user.password_salt, user.password_hash).then(function (ok) {
+        verifyAgainstAny(candidates, passVal).then(function (user) {
           submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
-          if (!ok) { showError('Incorrect school name, user type, or password.'); return; }
+          if (!user) { showError('Incorrect school name, user type, or password.'); return; }
           App.user = user; saveSession(user); boot();
         });
       }
@@ -231,14 +255,13 @@
       form.appendChild(errBox);
       form.appendChild(field('School name', schoolInput));
       form.appendChild(field('User type', roleSelect));
-      form.appendChild(field('Your name', nameSelect));
       form.appendChild(field('Password', passInput));
       form.appendChild(submitBtn);
 
       card.appendChild(form);
       wrap.appendChild(card);
       root.appendChild(wrap);
-      schoolInput.focus();
+      roleSelect.focus();
     });
   }
 

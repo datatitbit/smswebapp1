@@ -121,10 +121,24 @@ this section should be updated to match.)
 - [ ] Login: wrong school name / user type / password is rejected with a generic error (no hint
       about which field was wrong). Settings → Access Control → Login accounts: reset a
       password, add a new login account.
+- [ ] Login convenience: school name is pre-filled; selecting a user type auto-fills the
+      password ONLY for accounts still on their original seeded demo password. Reset/change a
+      demo account's password, then confirm auto-fill no longer fills it in (manual entry of
+      the new password still logs in correctly). No "which user" step — the password itself
+      picks the account among everyone sharing that role.
 
 ---
 
 ## 4. Change log
+- 2026-07-16 — Simplified login to exactly 3 fields: school name (now pre-filled), user type,
+  password — removed the separate "your name" picker. The password itself now identifies which
+  account among a shared role to sign in as (checked against each candidate's hash in turn), so
+  a school can have several people on the same role without a username. School name is
+  pre-filled from the current school profile. Selecting a user type auto-fills the password ONLY
+  when that role's account is still on its original seeded demo password (a small table of the
+  5 known seed hashes/passwords in `app.js`) — the instant that account's password is changed by
+  anyone, its hash no longer matches and auto-fill permanently stops for it; it never applies to
+  accounts a school creates itself.
 - 2026-07-16 — Admin can now customize/extend the free trial length (Subscription → Free trial
   settings; `License.setTrialDays()` in `license-lib.js`). Default stays 30 days; changing the
   length adjusts days remaining without resetting the trial's start date. Hidden once a signed

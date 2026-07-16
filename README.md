@@ -45,8 +45,9 @@ Screens never change between the two — flip one flag (`useApi`). Every record 
 
 ### A) Instant local preview (no server) — Local mode
 1. Open `app/index.html` in a modern browser (Chrome/Edge/Firefox/Safari).
-2. Sign in with the school name, a user type, and that account's password — see the demo
-   passwords table below (Admin sees everything). Ghana defaults are pre-seeded.
+2. Sign in — school name is pre-filled, pick a user type (Admin sees everything), and the
+   demo password fills in automatically (see §5 for the values; auto-fill stops once a
+   password is changed). Ghana defaults are pre-seeded.
 3. Settings → Data → "Reset to Ghana defaults" restores seed data (incl. demo login accounts)
    at any time.
 
@@ -126,7 +127,7 @@ SMS gateway calls. The front-end and API contracts do not change.
 | Payment provider | `mock` test mode, `sk_test_PLACEHOLDER` | `api/config.php` + `api/services-stub.php`; `app/js/services.js` |
 | SMS gateway | `mock` test mode, `sms_test_PLACEHOLDER` | same as above |
 | MySQL credentials | `cpaneluser_*`, `CHANGE_ME_PLACEHOLDER` | `api/config.php` |
-| Demo login passwords | `admin/admin123`, `director/director123`, `teacher/teacher123`, `staff/staff123`, `parent/parent123` (school name = the seeded school name) | Settings → Access Control → Login accounts → Reset password (do this before going live) |
+| Demo login passwords | `admin/admin123`, `director/director123`, `teacher/teacher123`, `staff/staff123`, `parent/parent123` (school name = the seeded school name). The login screen pre-fills the school name and auto-fills the password once you pick a user type — only while that account is still on its original seeded password; it stops the instant it's changed. | Settings → Access Control → Login accounts → Reset password (do this before going live) |
 | Sample data | 5 students, 3 parents, 4 staff | Settings → Data → Reset, or edit `seed.js` |
 | Creche checklist indicators | seeded from the sample report | Settings → Report Templates → Template A → Edit checklist domains |
 
