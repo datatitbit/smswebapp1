@@ -68,12 +68,19 @@
     st.locked = (st.state === 'expired');
     return st;
   }
+  // Admin can customize/extend the trial length per school (Settings/Subscription);
+  // falls back to the 30-day TRIAL_DAYS default whenever trial_days is unset/invalid.
+  function effectiveTrialDays(rec) {
+    var n = Number(rec && rec.trial_days);
+    return (n > 0) ? Math.floor(n) : TRIAL_DAYS;
+  }
   function localTrial(rec, today) {
     var start = rec.trial_start, save = Promise.resolve(rec);
     if (!start) { start = today; save = DB.setSingleton('license', Object.assign({}, rec, { trial_start: start })); }
+    var days = effectiveTrialDays(rec);
     return save.then(function () {
-      var left = TRIAL_DAYS - daysBetween(start, today);
-      return finalize({ state: left >= 0 ? 'trialing' : 'expired', plan: null, school: '', expires: addDaysISO(start, TRIAL_DAYS), daysLeft: left, trial: true, source: 'local' });
+      var left = days - daysBetween(start, today);
+      return finalize({ state: left >= 0 ? 'trialing' : 'expired', plan: null, school: '', expires: addDaysISO(start, days), daysLeft: left, trial: true, source: 'local', trialDays: days });
     });
   }
 
@@ -110,9 +117,24 @@
   }
   function deactivate() { return DB.singleton('license').then(function (rec) { rec = rec || {}; delete rec.token; return DB.setSingleton('license', rec); }); }
 
+  // setTrialDays(n) -> Promise<{ok, error}>. Pass null/0 to reset to the 30-day default.
+  // Changes only the LENGTH of the trial, never the recorded start date, so extending
+  // an in-progress trial adds days rather than restarting the clock.
+  function setTrialDays(n) {
+    var days = (n == null || n === '') ? null : Number(n);
+    if (days != null && (!isFinite(days) || days < 1 || days > 3650)) {
+      return Promise.resolve({ ok: false, error: 'Enter a whole number of days between 1 and 3650.' });
+    }
+    return DB.singleton('license').then(function (rec) {
+      rec = Object.assign({}, rec || {});
+      if (days == null) delete rec.trial_days; else rec.trial_days = Math.floor(days);
+      return DB.setSingleton('license', rec).then(function () { return { ok: true }; });
+    });
+  }
+
   global.License = {
     PLANS: PLANS, TRIAL_DAYS: TRIAL_DAYS, CURRENCY: CURRENCY,
     verify: verify, resolve: resolve, activate: activate, deactivate: deactivate,
-    todayISO: todayISO, daysBetween: daysBetween
+    setTrialDays: setTrialDays, todayISO: todayISO, daysBetween: daysBetween
   };
 })(window);

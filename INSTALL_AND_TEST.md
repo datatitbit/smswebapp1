@@ -68,6 +68,11 @@ this section should be updated to match.)
       pick up the new color; "Reset colors to default" restores the standard look.
 - [ ] Access Control → Login accounts: reset a password; add a new login account.
 
+### Subscription & Licence
+- [ ] Subscription → Free trial settings: change trial length (e.g. 45 days), confirm "Days
+      remaining"/"Trial ends" update immediately; "Reset to default" restores 30 days. Control is
+      hidden once a real licence key is activated (key-based expiry is signed, not admin-editable).
+
 ### Students & Academic
 - [ ] Admit a student (auto ST id); edit; link to a parent (multi-child).
 - [ ] Bulk admissions: download template, add a bad row, upload → only valid rows import.
@@ -120,6 +125,10 @@ this section should be updated to match.)
 ---
 
 ## 4. Change log
+- 2026-07-16 — Admin can now customize/extend the free trial length (Subscription → Free trial
+  settings; `License.setTrialDays()` in `license-lib.js`). Default stays 30 days; changing the
+  length adjusts days remaining without resetting the trial's start date. Hidden once a signed
+  licence key is active.
 - 2026-07-16 — Multi-client template readiness pass: per-install `SCHOOL_ID` generation (was a
   shared hardcoded literal); Settings → Profile → Branding theme colors (primary/accent, applied
   live across the app, printed reports, and receipts, with a scoped reset); bulk

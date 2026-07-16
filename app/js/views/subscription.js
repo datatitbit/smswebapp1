@@ -44,6 +44,25 @@
       pr.appendChild(el('div', { class: 'help', text: 'Every plan includes a 30-day free trial. Add-ons: bulk SMS credits and online fee payment. Prices are a guide and can be adjusted.' }));
       container.appendChild(pr);
 
+      if (st.source !== 'key') {
+        var trCard = el('div', { class: 'card' }, [el('h3', { text: 'Free trial settings' })]);
+        trCard.appendChild(el('div', { class: 'help', text: 'Default free trial is 30 days. Extend or shorten it for this school below — this changes the trial length, not the start date, so extending an in-progress trial simply adds days.' }));
+        var daysInp = el('input', { type: 'number', min: 1, max: 3650, value: st.trialDays || 30, style: 'width:120px' });
+        trCard.appendChild(el('div', { class: 'field' }, [el('label', { text: 'Trial length (days)' }), daysInp]));
+        trCard.appendChild(el('div', { class: 'btn-row' }, [
+          el('button', { class: 'btn gold', text: 'Save', onclick: function () {
+            L.setTrialDays(daysInp.value).then(function (r) {
+              if (!r.ok) return U.toast(r.error, 'err');
+              U.toast('Trial length updated.'); render(container);
+            });
+          } }),
+          el('button', { class: 'btn ghost', text: 'Reset to default (30 days)', onclick: function () {
+            L.setTrialDays(null).then(function () { U.toast('Trial reset to 30 days.'); render(container); });
+          } })
+        ]));
+        container.appendChild(trCard);
+      }
+
       var ta = el('textarea', { rows: 3, placeholder: 'Paste licence key here…', style: 'width:100%;font-family:monospace;font-size:.8rem' });
       var ac = el('div', { class: 'card' }, [el('h3', { text: 'Activate / enter licence key' })]);
       ac.appendChild(el('div', { class: 'help', text: 'Paste the licence key sent by Zetranova. To request a key or a free-trial extension, quote your school name below.' }));
