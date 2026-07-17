@@ -117,7 +117,17 @@
         { name: 'phone', label: 'MoMo / contact number' }
       ], {});
       f.classList.add('form-grid');
-      var c = el('div', { class: 'card' }, [el('h3', { text: 'Record a payment' }), f]);
+      var c = el('div', { class: 'card' }, [
+        el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem' }, [
+          el('h3', { text: 'Record a payment' }),
+          el('div', { class: 'btn-row' }, [
+            el('button', { class: 'btn ghost sm', text: '⤓ Bulk template', onclick: function () { downloadPaymentTemplate(students); } }),
+            el('button', { class: 'btn gold sm', text: '⤒ Upload bulk payments', onclick: function () { uploadPayments(students, term, function () { render(U.$('#view')); }); } })
+          ])
+        ]),
+        el('div', { class: 'help', text: 'For entering many payments at once (e.g. yesterday\'s collections from a paper log), download the template, fill it, and upload it instead of using the single form below.' }),
+        f
+      ]);
       c.appendChild(el('button', { class: 'btn gold', text: 'Take payment', onclick: function () {
         var v = f.readValues(); if (!v.amount) return U.toast('Amount required', 'err');
         var ref = 'RCT-' + Date.now().toString(36).toUpperCase();
@@ -147,6 +157,39 @@
         panel.appendChild(card);
       });
     });
+  }
+
+  /* ---------- Bulk payment upload (back-office entry from a paper log) ---------- */
+  function downloadPaymentTemplate(students) {
+    var rows = [['student_id', 'amount', 'method (mobile_money/card/cash)']];
+    rows.push([students[0] ? students[0].student_id : 'ST0001', '100', 'cash']);
+    Bulk.download('fee-payments-template.csv', rows);
+    U.toast('Template downloaded. method must be mobile_money, card, or cash — all rows are recorded as completed payments (no live gateway charge).');
+  }
+  function uploadPayments(students, term, done) {
+    var byCode = {}; students.forEach(function (s) { byCode[s.student_id] = s; });
+    Bulk.pickFile().then(function (file) {
+      var res = Bulk.processUpload(file.rows, ['student_id', 'amount'], function (row) {
+        var errs = [];
+        if (!byCode[row.student_id]) errs.push('unknown student_id ' + row.student_id);
+        var amt = Number(row.amount);
+        if (isNaN(amt) || amt <= 0) errs.push('amount must be a positive number');
+        var method = (row['method (mobile_money/card/cash)'] || 'cash').toLowerCase();
+        if (['mobile_money', 'card', 'cash'].indexOf(method) === -1) errs.push('method must be mobile_money, card, or cash');
+        if (errs.length) return { ok: false, errors: errs };
+        return { ok: true, value: { student_id: row.student_id, amount: amt, method: method } };
+      });
+      Bulk.summaryModal('Import fee payments', res, function (valid) {
+        var i = 0;
+        function step() {
+          if (i >= valid.length) { U.toast('Imported ' + valid.length + ' payment(s).'); done(); return; }
+          var v = valid[i++];
+          var ref = 'RCT-' + Date.now().toString(36).toUpperCase() + i;
+          DB.insert('payments', { student_id: v.student_id, term: term, amount: v.amount, method: v.method, reference: ref, receipt_no: ref, created_on: U.todayISO(), by: App.user.name }).then(step);
+        }
+        step();
+      });
+    }).catch(function () { /* user cancelled file picker */ });
   }
 
   function showReceipt(p, s, gw) {

@@ -135,6 +135,11 @@
     var tools = el('div', { class: 'toolbar' });
     var dateInp = el('input', { type: 'date', value: U.todayISO() });
     tools.appendChild(el('span', { class: 'muted', text: 'Date:' })); tools.appendChild(dateInp);
+    tools.appendChild(el('div', { style: 'flex:1' }));
+    if (!App.readOnly) {
+      tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ Template', onclick: function () { staffTmpl(dateInp.value); } }));
+      tools.appendChild(el('button', { class: 'btn gold sm', text: '⤒ Upload', onclick: function () { staffUpload(dateInp.value, load); } }));
+    }
     panel.appendChild(tools);
     var area = el('div'); panel.appendChild(area);
     dateInp.addEventListener('change', load); load();
@@ -177,6 +182,37 @@
           Promise.all(ops).then(function () { U.toast('Staff attendance saved.'); load(); });
         } }));
         area.appendChild(card);
+      });
+    }
+    function staffTmpl(date) {
+      DB.all('staff').then(function (staff) {
+        var rows = [['staff_id', 'name', 'status (present/absent/late)']];
+        staff.forEach(function (s) { rows.push([s.staff_id, s.name, 'present']); });
+        Bulk.download('staff-attendance-' + date + '.csv', rows); U.toast('Template downloaded.');
+      });
+    }
+    function staffUpload(date, done) {
+      DB.all('staff').then(function (staff) {
+        var codes = {}; staff.forEach(function (s) { codes[s.staff_id] = s; });
+        Bulk.pickFile().then(function (file) {
+          var res = Bulk.processUpload(file.rows, ['staff_id', 'status (present/absent/late)'], function (row) {
+            var status = (row['status (present/absent/late)'] || '').toLowerCase();
+            var errs = [];
+            if (!codes[row.staff_id]) errs.push('unknown staff_id');
+            if (['present', 'absent', 'late'].indexOf(status) === -1) errs.push('status must be present/absent/late');
+            if (errs.length) return { ok: false, errors: errs };
+            return { ok: true, value: { staff_id: row.staff_id, date: date, status: status } };
+          });
+          Bulk.summaryModal('Import staff attendance · ' + date, res, function (valid) {
+            DB.all('staffAttendance').then(function (all) {
+              var ops = valid.map(function (v) {
+                var ex = all.filter(function (a) { return a.staff_id === v.staff_id && a.date === date; })[0];
+                return ex ? DB.update('staffAttendance', ex.id, v) : DB.insert('staffAttendance', v);
+              });
+              Promise.all(ops).then(function () { U.toast('Imported ' + valid.length + ' record(s).'); done(); });
+            });
+          });
+        }).catch(function () {});
       });
     }
   }
