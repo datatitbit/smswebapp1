@@ -494,7 +494,7 @@
     body.appendChild(el('div', { class: 'divider' }));
     body.appendChild(textField('Footer note', t, 'footer'));
     body.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
-      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); } }); } }),
+      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); }); } }),
       el('button', { class: 'btn ghost', text: 'Reset fields & remarks to default', onclick: function () {
         U.confirm('Reset Template B columns, remark options and labels to default?', function () {
           var def = seedTemplateB();
