@@ -815,35 +815,65 @@
         "conduct": false,
         "feesBlock": true
       },
-      "checklistDomains": [
-        {
-          "name": "Health & Physical Development",
-          "indicators": [
-            "Shows good physical coordination",
-            "Eats tidily and independently",
-            "Washes and cleans hands after toilet, meals etc."
+      "checklistFormat": "checklist",
+      "checklistFormats": {
+        "checklist": {
+          "label": "Checklist & Scores (default)",
+          "columnHeader": "THE CHILD CAN…",
+          "marks": ["YES", "PAR", "NES"],
+          "domains": [
+            {
+              "name": "Health & Physical Development",
+              "indicators": [
+                "Shows good physical coordination",
+                "Eats tidily and independently",
+                "Washes and cleans hands after toilet, meals etc."
+              ]
+            },
+            {
+              "name": "Emotional & Social Development",
+              "indicators": [
+                "Is active and enjoys outdoor activities",
+                "Remains cheerful and sociable",
+                "Takes part in all class activities"
+              ]
+            },
+            {
+              "name": "Cognitive & Language Development",
+              "indicators": [
+                "Can identify simple colours and shapes",
+                "Follows activity to the conclusion",
+                "Can recite rhymes",
+                "Understands and uses simple words, sentences and gestures",
+                "Can count from 1 to 10",
+                "Can sort items and scribble simple lines"
+              ]
+            }
           ]
         },
-        {
-          "name": "Emotional & Social Development",
-          "indicators": [
-            "Is active and enjoys outdoor activities",
-            "Remains cheerful and sociable",
-            "Takes part in all class activities"
+        "nacca": {
+          "label": "NaCCA/GES Learning Areas — Proficiency Levels",
+          "columnHeader": "LEARNING AREA",
+          "marks": ["Beginning", "Developing", "Proficient", "Highly Proficient"],
+          "domains": [
+            {
+              "name": "Learning Areas",
+              "indicators": ["Language & Literacy", "Numeracy", "Creative Arts", "Our World, Our People", "Physical & Health Development"]
+            }
           ]
         },
-        {
-          "name": "Cognitive & Language Development",
-          "indicators": [
-            "Can identify simple colours and shapes",
-            "Follows activity to the conclusion",
-            "Can recite rhymes",
-            "Understands and uses simple words, sentences and gestures",
-            "Can count from 1 to 10",
-            "Can sort items and scribble simple lines"
+        "eyfs": {
+          "label": "EYFS-style Areas of Learning",
+          "columnHeader": "AREA OF LEARNING",
+          "marks": ["Emerging", "Developing", "Secure"],
+          "domains": [
+            {
+              "name": "Areas of Learning",
+              "indicators": ["Communication & Language", "Physical Development", "Personal, Social & Emotional Development", "Literacy", "Mathematics", "Understanding the World", "Expressive Arts & Design"]
+            }
           ]
         }
-      ],
+      },
       "labels": {
         "classScore": "Class Score %",
         "examScore": "Exam Score %",
@@ -1006,6 +1036,11 @@
     "school_id": "sch-1",
     "class_pct": 50,
     "exam_pct": 50
+  },
+  "dashboardSettings": {
+    "id": "dash-1",
+    "school_id": "sch-1",
+    "financeKpis": ["feesCollected", "arrears", "collectionRate", "netPosition"]
   },
   "labels": {
     "id": "lab-1",
@@ -1179,6 +1214,8 @@
       "role": "Admin",
       "phone": "+233 00 000 0001",
       "class_ids": [],
+      "subject_teacher_of": [],
+      "dashboard_full_access": false,
       "basic_salary": 2500,
       "allowances": 300,
       "employee_type": "Full-time",
@@ -1193,6 +1230,8 @@
       "role": "Director",
       "phone": "+233 00 000 0002",
       "class_ids": [],
+      "subject_teacher_of": [],
+      "dashboard_full_access": false,
       "basic_salary": 4000,
       "allowances": 500,
       "employee_type": "Full-time",
@@ -1209,6 +1248,8 @@
       "class_ids": [
         "cl-b1"
       ],
+      "subject_teacher_of": [],
+      "dashboard_full_access": false,
       "basic_salary": 1800,
       "allowances": 200,
       "employee_type": "Full-time",
@@ -1223,6 +1264,8 @@
       "role": "Other staff",
       "phone": "+233 00 000 0004",
       "class_ids": [],
+      "subject_teacher_of": [],
+      "dashboard_full_access": false,
       "basic_salary": 1200,
       "allowances": 100,
       "employee_type": "Part-time",
