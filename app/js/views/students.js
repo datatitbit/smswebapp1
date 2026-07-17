@@ -162,10 +162,13 @@
       tools.appendChild(el('div', { style: 'flex:1' }));
       if (canEdit) {
         tools.appendChild(el('button', { class: 'btn', text: '+ Admit student', onclick: function () { editStudent(null, classes, parents, refresh); } }));
-        tools.appendChild(el('button', { class: 'btn ghost', text: '⤓ Template', onclick: function () { downloadTemplate(classes); } }));
-        tools.appendChild(el('button', { class: 'btn gold', text: '⤒ Upload', onclick: function () { uploadAdmissions(classes, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn ghost', text: '⤓ New-admissions template', onclick: function () { downloadTemplate(classes); } }));
+        tools.appendChild(el('button', { class: 'btn gold', text: '⤒ Upload new admissions', onclick: function () { uploadAdmissions(classes, refresh); } }));
       }
       panel.appendChild(tools);
+
+      if (canEdit) panel.appendChild(updateExistingCard(students, classes, refresh));
+      panel.appendChild(profileDownloadCard(students, classes));
 
       var tableCard = el('div', { class: 'card' });
       panel.appendChild(tableCard);
@@ -498,6 +501,131 @@
         step();
       });
     }).catch(function () {});
+  }
+
+  /* ---------- Update existing students (download current data → fill → upload to update) ---------- */
+  function updateExistingCard(students, classes, refresh) {
+    var card = el('div', { class: 'card' });
+    card.appendChild(el('h3', { text: 'Update existing student records' }));
+    card.appendChild(el('div', { class: 'help', text: 'Download a spreadsheet pre-filled with current details for a whole class or a single student, edit the values, then upload it back — matching rows UPDATE the existing record (student_id is the match key and must not change). Use this instead of the admissions template above when correcting or bulk-editing students already on roll.' }));
+    var scopeSel = el('select');
+    [['class', 'Whole class'], ['one', 'Single student']].forEach(function (o) { scopeSel.appendChild(el('option', { value: o[0], text: o[1] })); });
+    var clsSel = el('select');
+    classes.forEach(function (c) { clsSel.appendChild(el('option', { value: c.id, text: c.name })); });
+    var stuSel = el('select', { style: 'display:none' });
+    students.slice().sort(function (a, b) { return (a.first_name || '').localeCompare(b.first_name || ''); }).forEach(function (s) {
+      stuSel.appendChild(el('option', { value: s.student_id, text: s.first_name + ' ' + s.last_name + ' (' + s.student_id + ')' }));
+    });
+    function syncVisibility() {
+      clsSel.style.display = scopeSel.value === 'class' ? '' : 'none';
+      stuSel.style.display = scopeSel.value === 'one' ? '' : 'none';
+    }
+    scopeSel.addEventListener('change', syncVisibility); syncVisibility();
+    card.appendChild(el('div', { class: 'toolbar' }, [el('span', { class: 'muted', text: 'Scope:' }), scopeSel, clsSel, stuSel]));
+    card.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.5rem' }, [
+      el('button', { class: 'btn ghost', text: '⤓ Download data template', onclick: function () { downloadUpdateTemplate(students, classes, scopeSel.value, clsSel.value, stuSel.value); } }),
+      el('button', { class: 'btn gold', text: '⤒ Upload filled template', onclick: function () { uploadUpdateTemplate(classes, refresh); } })
+    ]));
+    return card;
+  }
+  function downloadUpdateTemplate(students, classes, scope, classId, studentId) {
+    var list = scope === 'one' ? students.filter(function (s) { return s.student_id === studentId; }) : students.filter(function (s) { return s.class_id === classId; });
+    if (!list.length) return U.toast('No matching student(s) to include.', 'err');
+    var rows = [['student_id', 'first_name', 'last_name', 'gender', 'dob', 'class_name', 'status', 'admitted_on']];
+    list.forEach(function (s) {
+      var cls = classes.filter(function (c) { return c.id === s.class_id; })[0];
+      rows.push([s.student_id, s.first_name, s.last_name, s.gender || '', s.dob || '', cls ? cls.name : '', s.status || 'active', s.admitted_on || '']);
+    });
+    var label = scope === 'one' ? studentId : ((classes.filter(function (c) { return c.id === classId; })[0] || {}).name || 'class');
+    Bulk.download('update-students-' + String(label).replace(/\s+/g, '') + '.csv', rows);
+    U.toast('Template downloaded — keep student_id unchanged, edit the rest, then upload.');
+  }
+  function uploadUpdateTemplate(classes, done) {
+    Bulk.pickFile().then(function (file) {
+      DB.all('students').then(function (allStudents) {
+        var byCode = {}; allStudents.forEach(function (s) { byCode[s.student_id] = s; });
+        var res = Bulk.processUpload(file.rows, ['student_id', 'first_name', 'last_name', 'class_name'], function (row) {
+          var errs = [];
+          var existing = byCode[row.student_id];
+          if (!existing) errs.push('unknown student_id ' + row.student_id);
+          if (!row.first_name) errs.push('first_name missing');
+          if (!row.last_name) errs.push('last_name missing');
+          var cls = classes.filter(function (c) { return c.name.toLowerCase() === (row.class_name || '').toLowerCase(); })[0];
+          if (!cls) errs.push('unknown class "' + row.class_name + '"');
+          if (errs.length) return { ok: false, errors: errs };
+          return { ok: true, value: { id: existing.id, first_name: row.first_name, last_name: row.last_name, gender: row.gender || '', dob: row.dob || '', class_id: cls.id, status: row.status || 'active', admitted_on: row.admitted_on || '' } };
+        });
+        Bulk.summaryModal('Update students', res, function (valid) {
+          var ops = valid.map(function (v) { var id = v.id; var patch = Object.assign({}, v); delete patch.id; return DB.update('students', id, patch); });
+          Promise.all(ops).then(function () { U.toast('Updated ' + valid.length + ' student record(s).'); done(); });
+        });
+      });
+    }).catch(function () {});
+  }
+
+  /* ---------- Student profile download (single / selected / whole class) ---------- */
+  function profileFieldDefs() {
+    var raw = App.ctx.admissionFields;
+    var cfg = (Array.isArray(raw) && raw.length) ? raw : (global.SMS_SEED.admissionFields || []);
+    return cfg.filter(function (d) { return d.inProfile !== false; });
+  }
+  function profileDownloadCard(students, classes) {
+    var card = el('div', { class: 'card' });
+    card.appendChild(el('h3', { text: 'Download student profile' }));
+    card.appendChild(el('div', { class: 'help', text: 'A printable profile sheet of a student’s core details — pick a class to narrow the list below, then tick who to include (one, several, or everyone). Which fields appear is controlled in Settings → Admission Form ("Include in profile download").' }));
+    var clsSel = el('select');
+    clsSel.appendChild(el('option', { value: '', text: 'All classes' }));
+    classes.forEach(function (c) { clsSel.appendChild(el('option', { value: c.id, text: c.name })); });
+    var checks = {};
+    var listBox = el('div', { style: 'max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:.5rem;margin:.5rem 0' });
+    function drawList() {
+      U.clear(listBox);
+      var list = students.filter(function (s) { return !clsSel.value || s.class_id === clsSel.value; })
+        .sort(function (a, b) { return (a.first_name || '').localeCompare(b.first_name || ''); });
+      if (!list.length) { listBox.appendChild(el('div', { class: 'muted', text: 'No students in this class.' })); return; }
+      list.forEach(function (s) {
+        var cb = el('input', { type: 'checkbox' }); cb.checked = !!checks[s.student_id];
+        cb.addEventListener('change', function () { checks[s.student_id] = cb.checked; });
+        listBox.appendChild(el('label', { class: 'check-label', style: 'display:block' }, [cb, document.createTextNode(' ' + s.first_name + ' ' + s.last_name + ' (' + s.student_id + ')')]));
+      });
+    }
+    clsSel.addEventListener('change', drawList); drawList();
+    card.appendChild(el('div', { class: 'toolbar' }, [el('span', { class: 'muted', text: 'Class:' }), clsSel]));
+    card.appendChild(listBox);
+    card.appendChild(el('div', { class: 'btn-row' }, [
+      el('button', { class: 'btn sm ghost', text: 'Select all shown', onclick: function () { U.$all('input[type=checkbox]', listBox).forEach(function (cb) { cb.checked = true; cb.dispatchEvent(new Event('change')); }); } }),
+      el('button', { class: 'btn sm ghost', text: 'Clear', onclick: function () { U.$all('input[type=checkbox]', listBox).forEach(function (cb) { cb.checked = false; cb.dispatchEvent(new Event('change')); }); } }),
+      el('button', { class: 'btn gold', text: '⤓ Download / print profile(s)', onclick: function () {
+        var codes = Object.keys(checks).filter(function (k) { return checks[k]; });
+        if (!codes.length) return U.toast('Tick at least one student.', 'err');
+        downloadProfiles(students.filter(function (s) { return codes.indexOf(s.student_id) !== -1; }), classes);
+      } })
+    ]));
+    return card;
+  }
+  function downloadProfiles(list, classes) {
+    var fields = profileFieldDefs();
+    var sch = App.ctx.school;
+    var brand = (App.themeHex ? App.themeHex().primary : '#0f5e5e');
+    function fieldValue(s, def) {
+      if (def.system) {
+        if (def.key === 'class_id') { var c = classes.filter(function (x) { return x.id === s.class_id; })[0]; return c ? c.name : '—'; }
+        if (def.key === 'parent_id') { var p = (App.ctx.parents || []).filter(function (x) { return x.id === s.parent_id; })[0]; return p ? p.name : '—'; }
+        return s[def.key] || '—';
+      }
+      var v = s.extra ? s.extra[def.key] : null;
+      if (def.type === 'siblings') return (v || []).map(function (r) { return r.name + (r.cls ? ' (' + r.cls + ')' : ''); }).join(', ') || '—';
+      if (def.type === 'checkbox') return v ? 'Yes' : 'No';
+      return (v == null || v === '') ? '—' : v;
+    }
+    var html = list.map(function (s) {
+      var rows = fields.map(function (d) { return '<tr><td class="lbl">' + U.esc(d.label) + '</td><td>' + U.esc(String(fieldValue(s, d))) + '</td></tr>'; }).join('');
+      return '<div class="profile-sheet"><h1>' + U.esc(sch.name) + '</h1><h3>Student Profile</h3>' +
+        '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">' + rows + '</table></div>';
+    }).join('<div style="page-break-after:always"></div>');
+    var wn = window.open('', '_blank');
+    wn.document.write('<html><head><title>Student profiles</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:22px;color:#1c2726}table{margin-bottom:14px}td{border:1px solid #999;padding:6px;font-size:13px}td.lbl{font-weight:600;background:#faf8f3;width:220px}h1,h3{color:' + brand + ';margin:.3rem 0}</style></head><body>' + html + '</body></html>');
+    wn.document.close(); wn.focus(); setTimeout(function () { wn.print(); }, 300);
   }
 
   function bySort(a, b) { return (a.sort || 0) - (b.sort || 0); }

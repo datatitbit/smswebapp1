@@ -127,9 +127,11 @@
       if (canEdit) {
         var tools = el('div', { class: 'toolbar' });
         tools.appendChild(el('button', { class: 'btn', text: '+ Add staff', onclick: function () { editStaff(null, classes, refresh); } }));
-        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ Download template', onclick: function () { downloadStaffTemplate(classes); } }));
-        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤒ Upload filled', onclick: function () { uploadStaff(classes, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ New-staff template', onclick: function () { downloadStaffTemplate(classes); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤒ Upload new staff', onclick: function () { uploadStaff(classes, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn gold sm', text: '⤒ Upload staff update', onclick: function () { uploadStaffUpdate(classes, refresh); } }));
         panel.appendChild(tools);
+        panel.appendChild(el('div', { class: 'help', text: 'To update one staff member: click "Update template" on their row below, edit the downloaded file, then use "Upload staff update" above — matching rows update the existing record (staff_id is the match key and must not change).' }));
       }
       var c = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
@@ -139,6 +141,7 @@
         var cnames = (s.class_ids || []).map(function (id) { return App.className(id); }).join(', ') || '—';
         tb.appendChild(el('tr', {}, [el('td', { text: s.staff_id }), el('td', { text: s.name }), el('td', {}, [el('span', { class: 'tag', text: s.role })]), el('td', { text: s.phone || '—' }), el('td', { text: cnames }), el('td', {}, [canEdit ? el('div', { class: 'wrap-actions' }, [
           el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editStaff(s, classes, refresh); } }),
+          el('button', { class: 'btn sm ghost', text: '⤓ Update template', onclick: function () { downloadStaffUpdateTemplate(s, classes); } }),
           el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Delete ' + s.name + '?', function () { DB.remove('staff', s.id).then(refresh); }); } })
         ]) : null])]));
       });
@@ -222,6 +225,42 @@
             });
           }
           step();
+        });
+      });
+    }).catch(function () { /* user cancelled file picker */ });
+  }
+
+  /* ---- Update one staff member (download current data → fill → upload to update) ---- */
+  function downloadStaffUpdateTemplate(s, classes) {
+    var cnames = (s.class_ids || []).map(function (id) { var c = classes.filter(function (x) { return x.id === id; })[0]; return c ? c.name : ''; }).filter(Boolean).join(';');
+    var rows = [['staff_id', 'name', 'role', 'phone', 'class_names'], [s.staff_id, s.name, s.role, s.phone || '', cnames]];
+    Bulk.download('update-staff-' + s.staff_id + '.csv', rows);
+    U.toast('Template downloaded — keep staff_id unchanged, edit the rest, then use "Upload staff update".');
+  }
+  function uploadStaffUpdate(classes, done) {
+    var roles = global.SMS_SEED.constants.ROLES.filter(function (r) { return r !== 'Parent'; });
+    Bulk.pickFile().then(function (file) {
+      DB.all('staff').then(function (existing) {
+        var byCode = {}; existing.forEach(function (s) { byCode[s.staff_id] = s; });
+        var res = Bulk.processUpload(file.rows, ['staff_id', 'name', 'role'], function (row) {
+          var errs = [];
+          var current = byCode[row.staff_id];
+          if (!current) errs.push('unknown staff_id ' + row.staff_id);
+          if (!row.name) errs.push('name missing');
+          if (roles.indexOf(row.role) === -1) errs.push('role must be one of: ' + roles.join(', '));
+          var classIds = [];
+          if (row.class_names) {
+            row.class_names.split(';').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (cn) {
+              var m = classes.filter(function (c) { return c.name.toLowerCase() === cn.toLowerCase(); })[0];
+              if (!m) errs.push('unknown class "' + cn + '"'); else classIds.push(m.id);
+            });
+          }
+          if (errs.length) return { ok: false, errors: errs };
+          return { ok: true, value: { id: current.id, name: row.name, role: row.role, phone: row.phone || '', class_ids: classIds } };
+        });
+        Bulk.summaryModal('Update staff', res, function (valid) {
+          var ops = valid.map(function (v) { var id = v.id; var patch = Object.assign({}, v); delete patch.id; return DB.update('staff', id, patch); });
+          Promise.all(ops).then(function () { U.toast('Updated ' + valid.length + ' staff record(s).'); done(); });
         });
       });
     }).catch(function () { /* user cancelled file picker */ });
