@@ -11,7 +11,7 @@
   var el = U.el;
 
   var TABS = ['Profile', 'Academic', 'Classes & Subjects', 'Grading', 'Fees',
-    'Inventory', 'Report Templates', 'Identity', 'Roles', 'Access Control', 'Messages & Labels', 'Data'];
+    'Inventory', 'Report Templates', 'Identity', 'Admission Form', 'Roles', 'Access Control', 'Messages & Labels', 'Data'];
 
   function render(container) {
     U.clear(container);
@@ -34,7 +34,8 @@
       ({
         'Profile': tabProfile, 'Academic': tabAcademic, 'Classes & Subjects': tabClasses,
         'Grading': tabGrading, 'Fees': tabFees, 'Inventory': tabInventory,
-        'Report Templates': tabTemplates, 'Identity': tabIdentity, 'Roles': tabRoles, 'Access Control': tabAccess,
+        'Report Templates': tabTemplates, 'Identity': tabIdentity, 'Admission Form': tabAdmission,
+        'Roles': tabRoles, 'Access Control': tabAccess,
         'Messages & Labels': tabMessages, 'Data': tabData
       }[active])(panel);
     }
@@ -493,7 +494,7 @@
     body.appendChild(el('div', { class: 'divider' }));
     body.appendChild(textField('Footer note', t, 'footer'));
     body.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
-      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); } ); } }),
+      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); } }); } }),
       el('button', { class: 'btn ghost', text: 'Reset fields & remarks to default', onclick: function () {
         U.confirm('Reset Template B columns, remark options and labels to default?', function () {
           var def = seedTemplateB();
@@ -592,6 +593,101 @@
       }));
       panel.appendChild(c);
     });
+  }
+
+  /* ---------------- Admission Form ---------------- */
+  var ADMISSION_SECTION_TITLES = { personal: 'Personal Details', health: 'Health Needs', guardian: 'Parent / Guardian Details', declaration: 'Declaration', office: 'For Office Use Only' };
+  var ADMISSION_SECTION_OPTS = Object.keys(ADMISSION_SECTION_TITLES).map(function (k) { return { value: k, label: ADMISSION_SECTION_TITLES[k] }; });
+  var ADMISSION_TYPE_OPTS = [
+    { value: 'text', label: 'Short text' }, { value: 'textarea', label: 'Long text' },
+    { value: 'number', label: 'Number' }, { value: 'date', label: 'Date' },
+    { value: 'select', label: 'Dropdown (choices)' }, { value: 'checkbox', label: 'Yes/No checkbox' },
+    { value: 'siblings', label: 'Siblings list (name + class)' }
+  ];
+
+  function tabAdmission(panel) {
+    DB.singleton('admissionFields').then(function (raw) {
+      var cfg = (Array.isArray(raw) && raw.length) ? raw : JSON.parse(JSON.stringify(global.SMS_SEED.admissionFields || []));
+
+      panel.appendChild(el('div', { class: 'note', text: 'Controls what appears on Students → "Admit student", beyond the ID-numbering rules on the Identity tab. Core fields (used elsewhere in the app — the student list, bulk upload, promotion, reports) can be renamed and marked required/optional but not removed. Add your own fields below for anything else — like siblings already at the school, health needs, or admission assessment scores.' }));
+
+      var systemDefs = cfg.filter(function (d) { return d.system; });
+      var sysBody = el('div');
+      var sysRows = systemDefs.map(function (d) {
+        var labelInp = el('input', { type: 'text', value: d.label, style: 'min-width:160px' });
+        labelInp.addEventListener('input', function () { d.label = labelInp.value; });
+        var reqCb = el('input', { type: 'checkbox' }); reqCb.checked = !!d.required;
+        reqCb.addEventListener('change', function () { d.required = reqCb.checked; });
+        return [d.key, labelInp, el('label', { class: 'check-label' }, [reqCb, document.createTextNode(' required')])];
+      });
+      sysBody.appendChild(listTable(['Field (internal)', 'Field name shown on the form', 'Required'], sysRows));
+      sysBody.appendChild(saveBtn(function () { persist(cfg); }));
+      panel.appendChild(card('Core fields (always present)', sysBody));
+
+      var customDefs = cfg.filter(function (d) { return !d.system; });
+      var custBody = el('div');
+      var custRows = customDefs.map(function (d) {
+        return [ADMISSION_SECTION_TITLES[d.section] || d.section, d.label,
+          ADMISSION_TYPE_OPTS.filter(function (t) { return t.value === d.type; })[0] ? ADMISSION_TYPE_OPTS.filter(function (t) { return t.value === d.type; })[0].label : d.type,
+          d.required ? 'Required' : 'Optional',
+          el('div', { class: 'wrap-actions' }, [
+            el('button', { class: 'btn sm', text: 'Edit', onclick: function () {
+              editAdmissionField(d, function (nd) { cfg = cfg.map(function (x) { return x === d ? nd : x; }); persist(cfg); });
+            } }),
+            el('button', { class: 'btn sm danger', text: 'Del', onclick: function () {
+              U.confirm('Remove field "' + d.label + '"? It will no longer appear on the admission form. Any values already saved on existing students are kept but hidden.', function () {
+                cfg = cfg.filter(function (x) { return x !== d; }); persist(cfg);
+              });
+            } })
+          ])];
+      });
+      custBody.appendChild(listTable(['Section', 'Field name', 'Type', 'Required', ''], custRows));
+      custBody.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.6rem' }, [
+        el('button', { class: 'btn sm', text: '+ Add custom field', onclick: function () {
+          editAdmissionField(null, function (nd) { cfg.push(nd); persist(cfg); });
+        } }),
+        el('button', { class: 'btn sm ghost', text: 'Reset to sample-form defaults', onclick: function () {
+          U.confirm('Replace ALL admission form fields (core field names/required flags + every custom field) with the default set?', function () {
+            persist(JSON.parse(JSON.stringify(global.SMS_SEED.admissionFields || [])));
+          });
+        } })
+      ]));
+      panel.appendChild(card('Custom fields', custBody));
+    });
+
+    function persist(cfg) {
+      DB.setSingleton('admissionFields', cfg).then(function () {
+        App.refresh().then(function () { U.toast('Admission form saved.'); U.clear(panel); tabAdmission(panel); });
+      });
+    }
+  }
+
+  function editAdmissionField(def, onSave) {
+    var isNew = !def;
+    var d = def || { key: null, label: '', type: 'text', required: false, section: 'personal', system: false, options: [], help: '' };
+    var f = U.form([
+      { name: 'label', label: 'Field name (label)', required: true, value: d.label },
+      { name: 'section', label: 'Section', type: 'select', value: d.section, options: ADMISSION_SECTION_OPTS },
+      { name: 'type', label: 'Field type', type: 'select', value: d.type, options: ADMISSION_TYPE_OPTS },
+      { name: 'options', label: 'Dropdown choices (comma-separated — only used for Dropdown type)', value: (d.options || []).join(', ') },
+      { name: 'help', label: 'Helper text shown under the field (optional)', value: d.help || '' },
+      { name: 'required', label: 'Required', type: 'checkbox', value: d.required }
+    ], {});
+    f.classList.add('form-grid');
+    U.modal({ title: isNew ? 'Add custom field' : 'Edit custom field', wide: true, body: f, actions: [
+      { label: 'Cancel', onClick: function (x) { x(); } },
+      { label: 'Save', kind: 'gold', onClick: function (x) {
+        var v = f.readValues();
+        if (!v.label.trim()) return U.toast('Field name is required.', 'err');
+        var out = {
+          key: d.key || ('cf_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+          label: v.label.trim(), section: v.section, type: v.type, required: !!v.required,
+          options: v.options ? v.options.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
+          help: v.help.trim(), system: false
+        };
+        x(); onSave(out);
+      } }
+    ] });
   }
 
   /* ---------------- Roles / permission matrix ---------------- */
