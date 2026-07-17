@@ -367,7 +367,11 @@
       var txns = r[0], items = r[1];
       var state = { type: '', from: '', to: '', pay: '', showArchived: false };
       var tools = el('div', { class: 'toolbar' });
-      if (!App.readOnly) tools.appendChild(el('button', { class: 'btn', text: '+ New transaction', onclick: function () { newTxn(items, S, refresh); } }));
+      if (!App.readOnly) {
+        tools.appendChild(el('button', { class: 'btn', text: '+ New transaction', onclick: function () { newTxn(items, S, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn ghost sm', text: '⤓ Template', onclick: function () { downloadTxnTemplate(items); } }));
+        tools.appendChild(el('button', { class: 'btn gold sm', text: '⤒ Upload', onclick: function () { uploadTxns(items, S, refresh); } }));
+      }
       tools.appendChild(el('span', { class: 'muted', text: 'Filter:' }));
       tools.appendChild(filterSelect('All types', TXN_TYPES.map(function (t) { return [t.v, t.label]; }), function (v) { state.type = v; draw(); }));
       tools.appendChild(filterSelect('All payment status', S.paymentStatuses.map(function (p) { return [p, p]; }), function (v) { state.pay = v; draw(); }));
@@ -497,6 +501,80 @@
           }).then(function () { x(); U.toast('Transaction committed & stock updated.'); done(); });
         } }
       ] });
+    });
+  }
+
+  /* ---------- Bulk stock movement upload (daily restock/sale/issue from a paper log) ---------- */
+  function downloadTxnTemplate(items) {
+    var live = items.filter(function (i) { return !i.archived; });
+    var rows = [['type (restock/sale/staff_issue)', 'item_sku_or_name', 'location', 'qty', 'recipient_id', 'payment_status']];
+    rows.push(['restock', live[0] ? (live[0].sku || live[0].name) : 'ITEM-SKU', 'Main Admin Store', '10', 'Supplier ABC', '']);
+    Bulk.download('stock-movements-template.csv', rows);
+    U.toast('Template downloaded. type must be restock, sale, or staff_issue. recipient_id = student_id for sale, staff_id for staff_issue (leave blank for restock).');
+  }
+  function uploadTxns(items, S, done) {
+    var liveItems = items.filter(function (i) { return !i.archived; });
+    Promise.all([DB.all('inventoryStock'), DB.all('students'), DB.all('staff')]).then(function (r) {
+      var stock = r[0], students = r[1], staff = r[2];
+      var studentIds = {}; students.forEach(function (s) { studentIds[s.student_id] = true; });
+      var staffIds = {}; staff.forEach(function (s) { staffIds[s.staff_id] = true; });
+      Bulk.pickFile().then(function (file) {
+        var res = Bulk.processUpload(file.rows, ['type (restock/sale/staff_issue)', 'item_sku_or_name', 'location', 'qty'], function (row) {
+          var errs = [];
+          var type = (row['type (restock/sale/staff_issue)'] || '').toLowerCase();
+          if (['restock', 'sale', 'staff_issue'].indexOf(type) === -1) errs.push('type must be restock, sale, or staff_issue');
+          var itemKey = (row.item_sku_or_name || '').toLowerCase();
+          var item = liveItems.filter(function (i) { return (i.sku && i.sku.toLowerCase() === itemKey) || i.name.toLowerCase() === itemKey; })[0];
+          if (!item) errs.push('unknown item "' + row.item_sku_or_name + '"');
+          var loc = row.location;
+          if (S.storeLocations.indexOf(loc) === -1) errs.push('unknown location "' + loc + '"');
+          var qty = Number(row.qty);
+          if (isNaN(qty) || qty < 1) errs.push('qty must be a positive number');
+          if (type === 'sale' && !studentIds[row.recipient_id]) errs.push('recipient_id must be a known student_id for sale');
+          if (type === 'staff_issue' && !staffIds[row.recipient_id]) errs.push('recipient_id must be a known staff_id for staff_issue');
+          if (errs.length) return { ok: false, errors: errs };
+          return { ok: true, value: {
+            type: type, item_id: item ? item.id : null, item_name: item ? item.name : '', location: loc, qty: qty,
+            recipient_id: row.recipient_id || '', payment_status: row.payment_status || (type === 'staff_issue' ? 'Not Applicable (Staff Internal Use)' : '')
+          } };
+        });
+        Bulk.summaryModal('Import stock movements', res, function (valid) {
+          var i = 0, imported = 0;
+          function step() {
+            if (i >= valid.length) { U.toast('Imported ' + imported + ' of ' + valid.length + ' movement(s).'); done(); return; }
+            var v = valid[i++];
+            var item = liveItems.filter(function (x) { return x.id === v.item_id; })[0];
+            var out = v.type !== 'restock';
+            var row2 = stock.filter(function (s2) { return s2.item_id === v.item_id && s2.location === v.location && !s2.archived; })[0];
+            var avail = row2 ? Number(row2.qoh || 0) : 0;
+            if (out && avail < v.qty) { U.toast('Skipped ' + v.item_name + ': only ' + avail + ' available in ' + v.location + '.', 'warn'); step(); return; }
+            var dQoh = out ? -v.qty : v.qty;
+            var before = avail;
+            var reason = v.type === 'restock' ? 'New Supply / Restock' : v.type === 'sale' ? 'Student Sale' : 'Staff Issue';
+            DB.nextSeq('invtxn').then(function (n) {
+              var txnId = 'TXN-' + String(n).padStart(5, '0');
+              var amount = v.type === 'sale' ? (Number(item.selling_price || 0) * v.qty) : 0;
+              return DB.insert('inventoryTransactions', {
+                txn_id: txnId, type: v.type, item_id: v.item_id, item_name: v.item_name, qty: v.qty,
+                recipient_id: v.recipient_id, payment_status: v.payment_status, amount: amount,
+                date: U.todayISO(), by: App.user.name, archived: false
+              });
+            }).then(function () {
+              return adjustStock(v.item_id, v.item_name, v.location, dQoh, 0, item.low_threshold);
+            }).then(function () {
+              return recomputeRollup(v.item_id);
+            }).then(function () {
+              return logAudit(item, '', dQoh, reason, before, before + dQoh, S.toggles.auditSnapshot);
+            }).then(function () {
+              // keep the in-memory stock snapshot in sync so subsequent rows in this
+              // batch see the running balance, not the pre-upload availability.
+              if (row2) row2.qoh = before + dQoh; else stock.push({ item_id: v.item_id, location: v.location, qoh: before + dQoh, archived: false });
+              imported++; step();
+            });
+          }
+          step();
+        });
+      }).catch(function () { /* user cancelled file picker */ });
     });
   }
 
