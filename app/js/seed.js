@@ -61,8 +61,12 @@
     signature: '',                                    // head teacher signature image (data URI)
     stamp: '',                                        // school stamp image (data URI)
     currency: 'GHS',
-    theme_primary: '',                                // empty => default deep-teal brand
-    theme_accent: ''                                  // empty => default warm-gold accent
+    // Branding is OFF by default — the app, admission forms and reports keep the
+    // standard Zetranova look until an admin explicitly enables it in Settings.
+    theme_enabled: false,
+    theme_primary: '',                                // dominant colour
+    theme_secondary1: '',                             // secondary colour 1
+    theme_secondary2: ''                              // secondary colour 2
   };
 
   // ---- Academic year & terms ----
@@ -343,15 +347,18 @@
     { key: 'guardian_profession',   label: 'Profession / Occupation',            type: 'text',    required: false, section: 'guardian', system: false },
     { key: 'how_heard',             label: 'How did you hear about this school?', type: 'select', required: true, section: 'guardian', system: false, options: ['Word of mouth / Referral', 'Social media / advert', 'Poster / Banner', 'School campaign', 'Other'] },
 
-    { key: 'declaration_ack',  label: "Parent/Guardian undertakes to take an active interest in the child's education, pay fees, and cooperate with the school", type: 'checkbox', required: true, section: 'declaration', system: false },
-    { key: 'declaration_date', label: 'Declaration date',      type: 'date', required: false, section: 'declaration', system: false },
+    { key: 'declaration_ack',  label: "Parent/Guardian undertakes to take an active interest in the child's education, pay fees, and cooperate with the school", type: 'checkbox', required: true, section: 'declaration', system: false, inProfile: false },
+    { key: 'declaration_date', label: 'Declaration date',      type: 'date', required: false, section: 'declaration', system: false, inProfile: false },
 
-    { key: 'assessment_english',   label: 'Admission assessment — English', type: 'number',   required: false, section: 'office', system: false },
-    { key: 'assessment_math',      label: 'Admission assessment — Math',    type: 'number',   required: false, section: 'office', system: false },
-    { key: 'assessment_other',     label: 'Admission assessment — Other',   type: 'text',      required: false, section: 'office', system: false },
-    { key: 'office_remarks',       label: 'Remarks (office use)',           type: 'textarea',  required: false, section: 'office', system: false },
-    { key: 'admission_fee_paid',   label: 'Admission fee paid',             type: 'number',    required: false, section: 'office', system: false }
+    { key: 'assessment_english',   label: 'Admission assessment — English', type: 'number',   required: false, section: 'office', system: false, inProfile: false },
+    { key: 'assessment_math',      label: 'Admission assessment — Math',    type: 'number',   required: false, section: 'office', system: false, inProfile: false },
+    { key: 'assessment_other',     label: 'Admission assessment — Other',   type: 'text',      required: false, section: 'office', system: false, inProfile: false },
+    { key: 'office_remarks',       label: 'Remarks (office use)',           type: 'textarea',  required: false, section: 'office', system: false, inProfile: false },
+    { key: 'admission_fee_paid',   label: 'Admission fee paid',             type: 'number',    required: false, section: 'office', system: false, inProfile: false }
   ];
+  // "inProfile: false" = excluded by default from the printable "Download student profile"
+  // sheet (Students → Download student profile). Unset/true = included. Admin toggles this
+  // per field in Settings → Admission Form.
 
   // ---- Score weighting ----
   var weighting = { id: 'w-1', school_id: SCHOOL_ID, class_pct: 50, exam_pct: 50 };

@@ -66,30 +66,37 @@
   };
 
   // ---- Per-school theme colors (Settings -> Profile -> Branding) ----
-  // Empty theme_primary/theme_accent => the shipped deep-teal/warm-gold brand.
-  // Derived shades are computed from the two picked colors so a client only
-  // has to choose two swatches, not every CSS variable individually.
-  var DEFAULT_THEME = { primary: '#0f5e5e', accent: '#e0ab2b' };
+  // Custom branding is OFF by default (theme_enabled: false) — the app, admission
+  // forms and printed reports keep the standard Zetranova look until an admin
+  // turns it on AND has set valid colors. Derived shades come from U.shade() so
+  // a client only has to pick three swatches, not every CSS variable individually.
+  var DEFAULT_THEME = { primary: '#0f5e5e', secondary1: '#e0ab2b', secondary2: '#1c6b6b' };
+  function resolveTheme(school) {
+    var on = !!(school && school.theme_enabled) && U.isHexColor(school.theme_primary);
+    return {
+      primary: on ? school.theme_primary : DEFAULT_THEME.primary,
+      secondary1: (on && U.isHexColor(school.theme_secondary1)) ? school.theme_secondary1 : DEFAULT_THEME.secondary1,
+      secondary2: (on && U.isHexColor(school.theme_secondary2)) ? school.theme_secondary2 : DEFAULT_THEME.secondary2
+    };
+  }
   function applyTheme(school) {
     if (!school || !U.shade) return;
-    var primary = U.isHexColor(school.theme_primary) ? school.theme_primary : DEFAULT_THEME.primary;
-    var accent = U.isHexColor(school.theme_accent) ? school.theme_accent : DEFAULT_THEME.accent;
+    var t = resolveTheme(school);
     var root = document.documentElement.style;
-    root.setProperty('--teal', primary);
-    root.setProperty('--teal-dark', U.shade(primary, -0.3));
-    root.setProperty('--teal-deep', U.shade(primary, -0.5));
-    root.setProperty('--teal-mid', U.shade(primary, 0.15));
-    root.setProperty('--teal-light', U.shade(primary, 0.88));
-    root.setProperty('--gold', accent);
-    root.setProperty('--gold-dark', U.shade(accent, -0.25));
-    root.setProperty('--gold-soft', U.shade(accent, 0.82));
+    root.setProperty('--teal', t.primary);
+    root.setProperty('--teal-dark', U.shade(t.primary, -0.3));
+    root.setProperty('--teal-deep', U.shade(t.primary, -0.5));
+    root.setProperty('--teal-mid', U.shade(t.primary, 0.15));
+    root.setProperty('--teal-light', U.shade(t.primary, 0.88));
+    root.setProperty('--gold', t.secondary1);
+    root.setProperty('--gold-dark', U.shade(t.secondary1, -0.25));
+    root.setProperty('--gold-soft', U.shade(t.secondary1, 0.82));
+    root.setProperty('--sec2', t.secondary2);
+    root.setProperty('--sec2-dark', U.shade(t.secondary2, -0.25));
   }
   App.themeHex = function () {
-    var school = App.ctx.school || {};
-    return {
-      primary: U.isHexColor(school.theme_primary) ? school.theme_primary : DEFAULT_THEME.primary,
-      accent: U.isHexColor(school.theme_accent) ? school.theme_accent : DEFAULT_THEME.accent
-    };
+    var t = resolveTheme(App.ctx.school || {});
+    return { primary: t.primary, accent: t.secondary1, secondary1: t.secondary1, secondary2: t.secondary2 };
   };
 
   function normalisePerms(p) {
