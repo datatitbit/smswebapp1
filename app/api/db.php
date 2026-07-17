@@ -52,7 +52,7 @@ function db_connect($cfg) {
 
 // Collections that are single objects (one per school).
 function db_singletons() {
-    return ['school', 'academic', 'idRules', 'weighting', 'labels', 'payrollSettings', 'automation', 'inventorySettings'];
+    return ['school', 'academic', 'idRules', 'admissionFields', 'weighting', 'labels', 'payrollSettings', 'automation', 'inventorySettings'];
 }
 
 function db_seed_if_empty($pdo) {

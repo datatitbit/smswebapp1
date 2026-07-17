@@ -208,26 +208,109 @@
     function refresh() { U.clear(panel); tabStudents(panel); }
   }
 
+  // Sections for admin-defined custom admission fields, in display order.
+  var ADMISSION_SECTIONS = [
+    { key: 'personal', title: 'Additional Personal Details' },
+    { key: 'health', title: 'Health Needs' },
+    { key: 'guardian', title: 'Parent / Guardian Details' },
+    { key: 'declaration', title: 'Declaration' },
+    { key: 'office', title: 'For Office Use Only' }
+  ];
+
+  function admissionCfg() {
+    var raw = App.ctx.admissionFields;
+    return (Array.isArray(raw) && raw.length) ? raw : (global.SMS_SEED.admissionFields || []);
+  }
+  // Core-field label/required lookup (system fields can be renamed/required-toggled
+  // in Settings → Admission Form, but never removed or retyped — the rest of the
+  // app depends on their key/type staying exactly as seeded).
+  function coreField(key, fallbackLabel, fallbackRequired) {
+    var f = admissionCfg().filter(function (x) { return x.system && x.key === key; })[0];
+    return { label: (f && f.label) || fallbackLabel, required: f ? !!f.required : !!fallbackRequired };
+  }
+
+  function siblingsField(def, initial) {
+    var rows = (initial || []).map(function (r) { return { name: r.name || '', cls: r.cls || '' }; });
+    var wrap = el('div', { class: 'field', style: 'grid-column:1/-1' }, [el('label', { text: def.label + (def.required ? ' *' : '') })]);
+    var list = el('div');
+    function redraw() {
+      U.clear(list);
+      rows.forEach(function (r, i) {
+        var nameInp = el('input', { type: 'text', placeholder: 'Sibling name', value: r.name, style: 'flex:1' });
+        nameInp.addEventListener('input', function () { r.name = nameInp.value; });
+        var clsInp = el('input', { type: 'text', placeholder: 'Class', value: r.cls, style: 'width:160px' });
+        clsInp.addEventListener('input', function () { r.cls = clsInp.value; });
+        list.appendChild(el('div', { class: 'flex', style: 'gap:.4rem;margin-bottom:.3rem' }, [nameInp, clsInp,
+          el('button', { class: 'btn sm danger', text: '✕', onclick: function () { rows.splice(i, 1); redraw(); } })]));
+      });
+    }
+    redraw();
+    wrap.appendChild(list);
+    wrap.appendChild(el('button', { class: 'btn sm ghost', text: '+ Add sibling', onclick: function () { rows.push({ name: '', cls: '' }); redraw(); } }));
+    if (def.help) wrap.appendChild(el('div', { class: 'help', text: def.help }));
+    wrap._getValue = function () { return rows.filter(function (r) { return r.name.trim(); }).map(function (r) { return { name: r.name.trim(), cls: r.cls.trim() }; }); };
+    wrap._required = def.required; wrap._label = def.label;
+    return wrap;
+  }
+
   function editStudent(s, classes, parents, done) {
     var rules = App.ctx.idRules;
+    var cf = {
+      first_name: coreField('first_name', 'First name', true),
+      last_name: coreField('last_name', 'Last name', true),
+      gender: coreField('gender', 'Gender', false),
+      dob: coreField('dob', 'Date of birth', false),
+      class_id: coreField('class_id', 'Class', false),
+      parent_id: coreField('parent_id', 'Parent / Guardian', false),
+      status: coreField('status', 'Status', false),
+      admitted_on: coreField('admitted_on', 'Admitted on', false)
+    };
     var fields = [
-      { name: 'first_name', label: 'First name', required: true },
-      { name: 'last_name', label: 'Last name', required: true },
-      { name: 'gender', label: 'Gender', type: 'select', options: ['', 'M', 'F'] },
-      { name: 'dob', label: 'Date of birth', type: 'date' },
-      { name: 'class_id', label: 'Class', type: 'select', options: classes.map(function (c) { return { value: c.id, label: c.name }; }) },
-      { name: 'parent_id', label: 'Parent / Guardian', type: 'select', options: [{ value: '', label: '— none —' }].concat(parents.map(function (p) { return { value: p.id, label: p.name }; })) },
-      { name: 'status', label: 'Status', type: 'select', options: ['active', 'withdrawn', 'completed'] },
-      { name: 'admitted_on', label: 'Admitted on', type: 'date' }
+      { name: 'first_name', label: cf.first_name.label, required: cf.first_name.required },
+      { name: 'last_name', label: cf.last_name.label, required: cf.last_name.required },
+      { name: 'gender', label: cf.gender.label, type: 'select', options: ['', 'M', 'F'], required: cf.gender.required },
+      { name: 'dob', label: cf.dob.label, type: 'date', required: cf.dob.required },
+      { name: 'class_id', label: cf.class_id.label, type: 'select', options: classes.map(function (c) { return { value: c.id, label: c.name }; }), required: cf.class_id.required },
+      { name: 'parent_id', label: cf.parent_id.label, type: 'select', options: [{ value: '', label: '— none —' }].concat(parents.map(function (p) { return { value: p.id, label: p.name }; })), required: cf.parent_id.required },
+      { name: 'status', label: cf.status.label, type: 'select', options: ['active', 'withdrawn', 'completed'], required: cf.status.required },
+      { name: 'admitted_on', label: cf.admitted_on.label, type: 'date', required: cf.admitted_on.required }
     ];
     if (rules.allow_manual && !s) fields.unshift({ name: 'student_id', label: 'Student ID (leave blank to auto-generate)', placeholder: rules.student_prefix + '____' });
     var f = U.form(fields, s || { status: 'active', admitted_on: U.todayISO() });
     f.classList.add('form-grid');
-    U.modal({ title: s ? 'Edit student' : 'Admit student', wide: true, body: f, actions: [
+
+    // ---- Admin-defined custom fields (Settings → Admission Form), grouped by section ----
+    var customDefs = admissionCfg().filter(function (x) { return !x.system; });
+    var plainDefs = customDefs.filter(function (x) { return x.type !== 'siblings'; })
+      .sort(function (a, b) { return ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === a.section; }) - ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === b.section; }); });
+    var siblingDefs = customDefs.filter(function (x) { return x.type === 'siblings'; });
+    var extraVals = (s && s.extra) ? JSON.parse(JSON.stringify(s.extra)) : {};
+
+    var ef = null;
+    if (plainDefs.length) {
+      ef = U.form(plainDefs.map(function (d) { return { name: d.key, label: d.label, type: d.type, required: d.required, options: d.options, help: d.help, rows: d.type === 'textarea' ? 2 : undefined }; }), extraVals);
+      ef.classList.add('form-grid');
+      var rows = U.$all('.field', ef), idx = 0;
+      ADMISSION_SECTIONS.forEach(function (sec) {
+        var count = plainDefs.filter(function (d) { return d.section === sec.key; }).length;
+        if (count) { ef.insertBefore(el('h4', { text: sec.title, style: 'grid-column:1/-1;margin:.6rem 0 0' }), rows[idx]); idx += count; }
+      });
+    }
+    var sibNodes = siblingDefs.map(function (d) { return siblingsField(d, extraVals[d.key]); });
+
+    var body = el('div', {}, [f, ef, sibNodes.length ? el('h4', { text: 'Siblings', style: 'margin:.6rem 0 0' }) : null].concat(sibNodes));
+
+    U.modal({ title: s ? 'Edit student' : 'Admit student', wide: true, body: body, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
-        var errs = f.validate(); if (errs.length) return U.toast(errs[0], 'err');
+        var errs = f.validate();
+        if (ef) errs = errs.concat(ef.validate());
+        sibNodes.forEach(function (w) { if (w._required && !w._getValue().length) errs.push(w._label + ' is required.'); });
+        if (errs.length) return U.toast(errs[0], 'err');
         var v = f.readValues();
+        var extra = ef ? ef.readValues() : {};
+        sibNodes.forEach(function (w, i) { extra[siblingDefs[i].key] = w._getValue(); });
+        v.extra = extra;
         if (s) {
           DB.update('students', s.id, v).then(function () { linkParent(s.id, v.parent_id, s.parent_id).then(function () { x(); U.toast('Student updated.'); done(); }); });
         } else {

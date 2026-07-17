@@ -301,6 +301,58 @@
     auto_generate: true, allow_manual: false
   };
 
+  // ---- Admission / "Admit student" form fields ----
+  // "system: true" = a core field the rest of the app relies on (student table,
+  // bulk upload, promotion, reports): admin may rename its label and toggle
+  // required, but cannot delete it or change its key/type. Everything else is
+  // a fully admin-managed custom field (add/edit/delete/reorder-by-section),
+  // stored per student under student.extra[key]. Modeled on a real Ghanaian
+  // school admission form (siblings, health needs, guardian & office-use details).
+  var admissionFields = [
+    { key: 'first_name',  label: 'First name',            type: 'text',   required: true,  section: 'personal', system: true },
+    { key: 'last_name',   label: 'Last name',              type: 'text',   required: true,  section: 'personal', system: true },
+    { key: 'gender',      label: 'Gender',                 type: 'select', required: false, section: 'personal', system: true },
+    { key: 'dob',         label: 'Date of birth',          type: 'date',   required: false, section: 'personal', system: true },
+    { key: 'class_id',    label: 'Class',                  type: 'select', required: false, section: 'personal', system: true },
+    { key: 'parent_id',   label: 'Parent / Guardian',      type: 'select', required: false, section: 'guardian', system: true },
+    { key: 'status',      label: 'Status',                 type: 'select', required: false, section: 'office',   system: true },
+    { key: 'admitted_on', label: 'Admitted on',            type: 'date',   required: false, section: 'office',   system: true },
+
+    { key: 'nationality',           label: 'Nationality',                       type: 'text',     required: true,  section: 'personal', system: false },
+    { key: 'place_of_birth',        label: 'Place of birth',                    type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'mother_tongue',         label: 'Mother tongue',                     type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'religion',              label: 'Religion',                          type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'other_languages',       label: 'Other languages spoken',            type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'residence_location',    label: 'Location (current residence)',      type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'previous_school',       label: 'Previous school attended (if any)', type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'previous_school_place', label: 'Previous school — place',           type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'previous_class',        label: 'Previous school — class',           type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'previous_school_year',  label: 'Previous school — year',            type: 'text',     required: false, section: 'personal', system: false },
+    { key: 'siblings',              label: 'Siblings in this school',           type: 'siblings', required: false, section: 'personal', system: false,
+      help: 'Add each sibling already enrolled here, with their class.' },
+
+    { key: 'special_educational_need', label: 'Special educational need (if any)', type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
+    { key: 'special_medical_need',     label: 'Special medical need (if any)',     type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
+    { key: 'food_allergies',           label: 'Food allergies (if any)',           type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
+
+    { key: 'guardian_age',          label: 'Parent/Guardian age',                type: 'number', required: false, section: 'guardian', system: false },
+    { key: 'guardian_relationship', label: 'Relationship to student',            type: 'select', required: true,  section: 'guardian', system: false, options: ['Father', 'Mother', 'Other'] },
+    { key: 'guardian_address',      label: 'Residential address (location)',     type: 'text',    required: true,  section: 'guardian', system: false },
+    { key: 'guardian_alt_phone',    label: 'Alternative phone (when not reachable)', type: 'text', required: false, section: 'guardian', system: false },
+    { key: 'guardian_languages',    label: 'Languages spoken (optional)',        type: 'text',    required: false, section: 'guardian', system: false },
+    { key: 'guardian_profession',   label: 'Profession / Occupation',            type: 'text',    required: false, section: 'guardian', system: false },
+    { key: 'how_heard',             label: 'How did you hear about this school?', type: 'select', required: true, section: 'guardian', system: false, options: ['Word of mouth / Referral', 'Social media / advert', 'Poster / Banner', 'School campaign', 'Other'] },
+
+    { key: 'declaration_ack',  label: "Parent/Guardian undertakes to take an active interest in the child's education, pay fees, and cooperate with the school", type: 'checkbox', required: true, section: 'declaration', system: false },
+    { key: 'declaration_date', label: 'Declaration date',      type: 'date', required: false, section: 'declaration', system: false },
+
+    { key: 'assessment_english',   label: 'Admission assessment — English', type: 'number',   required: false, section: 'office', system: false },
+    { key: 'assessment_math',      label: 'Admission assessment — Math',    type: 'number',   required: false, section: 'office', system: false },
+    { key: 'assessment_other',     label: 'Admission assessment — Other',   type: 'text',      required: false, section: 'office', system: false },
+    { key: 'office_remarks',       label: 'Remarks (office use)',           type: 'textarea',  required: false, section: 'office', system: false },
+    { key: 'admission_fee_paid',   label: 'Admission fee paid',             type: 'number',    required: false, section: 'office', system: false }
+  ];
+
   // ---- Score weighting ----
   var weighting = { id: 'w-1', school_id: SCHOOL_ID, class_pct: 50, exam_pct: 50 };
 
@@ -386,6 +438,7 @@
     automation: automation,
     reportTemplates: reportTemplates,
     idRules: idRules,
+    admissionFields: admissionFields,
     weighting: weighting,
     labels: labels,
     messageTemplates: messageTemplates,

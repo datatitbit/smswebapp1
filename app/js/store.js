@@ -12,7 +12,7 @@
   var DB_CONFIG = global.DB_CONFIG || { useApi: false, apiBase: 'api/index.php' };
 
   // Collections that are single objects (one per school) vs arrays.
-  var SINGLETONS = ['school', 'academic', 'idRules', 'weighting', 'labels', 'payrollSettings', 'automation', 'inventorySettings'];
+  var SINGLETONS = ['school', 'academic', 'idRules', 'admissionFields', 'weighting', 'labels', 'payrollSettings', 'automation', 'inventorySettings'];
   var SPECIAL = ['reportTemplates', 'permissions']; // arrays/objects handled normally
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
