@@ -159,15 +159,57 @@
     ];
     if (rules.allow_manual && !s) fields.unshift({ name: 'staff_id', label: 'Staff ID (blank = auto)', placeholder: rules.staff_prefix + '____' });
     var f = U.form(fields, s || { role: 'Teacher' });
-    var clsBox = el('div', { class: 'field' }, [el('label', { text: 'Assigned classes (for teachers)' })]);
+
+    // ---- Class teacher of (entire class, all subjects) ----
+    var clsBox = el('div', { class: 'field' }, [el('label', { text: 'Class teacher of (entire class, all subjects)' })]);
     var sel = el('div'); var cur = (s && s.class_ids) || [];
     classes.forEach(function (c) { var cb = el('input', { type: 'checkbox', value: c.id }); if (cur.indexOf(c.id) !== -1) cb.checked = true; sel.appendChild(el('label', { class: 'check-label', style: 'display:block' }, [cb, document.createTextNode(' ' + c.name)])); });
     clsBox.appendChild(sel); f.appendChild(clsBox);
+
+    // ---- Subject teacher of (one subject, one or more classes) ----
+    var allSubjects = []; classes.forEach(function (c) { (c.subjects || []).forEach(function (sub) { if (allSubjects.indexOf(sub) === -1) allSubjects.push(sub); }); });
+    var subjBox = el('div', { class: 'field' }, [el('label', { text: 'Subject teacher of (one subject, across one or more classes)' })]);
+    var subjRows = el('div');
+    var assignments = JSON.parse(JSON.stringify((s && s.subject_teacher_of) || []));
+    function redrawSubj() {
+      U.clear(subjRows);
+      assignments.forEach(function (a, i) {
+        var subjSel = el('select'); allSubjects.forEach(function (sub) { var opt = el('option', { value: sub, text: sub }); if (sub === a.subject) opt.selected = true; subjSel.appendChild(opt); });
+        subjSel.addEventListener('change', function (e) { assignments[i].subject = e.target.value; });
+        var clsWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:.5rem;margin:.25rem 0' });
+        classes.forEach(function (c) {
+          var cb = el('input', { type: 'checkbox', value: c.id }); if ((a.class_ids || []).indexOf(c.id) !== -1) cb.checked = true;
+          cb.addEventListener('change', function () {
+            var ids = assignments[i].class_ids || (assignments[i].class_ids = []);
+            var pos = ids.indexOf(c.id);
+            if (cb.checked && pos === -1) ids.push(c.id); else if (!cb.checked && pos !== -1) ids.splice(pos, 1);
+          });
+          clsWrap.appendChild(el('label', { class: 'check-label' }, [cb, document.createTextNode(' ' + c.name)]));
+        });
+        subjRows.appendChild(el('div', { style: 'border:1px solid var(--line);border-radius:8px;padding:.5rem;margin-bottom:.5rem' }, [
+          el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center' }, [subjSel, el('button', { class: 'btn sm danger', text: '✕', onclick: function () { assignments.splice(i, 1); redrawSubj(); } })]),
+          clsWrap
+        ]));
+      });
+      subjRows.appendChild(el('button', { class: 'btn sm ghost', text: '+ Add subject assignment', onclick: function () {
+        if (!allSubjects.length) return U.toast('No subjects defined yet — add subjects to classes first (Settings → Classes & Subjects).', 'err');
+        assignments.push({ subject: allSubjects[0], class_ids: [] }); redrawSubj();
+      } }));
+    }
+    redrawSubj();
+    subjBox.appendChild(subjRows); f.appendChild(subjBox);
+
+    // ---- Full dashboard access ----
+    var dashCb = el('input', { type: 'checkbox' }); if (s && s.dashboard_full_access) dashCb.checked = true;
+    f.appendChild(el('div', { class: 'field' }, [el('label', { class: 'check-label' }, [dashCb, document.createTextNode(' Full dashboard access (Finance KPIs, not just Enrolment/Attendance) — Admin, Director and Other staff already have this by default.')])]));
+
     U.modal({ title: s ? 'Edit staff' : 'Add staff', wide: true, body: f, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var v = f.readValues(); if (!v.name.trim()) return U.toast('Name required', 'err');
         v.class_ids = U.$all('input[type=checkbox]', sel).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+        v.subject_teacher_of = assignments.filter(function (a) { return a.subject && (a.class_ids || []).length; });
+        v.dashboard_full_access = dashCb.checked;
         if (s) DB.update('staff', s.id, v).then(function () { x(); U.toast('Saved.'); done(); });
         else {
           var manualCode = v.staff_id && v.staff_id.trim();
