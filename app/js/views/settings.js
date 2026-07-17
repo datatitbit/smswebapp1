@@ -90,31 +90,36 @@
   }
 
   function themeCard(s) {
-    var def = { primary: '#0f5e5e', accent: '#e0ab2b' };
+    var def = { primary: '#0f5e5e', secondary1: '#e0ab2b', secondary2: '#1c6b6b' };
     var primary = U.isHexColor(s.theme_primary) ? s.theme_primary : def.primary;
-    var accent = U.isHexColor(s.theme_accent) ? s.theme_accent : def.accent;
+    var sec1 = U.isHexColor(s.theme_secondary1) ? s.theme_secondary1 : def.secondary1;
+    var sec2 = U.isHexColor(s.theme_secondary2) ? s.theme_secondary2 : def.secondary2;
+    var enableCb = el('input', { type: 'checkbox' }); enableCb.checked = !!s.theme_enabled;
     var pInp = el('input', { type: 'color', value: primary });
-    var aInp = el('input', { type: 'color', value: accent });
+    var s1Inp = el('input', { type: 'color', value: sec1 });
+    var s2Inp = el('input', { type: 'color', value: sec2 });
     var c = el('div', { class: 'card' }, [
-      el('h2', { text: 'Branding — Theme colors' }),
-      el('div', { class: 'help', text: 'Sets the primary and accent colors used across the app, printed reports, and receipts. Leave at the defaults to keep the standard Zetranova look.' }),
-      el('div', { class: 'grid cols-2' }, [
-        el('div', { class: 'field' }, [el('label', { text: 'Primary color' }), pInp]),
-        el('div', { class: 'field' }, [el('label', { text: 'Accent color' }), aInp])
+      el('h2', { text: 'Branding — School colours' }),
+      el('div', { class: 'help', text: 'One dominant/primary colour plus two secondary colours. While "Use these colours" is off, the app, admission forms and printed reports keep the standard Zetranova look — turn it on to apply your school\'s colours everywhere instead.' }),
+      el('label', { class: 'check-label', style: 'display:block;margin:.4rem 0;font-weight:600' }, [enableCb, document.createTextNode(' Use these colours across the app')]),
+      el('div', { class: 'grid cols-3' }, [
+        el('div', { class: 'field' }, [el('label', { text: 'Primary / dominant colour' }), pInp]),
+        el('div', { class: 'field' }, [el('label', { text: 'Secondary colour 1' }), s1Inp]),
+        el('div', { class: 'field' }, [el('label', { text: 'Secondary colour 2' }), s2Inp])
       ])
     ]);
     c.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
-      el('button', { class: 'btn gold', text: 'Save colors', onclick: function () {
+      el('button', { class: 'btn gold', text: 'Save colours', onclick: function () {
         DB.singleton('school').then(function (cur) {
-          return DB.setSingleton('school', Object.assign({}, cur, { theme_primary: pInp.value, theme_accent: aInp.value }));
-        }).then(function () { App.refresh().then(function () { U.toast('Theme colors saved.'); }); });
+          return DB.setSingleton('school', Object.assign({}, cur, { theme_enabled: enableCb.checked, theme_primary: pInp.value, theme_secondary1: s1Inp.value, theme_secondary2: s2Inp.value }));
+        }).then(function () { App.refresh().then(function () { U.toast(enableCb.checked ? 'Custom colours saved and applied.' : 'Colours saved (not applied — enable the checkbox above to use them).'); }); });
       } }),
-      el('button', { class: 'btn ghost', text: 'Reset colors to default', onclick: function () {
+      el('button', { class: 'btn ghost', text: 'Reset to default (and turn off)', onclick: function () {
         DB.singleton('school').then(function (cur) {
-          return DB.setSingleton('school', Object.assign({}, cur, { theme_primary: '', theme_accent: '' }));
+          return DB.setSingleton('school', Object.assign({}, cur, { theme_enabled: false, theme_primary: '', theme_secondary1: '', theme_secondary2: '' }));
         }).then(function () {
           App.refresh().then(function () {
-            U.toast('Theme colors reset to default.');
+            U.toast('Reset to the standard Zetranova look.');
             var panel = U.$('#settings-panel');
             if (panel) { U.clear(panel); tabProfile(panel); }
           });
@@ -297,12 +302,12 @@
     Promise.all([DB.all('gradeBands'), DB.singleton('weighting')]).then(function (r) {
       var bands = r[0], w = r[1];
       var wf = U.form([
-        { name: 'class_pct', label: 'Class Score %', type: 'number', value: w.class_pct, min: 0, max: 100 },
-        { name: 'exam_pct', label: 'Exam Score %', type: 'number', value: w.exam_pct, min: 0, max: 100 }
+        { name: 'class_pct', label: 'Class Score — max points', type: 'number', value: w.class_pct, min: 0, max: 100 },
+        { name: 'exam_pct', label: 'Exam Score — max points', type: 'number', value: w.exam_pct, min: 0, max: 100 }
       ], {});
       wf.classList.add('form-grid');
       var wcard = card('Score Weighting (SBA split)', wf);
-      wcard.appendChild(el('div', { class: 'help', text: 'Class % + Exam % should total 100. Default 50 / 50.' }));
+      wcard.appendChild(el('div', { class: 'help', text: 'Teachers enter class score and exam score already scaled to these maximums (e.g. class out of 40, exam out of 60) — the total is the direct sum of the two, so the two numbers here must add up to 100. Default 50 / 50.' }));
       wcard.appendChild(saveBtn(function () {
         var v = wf.readValues();
         if (Number(v.class_pct) + Number(v.exam_pct) !== 100) return U.toast('Class % + Exam % must equal 100.', 'err');
@@ -609,7 +614,7 @@
     DB.singleton('admissionFields').then(function (raw) {
       var cfg = (Array.isArray(raw) && raw.length) ? raw : JSON.parse(JSON.stringify(global.SMS_SEED.admissionFields || []));
 
-      panel.appendChild(el('div', { class: 'note', text: 'Controls what appears on Students → "Admit student", beyond the ID-numbering rules on the Identity tab. Core fields (used elsewhere in the app — the student list, bulk upload, promotion, reports) can be renamed and marked required/optional but not removed. Add your own fields below for anything else — like siblings already at the school, health needs, or admission assessment scores.' }));
+      panel.appendChild(el('div', { class: 'note', text: 'Controls what appears on Students → "Admit student", beyond the ID-numbering rules on the Identity tab. Core fields (used elsewhere in the app — the student list, bulk upload, promotion, reports) can be renamed and marked required/optional but not removed. Add your own fields below for anything else — like siblings already at the school, health needs, or admission assessment scores. The "Profile" column controls whether a field appears on the printable "Download student profile" sheet (Students tab).' }));
 
       var systemDefs = cfg.filter(function (d) { return d.system; });
       var sysBody = el('div');
@@ -618,9 +623,11 @@
         labelInp.addEventListener('input', function () { d.label = labelInp.value; });
         var reqCb = el('input', { type: 'checkbox' }); reqCb.checked = !!d.required;
         reqCb.addEventListener('change', function () { d.required = reqCb.checked; });
-        return [d.key, labelInp, el('label', { class: 'check-label' }, [reqCb, document.createTextNode(' required')])];
+        var profCb = el('input', { type: 'checkbox' }); profCb.checked = d.inProfile !== false;
+        profCb.addEventListener('change', function () { d.inProfile = profCb.checked; });
+        return [d.key, labelInp, el('label', { class: 'check-label' }, [reqCb, document.createTextNode(' required')]), el('label', { class: 'check-label' }, [profCb, document.createTextNode(' profile')])];
       });
-      sysBody.appendChild(listTable(['Field (internal)', 'Field name shown on the form', 'Required'], sysRows));
+      sysBody.appendChild(listTable(['Field (internal)', 'Field name shown on the form', 'Required', 'Profile'], sysRows));
       sysBody.appendChild(saveBtn(function () { persist(cfg); }));
       panel.appendChild(card('Core fields (always present)', sysBody));
 
@@ -630,6 +637,7 @@
         return [ADMISSION_SECTION_TITLES[d.section] || d.section, d.label,
           ADMISSION_TYPE_OPTS.filter(function (t) { return t.value === d.type; })[0] ? ADMISSION_TYPE_OPTS.filter(function (t) { return t.value === d.type; })[0].label : d.type,
           d.required ? 'Required' : 'Optional',
+          d.inProfile !== false ? 'Yes' : 'No',
           el('div', { class: 'wrap-actions' }, [
             el('button', { class: 'btn sm', text: 'Edit', onclick: function () {
               editAdmissionField(d, function (nd) { cfg = cfg.map(function (x) { return x === d ? nd : x; }); persist(cfg); });
@@ -641,7 +649,7 @@
             } })
           ])];
       });
-      custBody.appendChild(listTable(['Section', 'Field name', 'Type', 'Required', ''], custRows));
+      custBody.appendChild(listTable(['Section', 'Field name', 'Type', 'Required', 'Profile', ''], custRows));
       custBody.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.6rem' }, [
         el('button', { class: 'btn sm', text: '+ Add custom field', onclick: function () {
           editAdmissionField(null, function (nd) { cfg.push(nd); persist(cfg); });
@@ -664,14 +672,15 @@
 
   function editAdmissionField(def, onSave) {
     var isNew = !def;
-    var d = def || { key: null, label: '', type: 'text', required: false, section: 'personal', system: false, options: [], help: '' };
+    var d = def || { key: null, label: '', type: 'text', required: false, section: 'personal', system: false, options: [], help: '', inProfile: true };
     var f = U.form([
       { name: 'label', label: 'Field name (label)', required: true, value: d.label },
       { name: 'section', label: 'Section', type: 'select', value: d.section, options: ADMISSION_SECTION_OPTS },
       { name: 'type', label: 'Field type', type: 'select', value: d.type, options: ADMISSION_TYPE_OPTS },
       { name: 'options', label: 'Dropdown choices (comma-separated — only used for Dropdown type)', value: (d.options || []).join(', ') },
       { name: 'help', label: 'Helper text shown under the field (optional)', value: d.help || '' },
-      { name: 'required', label: 'Required', type: 'checkbox', value: d.required }
+      { name: 'required', label: 'Required', type: 'checkbox', value: d.required },
+      { name: 'inProfile', label: 'Include in "Download student profile"', type: 'checkbox', value: d.inProfile !== false }
     ], {});
     f.classList.add('form-grid');
     U.modal({ title: isNew ? 'Add custom field' : 'Edit custom field', wide: true, body: f, actions: [
@@ -683,7 +692,7 @@
           key: d.key || ('cf_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
           label: v.label.trim(), section: v.section, type: v.type, required: !!v.required,
           options: v.options ? v.options.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [],
-          help: v.help.trim(), system: false
+          help: v.help.trim(), system: false, inProfile: !!v.inProfile
         };
         x(); onSave(out);
       } }
