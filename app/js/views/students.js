@@ -314,6 +314,9 @@
         var extra = ef ? ef.readValues() : {};
         sibNodes.forEach(function (w, i) { extra[siblingDefs[i].key] = w._getValue(); });
         v.extra = extra;
+        // Stamp the date the first time a student transitions to withdrawn, so
+        // "Dropouts" on the Dashboard can be counted per period.
+        if (v.status === 'withdrawn' && (!s || s.status !== 'withdrawn')) v.withdrawn_on = U.todayISO();
         if (s) {
           DB.update('students', s.id, v).then(function () { linkParent(s.id, v.parent_id, s.parent_id).then(function () { x(); U.toast('Student updated.'); done(); }); });
         } else {
