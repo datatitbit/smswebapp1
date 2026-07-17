@@ -430,18 +430,25 @@
   // dashboard_full_access lets Admin grant a specific staff member the Finance
   // side of the Dashboard even outside their role's default (Admin/Director/
   // Other staff always have it; see App.canFullDashboard()).
+  // Beyond the 4 demo-login-linked staff (SF0001–4, unchanged so the seeded
+  // login accounts keep working), a few more teachers and office staff are
+  // seeded so every class has a class teacher and there's enough of a roster
+  // to test attendance/payroll/reports without hand-creating staff first.
   var staff = [
     { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
     { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
     { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} }
-  ];
-
-  // ---- Sample parents & students (demo data) ----
-  var parents = [
-    { id: 'pa-1', school_id: SCHOOL_ID, name: 'Kwame Mensah', phone: '+233 24 111 1111', whatsapp: '+233 24 111 1111', email: 'kmensah@example.com', student_ids: ['ST0001', 'ST0002'] },
-    { id: 'pa-2', school_id: SCHOOL_ID, name: 'Ama Owusu',    phone: '+233 24 222 2222', whatsapp: '+233 24 222 2222', email: 'aowusu@example.com',  student_ids: ['ST0003'] },
-    { id: 'pa-3', school_id: SCHOOL_ID, name: 'Yaw Boateng',  phone: '+233 24 333 3333', whatsapp: '+233 24 333 3333', email: '',                    student_ids: ['ST0004'] }
+    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} },
+    { id: 'st-5', school_id: SCHOOL_ID, staff_id: 'SF0005', name: 'Ama Serwaa',           role: 'Teacher',     phone: '+233 24 000 0005', class_ids: ['cl-creche', 'cl-nur1', 'cl-nur2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
+    { id: 'st-6', school_id: SCHOOL_ID, staff_id: 'SF0006', name: 'Kwabena Owusu',        role: 'Teacher',     phone: '+233 24 000 0006', class_ids: ['cl-kg1', 'cl-kg2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
+    { id: 'st-7', school_id: SCHOOL_ID, staff_id: 'SF0007', name: 'Efua Darko',           role: 'Teacher',     phone: '+233 24 000 0007', class_ids: ['cl-b2', 'cl-b3'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
+    // Demonstrates a subject teacher: class teacher of B4–B6, and also teaches
+    // Mathematics across B7–B9 (owned by SF0009 as their class teacher).
+    { id: 'st-8', school_id: SCHOOL_ID, staff_id: 'SF0008', name: 'Yaw Boadu',            role: 'Teacher',     phone: '+233 24 000 0008', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'], subject_teacher_of: [{ subject: 'Mathematics', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    // Demonstrates the reverse pairing: class teacher of B7–B9, and also
+    // teaches English Language across B4–B6 (owned by SF0008 as class teacher).
+    { id: 'st-9', school_id: SCHOOL_ID, staff_id: 'SF0009', name: 'Abena Konadu',         role: 'Teacher',     phone: '+233 24 000 0009', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'], subject_teacher_of: [{ subject: 'English Language', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-10', school_id: SCHOOL_ID, staff_id: 'SF0010', name: 'Gifty Adjei',          role: 'Other staff', phone: '+233 24 000 0010', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1300, allowances: 100, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} }
   ];
 
   function stu(code, first, last, cls, gender, parent) {
@@ -450,13 +457,45 @@
       dob: '', parent_id: parent, status: 'active',
       admitted_on: '2025-09-09' };
   }
-  var students = [
-    stu('ST0001', 'Adwoa',  'Mensah',  'cl-b1', 'F', 'pa-1'),
-    stu('ST0002', 'Kojo',   'Mensah',  'cl-b1', 'M', 'pa-1'),
-    stu('ST0003', 'Efua',   'Owusu',   'cl-b1', 'F', 'pa-2'),
-    stu('ST0004', 'Kofi',   'Boateng', 'cl-creche', 'M', 'pa-3'),
-    stu('ST0005', 'Akosua', 'Asante',  'cl-b1', 'F', null)
-  ];
+  function pad4(n) { var s = '' + n; while (s.length < 4) s = '0' + s; return s; }
+  function pad(n, len) { var s = '' + n; while (s.length < len) s = '0' + s; return s; }
+
+  // ---- Sample parents & students (demo roster) ----
+  // Generated deterministically from Ghanaian name pools so every one of the
+  // 14 classes starts with a full-looking roster (STUDENTS_PER_CLASS pupils
+  // each) instead of a handful of hand-typed records — enough to exercise
+  // attendance, scores, promotion, fees and reports right away. Pupils are
+  // paired two-at-a-time under one parent record (siblings), matching the
+  // "multi-child parent" feature the app supports.
+  var FIRST_M = ['Kwame', 'Kofi', 'Yaw', 'Kwabena', 'Kwaku', 'Kwesi', 'Emmanuel', 'Prince'];
+  var FIRST_F = ['Akosua', 'Ama', 'Efua', 'Abena', 'Adwoa', 'Afia', 'Esi', 'Comfort'];
+  var LAST_NAMES = ['Mensah', 'Owusu', 'Boateng', 'Asante', 'Osei', 'Appiah', 'Amoah', 'Agyei', 'Darko', 'Adjei', 'Frimpong', 'Sarpong', 'Tetteh', 'Quaye'];
+  var STUDENTS_PER_CLASS = 4;
+
+  var parents = [];
+  var students = [];
+  var studentSeq = 0;
+  classes.forEach(function (c) {
+    var currentParent = null;
+    for (var i = 0; i < STUDENTS_PER_CLASS; i++) {
+      studentSeq++;
+      var code = 'ST' + pad4(studentSeq);
+      var isMale = studentSeq % 2 === 1;
+      var first = isMale ? FIRST_M[studentSeq % FIRST_M.length] : FIRST_F[studentSeq % FIRST_F.length];
+      var last = LAST_NAMES[studentSeq % LAST_NAMES.length];
+      var parentId;
+      if (i % 2 === 0) {
+        parentId = 'pa-' + studentSeq;
+        var phone = '+233 24 ' + pad(1000000 + studentSeq, 7);
+        currentParent = { id: parentId, school_id: SCHOOL_ID, name: (isMale ? 'Mr. ' : 'Mrs. ') + last, phone: phone, whatsapp: phone, email: '', student_ids: [code] };
+        parents.push(currentParent);
+      } else {
+        parentId = currentParent.id;
+        currentParent.student_ids.push(code);
+      }
+      students.push(stu(code, first, last, c.id, isMale ? 'M' : 'F', parentId));
+    }
+  });
 
   var SEED = {
     school: school,
@@ -502,7 +541,7 @@
     otherIncome: [],
     payrollRuns: [],
     automationLog: [],
-    meta: { seq: { student: 5, staff: 4, invtxn: 0 } },
+    meta: { seq: { student: studentSeq, staff: staff.length, invtxn: 0 } },
     constants: { MODULES: MODULES, ROLES: ROLES, SCHOOL_ID: SCHOOL_ID }
   };
 
