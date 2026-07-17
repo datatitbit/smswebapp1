@@ -96,7 +96,9 @@ h1 { font-size: 1.5rem; font-weight: 700; } h2 { font-size: 1.18rem; } h3 { font
 .grid.cols-2 { grid-template-columns: 1fr; }
 .grid.cols-3 { grid-template-columns: 1fr; }
 .grid.cols-4 { grid-template-columns: 1fr 1fr; }
-@media (min-width: 700px) { .grid.cols-2 { grid-template-columns: 1fr 1fr; } .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; } .grid.cols-4 { grid-template-columns: repeat(4,1fr);} }
+.grid.cols-5 { grid-template-columns: 1fr 1fr; }
+@media (min-width: 700px) { .grid.cols-2 { grid-template-columns: 1fr 1fr; } .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; } .grid.cols-4 { grid-template-columns: repeat(4,1fr);} .grid.cols-5 { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1000px) { .grid.cols-5 { grid-template-columns: repeat(5,1fr); } }
 
 .stat { background: var(--card); border:1px solid var(--line); border-radius: var(--radius); padding: 1.05rem 1.1rem; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; }
 .stat .n { font-size: 1.75rem; font-weight: 700; color: var(--teal); letter-spacing:-.02em; }
