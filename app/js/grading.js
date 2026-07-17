@@ -5,11 +5,12 @@
 (function (global) {
   'use strict';
 
-  function computeTotal(classScore, examScore, weighting) {
-    // class/exam scores are entered out of 100; weighting splits them.
-    var cw = (weighting.class_pct || 50) / 100;
-    var ew = (weighting.exam_pct || 50) / 100;
-    var total = (Number(classScore || 0) * cw) + (Number(examScore || 0) * ew);
+  // Class score and exam score are each entered ALREADY scaled to their own
+  // weight (e.g. class score out of 40, exam score out of 60 when weighting
+  // is 40/60) — standard Ghanaian SBA convention. Total is a direct sum of
+  // the two, which lands on 100 when both are entered at their max.
+  function computeTotal(classScore, examScore) {
+    var total = Number(classScore || 0) + Number(examScore || 0);
     return Math.round(total * 10) / 10;
   }
 

@@ -51,7 +51,7 @@
   function render(container) {
     U.clear(container);
     container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'Assessment & Examinations' })]));
-    container.appendChild(el('div', { class: 'note', text: 'Term: ' + App.termName() + ' · ' + App.ctx.academic.year + '. Total, grade and positions are computed from your Settings (weighting ' + App.ctx.weighting.class_pct + '/' + App.ctx.weighting.exam_pct + ').' }));
+    container.appendChild(el('div', { class: 'note', text: 'Term: ' + App.termName() + ' · ' + App.ctx.academic.year + '. Class score is entered out of ' + App.ctx.weighting.class_pct + ' and exam score out of ' + App.ctx.weighting.exam_pct + ' (Settings → Grading) — total is the direct sum of the two, out of 100.' }));
     var bar = el('div', { class: 'tabs' });
     var panel = el('div'); var active = 'Score Entry';
     ['Score Entry', 'Report Cards'].forEach(function (t) { var b = el('button', { text: t, onclick: function () { active = t; draw(); } }); b._t = t; bar.appendChild(b); });
@@ -113,19 +113,20 @@
         ])
       ]));
       if (!students.length) { card.appendChild(el('div', { class: 'empty', text: 'No pupils in this class.' })); area.appendChild(card); return; }
+      var classMax = App.ctx.weighting.class_pct, examMax = App.ctx.weighting.exam_pct;
       var t = el('table', { class: 'data' });
-      t.appendChild(el('thead', {}, [el('tr', {}, ['Pupil', 'Class (' + App.ctx.weighting.class_pct + ')', 'Exam (' + App.ctx.weighting.exam_pct + ')', 'Total', 'Grade'].map(function (h) { return el('th', { text: h }); }))]));
+      t.appendChild(el('thead', {}, [el('tr', {}, ['Pupil', 'Class (max ' + classMax + ')', 'Exam (max ' + examMax + ')', 'Total', 'Grade'].map(function (h) { return el('th', { text: h }); }))]));
       var tb = el('tbody');
       var inputs = {};
       students.forEach(function (s) {
         var existing = scores.filter(function (x) { return x.student_id === s.student_id && x.subject === subject && x.term === term && x.class_id === klass.id; })[0] || {};
-        var ci = el('input', { type: 'number', min: 0, max: 100, value: existing.class_score != null ? existing.class_score : '', style: 'width:70px' });
-        var ei = el('input', { type: 'number', min: 0, max: 100, value: existing.exam_score != null ? existing.exam_score : '', style: 'width:70px' });
+        var ci = el('input', { type: 'number', min: 0, max: classMax, value: existing.class_score != null ? existing.class_score : '', style: 'width:70px' });
+        var ei = el('input', { type: 'number', min: 0, max: examMax, value: existing.exam_score != null ? existing.exam_score : '', style: 'width:70px' });
         if (ro) { ci.disabled = true; ei.disabled = true; }
         var totalCell = el('td', { class: 'right' });
         var gradeCell = el('td');
         function recompute() {
-          var tot = G.computeTotal(ci.value || 0, ei.value || 0, App.ctx.weighting);
+          var tot = G.computeTotal(ci.value || 0, ei.value || 0);
           var band = G.gradeFor(tot, App.ctx.gradeBands.slice().sort(function (a, b) { return b.min - a.min; }));
           totalCell.textContent = (ci.value === '' && ei.value === '') ? '' : tot;
           gradeCell.textContent = (ci.value === '' && ei.value === '') ? '' : (band.grade + ' · ' + band.remark);
@@ -320,18 +321,19 @@
       rows.push([s.student_id, s.first_name + ' ' + s.last_name, ex.class_score != null ? ex.class_score : '', ex.exam_score != null ? ex.exam_score : '']);
     });
     Bulk.download('scores-' + klass.name.replace(/\s+/g, '') + '-' + subject.replace(/\s+/g, '') + '.csv', rows);
-    U.toast('Template downloaded.');
+    U.toast('Template downloaded. class_score max ' + App.ctx.weighting.class_pct + ', exam_score max ' + App.ctx.weighting.exam_pct + '.');
   }
   function scoreUpload(klass, subject, students, term, done) {
     var byCode = {}; students.forEach(function (s) { byCode[s.student_id] = s; });
+    var classMax = App.ctx.weighting.class_pct, examMax = App.ctx.weighting.exam_pct;
     Bulk.pickFile().then(function (file) {
       var res = Bulk.processUpload(file.rows, ['student_id', 'class_score', 'exam_score'], function (row) {
         var errs = [];
         if (!byCode[row.student_id]) errs.push('unknown student_id ' + row.student_id);
         var cs = row.class_score === '' ? null : Number(row.class_score);
         var es = row.exam_score === '' ? null : Number(row.exam_score);
-        if (cs != null && (isNaN(cs) || cs < 0 || cs > 100)) errs.push('class_score 0–100');
-        if (es != null && (isNaN(es) || es < 0 || es > 100)) errs.push('exam_score 0–100');
+        if (cs != null && (isNaN(cs) || cs < 0 || cs > classMax)) errs.push('class_score 0–' + classMax);
+        if (es != null && (isNaN(es) || es < 0 || es > examMax)) errs.push('exam_score 0–' + examMax);
         if (errs.length) return { ok: false, errors: errs };
         return { ok: true, value: { student_id: row.student_id, class_id: klass.id, subject: subject, term: term, class_score: cs, exam_score: es } };
       });
