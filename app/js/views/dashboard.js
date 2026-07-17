@@ -15,9 +15,10 @@
     if (App.user.role === 'Parent') return parentDash(container);
 
     var term = App.ctx.academic.current_term;
+    var fullBoard = App.canFullDashboard();
     Promise.all([DB.all('students'), DB.all('invoices'), DB.all('payments'), DB.all('attendance'), DB.all('staff'), DB.all('inventoryItems'), DB.all('otherIncome'), DB.all('expenses')])
       .then(function (r) {
-        var students = r[0].filter(function (s) { return s.status === 'active'; });
+        var allStudents = r[0], students = allStudents.filter(function (s) { return s.status === 'active'; });
         var allPayments = r[2];
         var invoices = r[1].filter(function (i) { return i.term === term; });
         var payments = allPayments.filter(function (p) { return p.term === term; });
@@ -30,10 +31,9 @@
           var pos = FL.studentFeePosition(s.student_id, klass, invoices, payments, App.ctx.feeTypes);
           billed += pos.billed; paid += pos.paid;
         });
-        var present = attendance.filter(function (a) { return a.status === 'present'; }).length;
-        var rate = attendance.length ? Math.round(present / attendance.length * 100) : 0;
         var low = items.filter(function (i) { return Number(i.qty) <= Number(i.low_threshold || 0); });
 
+        // ---- Quick nav (kept small & separate from the two core sections below) ----
         var stats = el('div', { class: 'grid cols-4' });
         function s(n, l, route, accent) {
           var d = el('div', { class: 'stat' + (accent ? ' accent' : '') + (route ? ' kpi-link' : '') }, [el('div', { class: 'n', text: n }), el('div', { class: 'l', text: l })]);
@@ -41,46 +41,117 @@
           return d;
         }
         stats.appendChild(s(students.length, 'Enrolment', 'students', true));
-        if (App.can('Finance')) {
-          stats.appendChild(s(U.money(paid, cur), 'Fees collected (' + App.termName() + ')', 'finance'));
-          stats.appendChild(s(U.money(billed - paid, cur), 'Outstanding fees', 'finance'));
-        }
-        stats.appendChild(s(rate + '%', 'Attendance rate', 'attendance'));
         if (App.can('Administration')) stats.appendChild(s(staff.length, 'Staff', 'administration'));
         if (App.can('Inventory')) stats.appendChild(s(low.length, 'Low-stock items', 'inventory', low.length > 0));
         container.appendChild(stats);
 
-        // ---- Finance — today (visible to finance-capable roles) ----
-        if (App.can('Finance') || App.can('Accounting')) {
-          var today = U.todayISO();
-          var feesToday = allPayments.filter(function (p) { return (p.created_on || '') === today; }).reduce(function (a, p) { return a + Number(p.amount || 0); }, 0);
-          var otherToday = otherIncome.filter(function (o) { return (o.date || '') === today; }).reduce(function (a, o) { return a + Number(o.amount || 0); }, 0);
-          var expToday = expenses.filter(function (e) { return (e.date || '') === today; }).reduce(function (a, e) { return a + Number(e.amount || 0); }, 0);
-          var fcard = el('div', { class: 'card' }, [el('h3', { text: 'Finance — today (' + U.fmtDate(today) + ')' })]);
-          fcard.appendChild(el('div', { class: 'grid cols-4' }, [
-            stat(U.money(feesToday, cur), 'Fees paid today'),
-            stat(U.money(billed - paid, cur), 'Arrears (as of today)'),
-            stat(U.money(feesToday + otherToday, cur), 'Total income today'),
-            stat(U.money(expToday, cur), 'Total expenses today')
-          ]));
-          container.appendChild(fcard);
-        }
+        // ---- Part 1: Enrolment & Attendance (all staff) ----
+        enrolAttendanceCard(container, allStudents, attendance);
 
-        // Enrolment by class
-        var byClass = {};
-        students.forEach(function (st) { byClass[st.class_id] = (byClass[st.class_id] || 0) + 1; });
-        var ecard = el('div', { class: 'card' }, [el('h3', { text: 'Enrolment by class' })]);
-        var grid = el('div', { class: 'grid cols-3' });
-        App.ctx.classes.slice().sort(function (a, b) { return a.sort - b.sort; }).forEach(function (c) {
-          grid.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;border-bottom:1px solid var(--line);padding:.25rem 0' }, [el('span', { text: c.name }), el('b', { text: byClass[c.id] || 0 })]));
-        });
-        ecard.appendChild(grid); container.appendChild(ecard);
+        // ---- Part 2: Finance (Admin / Director / Other staff / staff granted access) ----
+        if (fullBoard) financeKpiCard(container, { billed: billed, paid: paid, otherIncome: otherIncome, expenses: expenses, cur: cur, term: term });
 
-        trendsSection(container, { students: r[0], attendance: attendance, payments: allPayments, otherIncome: otherIncome, expenses: expenses, cur: cur });
+        trendsSection(container, { students: allStudents, attendance: attendance, payments: allPayments, otherIncome: otherIncome, expenses: expenses, cur: cur });
 
         upcoming(container);
         announcements(container);
       });
+  }
+
+  /* ---------------- Part 1: Enrolment & Attendance ---------------- */
+  function enrolAttendanceCard(container, allStudents, attendance) {
+    var period = 'today';
+    var head = el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem;align-items:center' }, [el('h3', { text: 'Enrolment & Attendance' })]);
+    var bar = el('div', { class: 'btn-row' });
+    [['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['term', 'This term']].forEach(function (pp) {
+      var b = el('button', { class: 'btn sm' + (pp[0] === period ? ' gold' : ''), text: pp[1], onclick: function () { period = pp[0]; U.$all('button', bar).forEach(function (x2) { x2.classList.remove('gold'); }); b.classList.add('gold'); draw(); } });
+      bar.appendChild(b);
+    });
+    head.appendChild(bar);
+    var card = el('div', { class: 'card' }, [head]);
+    var grid = el('div', { class: 'grid cols-5', style: 'margin-top:.5rem' });
+    card.appendChild(grid);
+    container.appendChild(card);
+    draw();
+
+    function draw() {
+      U.clear(grid);
+      var r = rangeFor(period), startISO = iso(r.start), endISO = iso(r.end);
+      function inRange(d) { return d && d >= startISO && d <= endISO; }
+      var totalEnrolled = allStudents.filter(function (s2) { return s2.status !== 'withdrawn'; }).length;
+      var present = attendance.filter(function (a) { return a.status === 'present' && inRange(a.date); }).length;
+      var absent = attendance.filter(function (a) { return a.status === 'absent' && inRange(a.date); }).length;
+      var admissions = allStudents.filter(function (s2) { return inRange(s2.admitted_on); }).length;
+      var dropouts = allStudents.filter(function (s2) { return s2.status === 'withdrawn' && inRange(s2.withdrawn_on); }).length;
+      grid.appendChild(stat(totalEnrolled, 'Total enrolment'));
+      grid.appendChild(stat(present, 'Present'));
+      grid.appendChild(stat(absent, 'Absent'));
+      grid.appendChild(stat(admissions, 'Admissions'));
+      grid.appendChild(stat(dropouts, 'Dropouts'));
+    }
+  }
+
+  /* ---------------- Part 2: Finance KPIs (top 4 of 7, admin-configurable) ---------------- */
+  var FINANCE_KPIS = {
+    feesCollected: { label: 'Fees Collected', compute: function (d) { return U.money(d.paid, d.cur); } },
+    feesExpected:  { label: 'Total Fees Expected', compute: function (d) { return U.money(d.billed, d.cur); } },
+    arrears:       { label: 'Arrears / Outstanding', compute: function (d) { return U.money(d.billed - d.paid, d.cur); } },
+    collectionRate:{ label: 'Collection Rate', compute: function (d) { return (d.billed ? Math.round(d.paid / d.billed * 100) : 0) + '%'; } },
+    otherIncome:   { label: 'Other Income', compute: function (d) { return U.money(d.otherIncomeSum, d.cur); } },
+    totalExpenses: { label: 'Total Expenses', compute: function (d) { return U.money(d.expensesSum, d.cur); } },
+    netPosition:   { label: 'Net Position (Income − Expenses)', compute: function (d) { return U.money(d.paid + d.otherIncomeSum - d.expensesSum, d.cur); } }
+  };
+  var FINANCE_KPI_DEFAULT = ['feesCollected', 'arrears', 'collectionRate', 'netPosition'];
+
+  function financeKpiCard(container, D) {
+    var termInvoiceScope = App.ctx.academic.current_term;
+    var otherIncomeSum = D.otherIncome.filter(function (o) { return o.term === termInvoiceScope || !o.term; }).reduce(function (a, o) { return a + Number(o.amount || 0); }, 0);
+    var expensesSum = D.expenses.filter(function (e) { return e.term === termInvoiceScope || !e.term; }).reduce(function (a, e) { return a + Number(e.amount || 0); }, 0);
+    var data = { billed: D.billed, paid: D.paid, otherIncomeSum: otherIncomeSum, expensesSum: expensesSum, cur: D.cur };
+
+    var head = el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem;align-items:center' }, [el('h3', { text: 'Finance (' + App.termName() + ')' })]);
+    if (App.user.role === 'Admin') head.appendChild(el('button', { class: 'btn sm ghost', text: 'Customize KPIs', onclick: function () { customizeFinanceKpis(function () { U.clear(card); buildBody(); }); } }));
+    var card = el('div', { class: 'card' }, [head]);
+    container.appendChild(card);
+    buildBody();
+
+    function buildBody() {
+      var selected = (App.ctx.dashboardSettings && App.ctx.dashboardSettings.financeKpis && App.ctx.dashboardSettings.financeKpis.length) ? App.ctx.dashboardSettings.financeKpis : FINANCE_KPI_DEFAULT;
+      var grid = el('div', { class: 'grid cols-4' });
+      selected.slice(0, 4).forEach(function (key) {
+        var k = FINANCE_KPIS[key]; if (!k) return;
+        grid.appendChild(stat(k.compute(data), k.label));
+      });
+      card.appendChild(grid);
+    }
+  }
+
+  function customizeFinanceKpis(done) {
+    var current = (App.ctx.dashboardSettings && App.ctx.dashboardSettings.financeKpis) || FINANCE_KPI_DEFAULT.slice();
+    var chosen = current.slice();
+    var box = el('div');
+    var countLine = el('div', { class: 'help' });
+    function updateCount() { countLine.textContent = chosen.length + ' of 4 selected.'; }
+    Object.keys(FINANCE_KPIS).forEach(function (key) {
+      var cb = el('input', { type: 'checkbox' }); cb.checked = chosen.indexOf(key) !== -1;
+      cb.addEventListener('change', function () {
+        if (cb.checked) { if (chosen.length >= 4) { cb.checked = false; U.toast('You can pick at most 4.', 'err'); return; } chosen.push(key); }
+        else chosen.splice(chosen.indexOf(key), 1);
+        updateCount();
+      });
+      box.appendChild(el('label', { class: 'check-label', style: 'display:block;margin-bottom:.3rem' }, [cb, document.createTextNode(' ' + FINANCE_KPIS[key].label)]));
+    });
+    updateCount();
+    box.appendChild(countLine);
+    U.modal({ title: 'Customize Finance KPIs (pick up to 4 of 7)', body: box, actions: [
+      { label: 'Cancel', onClick: function (x) { x(); } },
+      { label: 'Save', kind: 'gold', onClick: function (x) {
+        if (!chosen.length) return U.toast('Pick at least 1 KPI.', 'err');
+        DB.setSingleton('dashboardSettings', Object.assign({}, App.ctx.dashboardSettings, { financeKpis: chosen })).then(function () {
+          App.refresh().then(function () { x(); U.toast('Dashboard KPIs saved.'); done(); });
+        });
+      } }
+    ] });
   }
 
 
@@ -94,6 +165,7 @@
 
   function rangeFor(period) {
     var end = new Date(U.todayISO() + 'T00:00:00'); var start = new Date(end);
+    if (period === 'today') { return { start: start, end: end, unit: 'day' }; }
     if (period === 'week') { start.setDate(end.getDate() - 6); return { start: start, end: end, unit: 'day' }; }
     if (period === 'month') { start.setDate(end.getDate() - 29); return { start: start, end: end, unit: 'day' }; }
     if (period === 'term') { start.setDate(end.getDate() - 119); return { start: start, end: end, unit: 'week' }; }
@@ -155,7 +227,7 @@
   function legend(items) { var w = el('div', { class: 'flex', style: 'gap:1rem;flex-wrap:wrap;margin:.2rem 0 .1rem' }); items.forEach(function (it) { w.appendChild(el('span', { class: 'flex', style: 'align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted,#6b7280)' }, [el('span', { style: 'width:10px;height:10px;border-radius:2px;display:inline-block;background:' + it[1] }), document.createTextNode(it[0])])); }); return w; }
 
   function trendsSection(container, D) {
-    var showFinance = App.can('Finance') || App.can('Accounting');
+    var showFinance = App.canFullDashboard();
     var period = 'week';
     var head = el('div', { class: 'flex', style: 'justify-content:space-between;flex-wrap:wrap;gap:.5rem;align-items:center' }, [el('h3', { text: 'Trends' })]);
     var bar = el('div', { class: 'btn-row' });

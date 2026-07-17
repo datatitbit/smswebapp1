@@ -9,10 +9,28 @@
 
   function elx(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
 
+  // Ensures a Template A record has the multi-format shape (checklistFormat +
+  // checklistFormats), synthesising it from the legacy single-format
+  // `checklistDomains` field for installs saved before formats existed.
+  function normalizeTemplateA(t) {
+    if (t.checklistFormats && t.checklistFormat) return t;
+    var legacyDomains = t.checklistDomains || [];
+    t.checklistFormat = t.checklistFormat || 'checklist';
+    t.checklistFormats = t.checklistFormats || {
+      checklist: { label: 'Checklist & Scores (default)', columnHeader: 'THE CHILD CAN…', marks: ['YES', 'PAR', 'NES'], domains: legacyDomains },
+      nacca: { label: 'NaCCA/GES Learning Areas — Proficiency Levels', columnHeader: 'LEARNING AREA', marks: ['Beginning', 'Developing', 'Proficient', 'Highly Proficient'],
+        domains: [{ name: 'Learning Areas', indicators: ['Language & Literacy', 'Numeracy', 'Creative Arts', 'Our World, Our People', 'Physical & Health Development'] }] },
+      eyfs: { label: 'EYFS-style Areas of Learning', columnHeader: 'AREA OF LEARNING', marks: ['Emerging', 'Developing', 'Secure'],
+        domains: [{ name: 'Areas of Learning', indicators: ['Communication & Language', 'Physical Development', 'Personal, Social & Emotional Development', 'Literacy', 'Mathematics', 'Understanding the World', 'Expressive Arts & Design'] }] }
+    };
+    return t;
+  }
+
   // data: { student, klass, template, ctx, scores[], attendance, fees, position, promotedTo, checklist }
   function build(data) {
     var ctx = data.ctx, school = ctx.school, ac = ctx.academic, labels = ctx.labels;
     var t = data.template;
+    if (t.kind === 'A') normalizeTemplateA(t);
     var card = elx('div', 'report-card');
 
     // ---- Header ----
@@ -86,15 +104,15 @@
       var rf = t.remarkFields || {};
       ['conduct', 'attitude', 'interest', 'overall'].forEach(function (k) {
         var f = rf[k]; if (!f || f.show === false) return;
-        var val = sel[k] || '…………………………………………………………';
+        var val = sel[k] || '………………………………………………';
         lines.appendChild(elx('div', '', f.label + ': ' + val));
       });
       var fr = t.freeRemarks || {};
       if (fr.teacher && fr.teacher.show !== false) {
-        lines.appendChild(elx('div', '', fr.teacher.label + ': ' + (sel.teacher_remark || '……………………………………………………………………')));
+        lines.appendChild(elx('div', '', fr.teacher.label + ': ' + (sel.teacher_remark || '………………………………………………………………')));
       }
       if (fr.head && fr.head.show !== false) {
-        lines.appendChild(elx('div', '', fr.head.label + ': ' + '…………………………………………………………'));
+        lines.appendChild(elx('div', '', fr.head.label + ': ' + '………………………………………………'));
       }
       card.appendChild(lines);
     }
@@ -114,7 +132,7 @@
 
     // ---- Overall remarks / signature ----
     if (t.kind === 'A') {
-      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: …………………………………………………………………………………')).parentNode);
+      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: ………………………………………………………………………')).parentNode);
     }
     // Signature area — skipped for Template B when the conduct block already
     // renders the teacher remark + head signature lines.
@@ -151,25 +169,28 @@
   }
 
   function buildChecklist(t, data) {
+    var fmt = t.checklistFormats[t.checklistFormat] || t.checklistFormats.checklist;
+    var marks = fmt.marks, domains = fmt.domains || [];
     var wrap = document.createElement('div');
     var tbl = elx('table', 'rc-table');
     var thead = document.createElement('thead');
     var htr = document.createElement('tr');
-    ['THE CHILD CAN…', 'YES', 'PAR', 'NES'].forEach(function (h, i) {
+    [fmt.columnHeader || 'ITEM'].concat(marks).forEach(function (h, i) {
       var th = document.createElement('th'); th.textContent = h; if (i === 0) th.style.textAlign = 'left'; htr.appendChild(th);
     });
     thead.appendChild(htr); tbl.appendChild(thead);
     var tb = document.createElement('tbody');
-    (t.checklistDomains || []).forEach(function (d) {
+    var colSpan = marks.length + 1;
+    domains.forEach(function (d) {
       var dtr = document.createElement('tr');
-      var dtd = document.createElement('td'); dtd.colSpan = 4; dtd.className = 'rc-domain'; dtd.textContent = d.name.toUpperCase();
+      var dtd = document.createElement('td'); dtd.colSpan = colSpan; dtd.className = 'rc-domain'; dtd.textContent = d.name.toUpperCase();
       dtr.appendChild(dtd); tb.appendChild(dtr);
       d.indicators.forEach(function (ind) {
         var tr = document.createElement('tr');
         var s = document.createElement('td'); s.className = 'subj'; s.textContent = ind; tr.appendChild(s);
-        var marks = (data.checklist && data.checklist[ind]) || '';
-        ['YES', 'PAR', 'NES'].forEach(function (k) {
-          var td = document.createElement('td'); td.className = 'num'; td.textContent = (marks === k) ? '✓' : ''; tr.appendChild(td);
+        var mark = (data.checklist && data.checklist[ind]) || '';
+        marks.forEach(function (k) {
+          var td = document.createElement('td'); td.className = 'num'; td.textContent = (mark === k) ? '✓' : ''; tr.appendChild(td);
         });
         tb.appendChild(tr);
       });
@@ -226,5 +247,5 @@
     window.print();
   }
 
-  global.ReportCard = { build: build, printCards: printCards, initials: initials };
+  global.ReportCard = { build: build, printCards: printCards, initials: initials, normalizeTemplateA: normalizeTemplateA };
 })(window);

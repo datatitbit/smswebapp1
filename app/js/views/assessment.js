@@ -83,7 +83,12 @@
       if (c && c.template === 'A') {
         subjSel.appendChild(el('option', { value: '__checklist', text: 'Competency checklist' }));
       }
-      (c ? c.subjects : []).forEach(function (s) { subjSel.appendChild(el('option', { value: s, text: s })); });
+      var subjectList = c ? c.subjects : [];
+      if (c && App.user.role === 'Teacher') {
+        var restricted = App.teacherSubjectsFor(c.id);
+        if (restricted) subjectList = subjectList.filter(function (s) { return restricted.indexOf(s) !== -1; });
+      }
+      subjectList.forEach(function (s) { subjSel.appendChild(el('option', { value: s, text: s })); });
       loadEntry();
     }
     function loadEntry() {
@@ -153,12 +158,13 @@
   }
 
   function checklistEntry(area, klass, term) {
-    var tmpl = App.ctx.reportTemplates.filter(function (t) { return t.id === 'A'; })[0];
+    var tmpl = global.ReportCard.normalizeTemplateA(App.ctx.reportTemplates.filter(function (t) { return t.id === 'A'; })[0]);
+    var fmt = tmpl.checklistFormats[tmpl.checklistFormat] || tmpl.checklistFormats.checklist;
     Promise.all([DB.all('students'), DB.all('checklists')]).then(function (r) {
       var students = r[0].filter(function (s) { return s.class_id === klass.id && s.status === 'active'; });
       var lists = r[1] || [];
       var card = el('div', { class: 'card' });
-      card.appendChild(el('h3', { text: klass.name + ' · Competency checklist' }));
+      card.appendChild(el('h3', { text: klass.name + ' · ' + (fmt.label || 'Competency checklist') }));
       if (!students.length) { card.appendChild(el('div', { class: 'empty', text: 'No pupils.' })); area.appendChild(card); return; }
       var pupilSel = el('select');
       students.forEach(function (s) { pupilSel.appendChild(el('option', { value: s.student_id, text: s.first_name + ' ' + s.last_name })); });
@@ -169,11 +175,11 @@
         var code = pupilSel.value;
         var existing = lists.filter(function (l) { return l.student_id === code && l.term === term; })[0];
         var marks = existing ? Object.assign({}, existing.marks) : {};
-        (tmpl.checklistDomains || []).forEach(function (d) {
+        (fmt.domains || []).forEach(function (d) {
           box.appendChild(el('h4', { text: d.name }));
           d.indicators.forEach(function (ind) {
             var grp = el('div', { class: 'flex', style: 'gap:.4rem;flex-wrap:wrap;margin-bottom:.3rem' }, [el('span', { style: 'flex:1;min-width:160px', text: ind })]);
-            ['YES', 'PAR', 'NES'].forEach(function (k) {
+            fmt.marks.forEach(function (k) {
               var b = el('button', { class: 'btn sm ' + (marks[ind] === k ? 'gold' : 'ghost'), text: k, onclick: function () { marks[ind] = k; drawMarks(); } });
               b._k = k; b._ind = ind; grp.appendChild(b);
             });
@@ -351,8 +357,9 @@
 
   function teacherClasses() {
     var all = App.ctx.classes.slice().sort(function (a, b) { return a.sort - b.sort; });
-    if (App.user.role === 'Teacher' && App.user.class_ids && App.user.class_ids.length) {
-      return all.filter(function (c) { return App.user.class_ids.indexOf(c.id) !== -1; });
+    if (App.user.role === 'Teacher') {
+      var ids = App.teacherClassIds();
+      if (ids.length) return all.filter(function (c) { return ids.indexOf(c.id) !== -1; });
     }
     if (App.readOnly && App.user.linked_student_ids) {
       // parent: classes of their children — resolved lazily; fall back to all

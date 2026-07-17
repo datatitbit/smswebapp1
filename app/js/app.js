@@ -51,12 +51,14 @@
       DB.singleton('weighting'), DB.singleton('labels'),
       DB.all('permissions'), DB.all('gradeBands'), DB.all('categories'),
       DB.all('classes'), DB.all('reportTemplates'), DB.all('feeTypes'), DB.all('parents'),
-      DB.singleton('admissionFields')
+      DB.singleton('admissionFields'), DB.all('staff'), DB.singleton('dashboardSettings')
     ]).then(function (r) {
       App.ctx = {
         school: r[0], academic: r[1], idRules: r[2], weighting: r[3], labels: r[4],
         gradeBands: r[6], categories: r[7], classes: r[8], reportTemplates: r[9], feeTypes: r[10], parents: r[11],
-        admissionFields: (Array.isArray(r[12]) && r[12].length) ? r[12] : JSON.parse(JSON.stringify(global.SMS_SEED.admissionFields || []))
+        admissionFields: (Array.isArray(r[12]) && r[12].length) ? r[12] : JSON.parse(JSON.stringify(global.SMS_SEED.admissionFields || [])),
+        staff: r[13] || [],
+        dashboardSettings: r[14] || JSON.parse(JSON.stringify(global.SMS_SEED.dashboardSettings))
       };
       // permissions stored as array of {role, perms} OR object — normalise
       App.permissions = normalisePerms(r[5]);
@@ -143,6 +145,44 @@
     if (role === 'Teacher') return module === 'Assessment' || module === 'Attendance';
     if (role === 'Other staff') return ['Finance', 'Accounting', 'Payroll', 'Inventory', 'Students', 'Administration'].indexOf(module) !== -1;
     return false;
+  };
+
+  // The staff record linked to the signed-in user (via staff_id) — the single
+  // source of truth for a teacher's class-teacher / subject-teacher assignments.
+  App.myStaff = function () {
+    if (!App.user || !App.user.staff_id) return null;
+    return (App.ctx.staff || []).filter(function (s) { return s.staff_id === App.user.staff_id; })[0] || null;
+  };
+  // Classes this Teacher can act on: class-teacher assignments (whole class,
+  // all subjects) unioned with the classes covered by their subject-teacher
+  // assignments (one subject, one or more classes).
+  App.teacherClassIds = function () {
+    var st = App.myStaff();
+    var ids = (st && st.class_ids) || App.user.class_ids || [];
+    var subj = (st && st.subject_teacher_of) || [];
+    subj.forEach(function (a) { (a.class_ids || []).forEach(function (id) { if (ids.indexOf(id) === -1) ids.push(id); }); });
+    return ids;
+  };
+  // Subjects a Teacher may enter for a given class: all of them if they are
+  // the class teacher there, otherwise only the subjects assigned to them.
+  App.teacherSubjectsFor = function (classId) {
+    var st = App.myStaff();
+    if (!st) return null; // null = no restriction (non-staff-linked teacher account)
+    if ((st.class_ids || []).indexOf(classId) !== -1) return null; // class teacher — all subjects
+    var subj = (st.subject_teacher_of || []).filter(function (a) { return (a.class_ids || []).indexOf(classId) !== -1; }).map(function (a) { return a.subject; });
+    return subj; // restricted list (possibly empty)
+  };
+
+  // Full dashboard (Finance KPIs + enrolment/attendance) is open to Admin,
+  // Director, Other staff (Account/Finance office) by default, plus any staff
+  // member an Admin has explicitly flagged via Administration → Staff.
+  // Everyone else with Dashboard access sees the Enrolment & Attendance side only.
+  App.canFullDashboard = function () {
+    if (!App.user) return false;
+    var role = App.user.role;
+    if (role === 'Admin' || role === 'Director' || role === 'Other staff') return true;
+    var st = App.myStaff();
+    return !!(st && st.dashboard_full_access);
   };
 
   App.className = function (id) {

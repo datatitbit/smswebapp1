@@ -265,11 +265,28 @@
     overall:  { show: true, label: 'Overall Remark', options: ['EXCEEDS EXPECTATIONS', 'MEETS EXPECTATIONS', 'APPROACHING EXPECTATIONS', 'NEEDS IMPROVEMENT', 'BELOW EXPECTATIONS'] }
   };
 
+  // Creche/preschool report can be produced in one of 3 selectable formats
+  // (Settings → Report Templates → Template A → Format). "checklist" is our
+  // original sample-report-based default. "nacca" mirrors Ghana's official
+  // NaCCA/GES Kindergarten Assessment Tool (learning areas rated on its
+  // 4-level proficiency scale). "eyfs" mirrors the Early-Years-Foundation-
+  // Stage-style "Areas of Learning" format used by many private/international-
+  // curriculum preschools in Ghana. Each format's domains/indicators and mark
+  // scale are independently editable and preserved when switching formats.
+  var checklistFormats = {
+    checklist: { label: 'Checklist & Scores (default)', columnHeader: 'THE CHILD CAN…', marks: ['YES', 'PAR', 'NES'], domains: checklistDomains },
+    nacca: { label: 'NaCCA/GES Learning Areas — Proficiency Levels', columnHeader: 'LEARNING AREA', marks: ['Beginning', 'Developing', 'Proficient', 'Highly Proficient'],
+      domains: [{ name: 'Learning Areas', indicators: ['Language & Literacy', 'Numeracy', 'Creative Arts', 'Our World, Our People', 'Physical & Health Development'] }] },
+    eyfs: { label: 'EYFS-style Areas of Learning', columnHeader: 'AREA OF LEARNING', marks: ['Emerging', 'Developing', 'Secure'],
+      domains: [{ name: 'Areas of Learning', indicators: ['Communication & Language', 'Physical Development', 'Personal, Social & Emotional Development', 'Literacy', 'Mathematics', 'Understanding the World', 'Expressive Arts & Design'] }] }
+  };
+
   var reportTemplates = [
     {
       id: 'A', school_id: SCHOOL_ID, kind: 'A', name: 'Template A (Creche)',
       blocks: { checklist: true, scoresTable: true, conduct: false, feesBlock: true },
-      checklistDomains: checklistDomains,
+      checklistFormat: 'checklist',
+      checklistFormats: checklistFormats,
       labels: {
         classScore: 'Class Score %', examScore: 'Exam Score %',
         total: 'Total %', remarks: 'Remarks'
@@ -363,6 +380,12 @@
   // ---- Score weighting ----
   var weighting = { id: 'w-1', school_id: SCHOOL_ID, class_pct: 50, exam_pct: 50 };
 
+  // ---- Dashboard: which 4 of the 7 finance KPIs show on the Finance panel ----
+  var dashboardSettings = {
+    id: 'dash-1', school_id: SCHOOL_ID,
+    financeKpis: ['feesCollected', 'arrears', 'collectionRate', 'netPosition']
+  };
+
   // ---- Editable report/fees labels & message templates ----
   var labels = {
     id: 'lab-1', school_id: SCHOOL_ID,
@@ -402,11 +425,16 @@
 
   // ---- Staff records ----
   // basic_salary / allowances are DEMO figures — set real pay in Payroll → Staff Pay Setup.
+  // class_ids = "class teacher of" (entire class, all subjects).
+  // subject_teacher_of = [{ subject, class_ids }] — one subject across one or more classes.
+  // dashboard_full_access lets Admin grant a specific staff member the Finance
+  // side of the Dashboard even outside their role's default (Admin/Director/
+  // Other staff always have it; see App.canFullDashboard()).
   var staff = [
-    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} }
+    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
+    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} }
   ];
 
   // ---- Sample parents & students (demo data) ----
@@ -447,6 +475,7 @@
     idRules: idRules,
     admissionFields: admissionFields,
     weighting: weighting,
+    dashboardSettings: dashboardSettings,
     labels: labels,
     messageTemplates: messageTemplates,
     permissions: permissions,

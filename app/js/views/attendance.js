@@ -26,7 +26,10 @@
 
   function classOptions() {
     var all = App.ctx.classes.slice().sort(function (a, b) { return a.sort - b.sort; });
-    if (App.user.role === 'Teacher' && App.user.class_ids && App.user.class_ids.length) all = all.filter(function (c) { return App.user.class_ids.indexOf(c.id) !== -1; });
+    if (App.user.role === 'Teacher') {
+      var ids = App.teacherClassIds();
+      if (ids.length) all = all.filter(function (c) { return ids.indexOf(c.id) !== -1; });
+    }
     return all;
   }
 
