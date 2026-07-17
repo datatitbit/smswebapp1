@@ -1,5 +1,5 @@
 # School Management System — Install & Test Guide
-_Last updated: 2026-07-17 · living document (updated at the end of each change)_
+_Last updated: 2026-07-18 · living document (updated at the end of each change)_
 
 This guide covers how to install/run the SMS web app and how to test every feature.
 The app has two run modes behind one swappable data layer:
@@ -54,25 +54,35 @@ this section should be updated to match.)
 - [ ] Profile: change school name; **upload logo, signature, stamp** (images preview; Save).
 - [ ] Academic: edit year, current term, promotional term, vacation/reopening dates.
 - [ ] Classes & Subjects: add/edit/remove a category, class, subject; change a class template.
-- [ ] **Grading (Option A)**: bands show Level / Grade (A1…E9) / Range / Meaning; edit a band,
-      change weighting to 60/40 and confirm totals update; **Reset to Option A** restores default.
+- [ ] **Grading (Option A)**: bands show Level / Grade (A1…E9) / Range / Meaning; edit a band;
+      **Reset to Option A** restores default.
+- [ ] **Score weighting**: change class/exam max points to 40/60 (must sum to 100); in Assessment →
+      Score Entry confirm the input caps update to max 40 / max 60 and Total = the direct sum (e.g.
+      26 + 23 = 49, not a re-weighted blend) — this matches standard SBA reporting.
 - [ ] Fees: add/edit/remove a fee type; change amount/applies-to/frequency/required.
 - [ ] Inventory categories: add/edit/remove.
 - [ ] Report Templates → Template A: toggle checklist and scores **independently**.
 - [ ] Report Templates → Template B: hide/rename Grade, Position-in-subject, Position, Remarks;
       **edit Conduct/Attitude/Interest/Overall option lists** (rename, add, remove, reset each);
-      "Reset fields & remarks to default".
+      "Reset fields & remarks to default"; confirm Grade and Position-in-class can each be removed
+      independently and that "Reset fields & remarks to default" restores both.
 - [ ] Identity: confirm `ST####`/`SF####`; toggle manual entry.
 - [ ] Roles: permission matrix; Admin always full; save.
-- [ ] Profile → Branding: change primary/accent theme colors, confirm the app + a printed report
-      pick up the new color; "Reset colors to default" restores the standard look.
+- [ ] Profile → Branding: with "Use these colours" OFF, confirm the app stays on the standard
+      look regardless of saved colours; set primary + 2 secondary colours and turn the toggle ON,
+      confirm the app, login screen and a printed report all pick up the new colours; turn the
+      toggle back OFF and confirm it reverts to default while keeping the colours saved (re-enable
+      restores them without re-entering); "Reset to default (and turn off)" clears everything.
 - [ ] Access Control → Login accounts: reset a password; add a new login account.
 - [ ] Admission Form: rename a core field (e.g. Class) and toggle one required — confirm Students →
       "Admit student" picks up both immediately; add a custom field (any section), confirm it
       appears and saves under the student's record, edit the same student and confirm the value
-      reloads; delete a custom field; add a "Siblings" field, add/remove sibling rows, save, and
-      confirm the sibling list reloads correctly on Edit; "Reset to sample-form defaults" restores
-      the full seeded set (8 core + 28 custom fields).
+      reloads; delete a custom field; **rename an existing custom field's label** and confirm it
+      updates on the admission form and the field list without losing already-saved student
+      values; add a "Siblings" field, add/remove sibling rows, save, and confirm the sibling list
+      reloads correctly on Edit; "Reset to sample-form defaults" restores the full seeded set (8
+      core + 28 custom fields); toggle the "Profile" checkbox off for a field and confirm it
+      disappears from Students → "Download student profile" output.
 
 ### Subscription & Licence
 - [ ] Subscription → Free trial settings: change trial length (e.g. 45 days), confirm "Days
@@ -82,10 +92,18 @@ this section should be updated to match.)
 ### Students & Academic
 - [ ] Admit a student (auto ST id); edit; link to a parent (multi-child).
 - [ ] Bulk admissions: download template, add a bad row, upload → only valid rows import.
+- [ ] **Update existing students**: pick "Single student", download the data template (pre-filled
+      with current values), change a field, keep student_id unchanged, upload → confirm the
+      existing record updates (not a duplicate insert); repeat with "Whole class" scope; confirm an
+      unknown/mismatched student_id in the upload is rejected with a clear reason, not silently
+      skipped or inserted.
+- [ ] **Download student profile**: pick a class, tick one/several/all students, download/print →
+      confirm the sheet shows only the fields marked "Profile" in Settings → Admission Form.
 - [ ] Promotion (promotional term): promote/retain/complete; Basic 9 → Alumni.
 
 ### Assessment
-- [ ] Score entry per class/subject: totals/grade auto-compute from Option A; save.
+- [ ] Score entry per class/subject: class/exam inputs capped at the configured max points; total
+      is the direct sum; grade auto-computes from Option A; save.
 - [ ] Creche: competency checklist entry (YES/PAR/NES).
 - [ ] Report Cards → **Creche (Template A)**: checklist + light scores, no grade/position.
 - [ ] Report Cards → **Basic 1 (Template B)**: subjects table w/ grade & positions; click
@@ -113,6 +131,9 @@ this section should be updated to match.)
 - [ ] Staff records (SF id) add/edit; assign classes.
 - [ ] Staff bulk upload: download template, add a bad row (missing name / unknown role / unknown
       class), upload → only valid rows import with a clear reason for each rejection.
+- [ ] **Update one staff member**: click "Update template" on a staff row, edit a field (e.g.
+      phone), keep staff_id unchanged, use "Upload staff update" → confirm that one record updates;
+      confirm uploading a template for a different/unknown staff_id is rejected, not applied.
 - [ ] Reports: exam summary, finance, attendance with day/week/month/term/year filters + CSV.
 
 ### Inventory
@@ -136,6 +157,32 @@ this section should be updated to match.)
 ---
 
 ## 4. Change log
+- 2026-07-18 — Fixed a real grading bug: class score and exam score were each being entered out of
+  100 and then re-blended by percentage, silently deflating totals whenever weighting wasn't 50/50
+  (e.g. a 35/60-max entry was cut to 14). Class score and exam score are now entered already scaled
+  to their own weight (e.g. 40 + 60 when weighting is 40/60, standard Ghanaian SBA convention) and
+  the total is a direct sum — verified against a real sample report card (26 + 23 = 49). Input caps
+  and bulk-upload validation now track the configured weighting instead of a hardcoded 0–100.
+  `Grading.computeTotal()` dropped its now-unused weighting argument (old 3-arg callers still work
+  harmlessly). Settings → Grading relabeled to "max points" and explains the new semantics.
+- 2026-07-18 — Students: added "Update existing student records" (Students tab) — download a
+  spreadsheet pre-filled with current details for a whole class or a single student, edit, and
+  upload it back to UPDATE the matching record by student_id (separate from the new-admissions
+  template, which only inserts). Added "Download student profile" — a printable profile sheet for
+  one, several, or a whole class of students; which fields appear is controlled per-field by a new
+  "Profile" toggle in Settings → Admission Form (declaration and office-use fields are excluded by
+  default, everything else included).
+- 2026-07-18 — Administration → Staff: added a per-staff "Update template" download plus an
+  "Upload staff update" button — the same download/edit/upload-to-update pattern as students, but
+  one staff member at a time (matched by staff_id). Existing bulk buttons relabeled "New-staff
+  template" / "Upload new staff" to distinguish them from the update flow.
+- 2026-07-18 — Settings → Profile → Branding rebuilt: one primary/dominant colour plus two
+  secondary colours (was primary + a single accent), behind an explicit "Use these colours" toggle
+  that defaults OFF — the app, login/admission screens and printed reports keep the standard
+  Zetranova look until an admin turns it on. Turning it off preserves the saved colours (turning it
+  back on restores them without re-entering); "Reset to default (and turn off)" clears everything.
+  `school.theme_accent` is now `theme_secondary1` + new `theme_secondary2`; `App.themeHex()` still
+  returns `.accent` for compatibility alongside the new `.secondary1`/`.secondary2`.
 - 2026-07-17 — Admission form is now fully admin-configurable (Settings → Admission Form, new
   tab). Core fields used elsewhere in the app (first/last name, gender, DOB, class, parent, status,
   admitted-on) can be renamed and marked required/optional but never removed, since the student

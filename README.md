@@ -18,13 +18,13 @@ Theme: deep teal primary, warm gold accent, off-white background, system fonts.
 
 | Module | Highlights |
 |---|---|
-| **Settings & Customization** | School profile · academic year/terms (vacation+reopening, current & promotional term) · categories & classes · per-class subjects · grade bands · score weighting (50/50 default) · fee types · inventory categories · **report templates A & B** with toggle/rename of every block & field · ID rules · admission form field builder · roles & permission matrix · message templates & report labels · data export/import/reset |
-| **Students & Academic** | Admissions, records, search/filter, parents (multi-child), auto ID `ST0001`, promotion screen (promote/retain/complete; Basic 9 → Alumni), bulk admissions upload, **fully admin-configurable admission form** (Settings → Admission Form): rename/require any core field, add/edit/remove unlimited custom fields grouped into Personal Details / Health Needs / Parent-Guardian Details / Declaration / Office Use — seeded with a real Ghanaian school's admission form (nationality, siblings-with-class, health needs, guardian details, declaration, office-use assessment) |
-| **Assessment** | Score entry per class/subject (auto total, grade, remark, positions), Creche competency checklist entry, **Template A (Creche)** & **Template B (Standard)** report cards, print/Save-PDF, bulk score upload |
+| **Settings & Customization** | School profile · **branding (primary + 2 secondary colours, off by default until enabled)** · academic year/terms (vacation+reopening, current & promotional term) · categories & classes · per-class subjects · grade bands · score weighting (class/exam max points, default 50+50) · fee types · inventory categories · **report templates A & B** with toggle/rename of every block & field (incl. Grade / Position-in-class, independently removable and reset-to-default) · ID rules · admission form field builder (incl. which fields appear on the student profile download) · roles & permission matrix · message templates & report labels · data export/import/reset |
+| **Students & Academic** | Admissions, records, search/filter, parents (multi-child), auto ID `ST0001`, promotion screen (promote/retain/complete; Basic 9 → Alumni), bulk admissions upload, **fully admin-configurable admission form** (Settings → Admission Form): rename/require any core field, add/edit/remove unlimited custom fields grouped into Personal Details / Health Needs / Parent-Guardian Details / Declaration / Office Use — seeded with a real Ghanaian school's admission form (nationality, siblings-with-class, health needs, guardian details, declaration, office-use assessment). **Update existing students in bulk**: download a spreadsheet pre-filled with current details for a whole class or one student, edit, re-upload to update (separate from the new-admissions template). **Download student profile**: a printable profile sheet for one, several, or a whole class of students — which fields appear is admin-configurable |
+| **Assessment** | Score entry per class/subject — class score and exam score are each entered already scaled to their own weight (e.g. 40 + 60), total is the direct sum, matching standard Ghanaian SBA reporting — auto grade/remark/positions, Creche competency checklist entry, **Template A (Creche)** & **Template B (Standard)** report cards, print/Save-PDF, bulk score upload |
 | **Finance & Fees** | Term billing from fee types, fee positions (billed/paid/arrears), payments via **test-mode** MoMo/Paystack stub, printable receipts, Bills/Fees report + CSV |
 | **Attendance & Discipline** | Fast daily marking (P/A/L), all-present/absent, conduct notes, bulk upload; totals feed the report card |
 | **Communication** | SMS via **mock sender**, announcements, editable templates with placeholders, multi-child parents |
-| **Administration & Reporting** | Role-aware dashboard, staff records (`SF0001`), exam/finance/attendance reports with day/week/month/term/year filters + CSV export |
+| **Administration & Reporting** | Role-aware dashboard, staff records (`SF0001`) with a per-staff "Update template" download (fill and re-upload to update just that one staff member — separate from the new-staff bulk template), exam/finance/attendance reports with day/week/month/term/year filters + CSV export |
 | **Inventory / Stock** | Items, stock in/out, low-stock view, stock report with time filters + CSV |
 | **Bulk file entry** | Download template / Upload filled (CSV) on score entry, attendance, admissions, fee billing — every row validated, bad rows rejected with reasons, **no silent overwrites** |
 | **Accounting** | Income (auto from Finance + manual other-income) vs. expenses (manual + auto-posted payroll), time-filtered overview, editable expense/income categories, CSV export |
@@ -143,7 +143,8 @@ client:
    real schools sharing infrastructure. Local mode generates a unique per-install ID automatically.
 2. **Admin signs in** with the seeded demo credentials (§5 above), then immediately:
    - Settings → Profile: school name, motto, contact details, logo/signature/stamp, **Branding →
-     Theme colors** (primary + accent — used across the app, printed reports, and receipts).
+     School colours** (primary + 2 secondary colours — used across the app, admission forms,
+     printed reports, and receipts once "Use these colours" is switched on; off by default).
    - Settings → Access Control → Login accounts: reset every demo password (or delete the demo
      accounts and add real ones) before handing off to the school.
    - Settings → Classes & Subjects, Grading, Fees, Academic, Identity: adjust to the client's
@@ -154,6 +155,10 @@ client:
    correctly after step 2's class list is set up. Inventory → Item Master has the same
    download-template/upload-filled pattern for stock items. Every upload validates row-by-row and
    only imports valid rows — bad rows are rejected with a reason, nothing is silently overwritten.
+   Once a roster exists, existing records can also be bulk-edited: Students → "Update existing
+   students" (download current data for a class or a single student, edit, re-upload to update —
+   never inserts) and, per staff member, Administration → Staff row → "Update template" /
+   "Upload staff update".
 4. **Parent access**: Settings → Access Control lets Admin enable/disable an individual parent's
    login and control report-card download, school-wide or per class or per parent.
 5. Anything not covered by a Settings screen today (theme is now covered; the payment/SMS
@@ -187,6 +192,9 @@ client:
   PAYE+Pension+NHF) needs engineering work, not just data entry.
 - **Dashboard KPI cards** (Enrolment, Fees collected, Attendance rate, etc.) are a fixed set —
   not yet Settings-configurable.
+- **Bulk-update-existing (students/staff) covers flat core fields only** — custom admission
+  fields (`student.extra`, e.g. siblings, checkboxes) are not part of the CSV round-trip due to
+  their varied types; edit those on the individual Admit/Edit form.
 
 ---
 
