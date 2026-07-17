@@ -258,15 +258,44 @@
       { name: 'template', label: 'Report template', type: 'select', options: [{ value: 'A', label: 'Template A (Creche)' }, { value: 'B', label: 'Template B (Standard)' }] },
       { name: 'sort', label: 'Sort order', type: 'number' }
     ], c || { template: 'B', sort: 50 });
+    if (!c) f.appendChild(el('div', { class: 'help', text: 'If you enter the name of a class that already exists (e.g. "Basic 1"), it will be split into streams instead — the existing class becomes "Basic 1A" and this one becomes "Basic 1B" (next stream gets "1C", and so on).' }));
     U.modal({ title: c ? 'Edit class' : 'Add class', body: f, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var v = f.readValues(); if (!v.name.trim()) return U.toast('Name required', 'err');
-        var p = c ? DB.update('classes', c.id, v)
-          : DB.insert('classes', Object.assign({ subjects: [] }, v));
-        p.then(function () { x(); App.refresh(); U.toast('Saved.'); done(); });
+        v.name = v.name.trim();
+        if (c) { DB.update('classes', c.id, v).then(function () { x(); App.refresh(); U.toast('Saved.'); done(); }); return; }
+        DB.all('classes').then(function (allClasses) { streamAwareAdd(v, allClasses, x, done); });
       } }
     ] });
+  }
+  // Adding a class whose name matches an existing class (or an existing
+  // stream base) splits into lettered streams instead of colliding:
+  //   "Basic 1" + "Basic 1" → "Basic 1A" (renamed) + "Basic 1B" (new)
+  //   "Basic 1" again       → "Basic 1C" (next free letter)
+  function streamAwareAdd(v, allClasses, closeModal, done) {
+    var name = v.name;
+    var exact = allClasses.filter(function (c2) { return c2.name.toLowerCase() === name.toLowerCase(); })[0];
+    var streamRe = new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([A-Z])$', 'i');
+    var siblingLetters = allClasses.map(function (c2) { var m = c2.name.match(streamRe); return m ? m[1].toUpperCase() : null; }).filter(Boolean);
+    function nextLetter(used) { for (var i = 0; i < 26; i++) { var L = String.fromCharCode(65 + i); if (used.indexOf(L) === -1) return L; } return 'Z'; }
+    if (exact) {
+      var newName = name + 'A', newName2 = name + 'B';
+      DB.update('classes', exact.id, { name: newName }).then(function () {
+        DB.insert('classes', Object.assign({ subjects: exact.subjects.slice() }, v, { name: newName2 })).then(function () {
+          closeModal(); App.refresh(); U.toast('"' + name + '" already existed — split into "' + newName + '" and "' + newName2 + '".'); done();
+        });
+      });
+      return;
+    }
+    if (siblingLetters.length) {
+      var L2 = nextLetter(siblingLetters);
+      DB.insert('classes', Object.assign({ subjects: [] }, v, { name: name + L2 })).then(function () {
+        closeModal(); App.refresh(); U.toast('Added new stream "' + name + L2 + '".'); done();
+      });
+      return;
+    }
+    DB.insert('classes', Object.assign({ subjects: [] }, v)).then(function () { closeModal(); App.refresh(); U.toast('Saved.'); done(); });
   }
   function delClass(c, done) {
     DB.all('students').then(function (st) {
@@ -447,17 +476,33 @@
     function refresh() { U.clear(panel); tabTemplates(panel); }
   }
   function templateA(t, done) {
+    global.ReportCard.normalizeTemplateA(t);
     var body = el('div');
     body.appendChild(toggle('Competency checklist block', t.blocks.checklist, function (v) { t.blocks.checklist = v; }));
     body.appendChild(toggle('Scores table block', t.blocks.scoresTable, function (v) { t.blocks.scoresTable = v; }));
     body.appendChild(toggle('Fees block', t.blocks.feesBlock, function (v) { t.blocks.feesBlock = v; }));
     body.appendChild(el('div', { class: 'help', text: 'Checklist and scores are independently switchable: run checklist-only, scores-only, or both.' }));
     body.appendChild(el('div', { class: 'divider' }));
+
+    // ---- Format selector (3 options) ----
+    var fmtField = el('div', { class: 'field' }, [el('label', { text: 'Checklist format' })]);
+    var fmtSel = el('select');
+    Object.keys(t.checklistFormats).forEach(function (key) {
+      var opt = el('option', { value: key, text: t.checklistFormats[key].label });
+      if (key === t.checklistFormat) opt.selected = true;
+      fmtSel.appendChild(opt);
+    });
+    fmtSel.addEventListener('change', function () { t.checklistFormat = fmtSel.value; });
+    fmtField.appendChild(fmtSel);
+    body.appendChild(fmtField);
+    body.appendChild(el('div', { class: 'help', text: '"Checklist & Scores" is our original default, based on the sample report you provided. The other two are alternative Ghanaian preschool formats — NaCCA/GES\'s official Kindergarten proficiency-level assessment, and an EYFS-style Areas-of-Learning format used by many private/international-curriculum preschools — each independently editable and preserved when you switch back and forth.' }));
+    body.appendChild(el('div', { class: 'divider' }));
+
     body.appendChild(labelEditor('Scores columns', t.labels, ['classScore', 'examScore', 'total', 'remarks']));
     body.appendChild(textField('KEYS legend', t, 'keysLegend'));
     body.appendChild(textField('Footer note', t, 'footer'));
-    body.appendChild(el('p', { class: 'help', text: 'Checklist domains & indicators are seeded from the sample report — edit them below.' }));
-    body.appendChild(el('button', { class: 'btn sm ghost', text: 'Edit checklist domains', onclick: function () { editChecklist(t, done); } }));
+    body.appendChild(el('p', { class: 'help', text: 'Domains/areas and indicators for the currently-selected format — edit below.' }));
+    body.appendChild(el('button', { class: 'btn sm ghost', text: 'Edit domains for this format', onclick: function () { editChecklist(t, fmtSel, done); } }));
     body.appendChild(saveBtn(function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template A saved.'); }); }));
     return card(t.name, body);
   }
@@ -499,7 +544,7 @@
     body.appendChild(el('div', { class: 'divider' }));
     body.appendChild(textField('Footer note', t, 'footer'));
     body.appendChild(el('div', { class: 'btn-row', style: 'margin-top:.8rem' }, [
-      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); }); } }),
+      el('button', { class: 'btn gold', text: 'Save changes', onclick: function () { DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Template B saved.'); } ) ; } }),
       el('button', { class: 'btn ghost', text: 'Reset fields & remarks to default', onclick: function () {
         U.confirm('Reset Template B columns, remark options and labels to default?', function () {
           var def = seedTemplateB();
@@ -549,11 +594,30 @@
     box.appendChild(optBox);
     return box;
   }
-  function editChecklist(t, done) {
-    var domains = JSON.parse(JSON.stringify(t.checklistDomains || []));
+  function editChecklist(t, fmtSel, done) {
+    var fmtKey = fmtSel.value;
+    var fmt = t.checklistFormats[fmtKey];
+    var domains = JSON.parse(JSON.stringify(fmt.domains || []));
+    var marks = fmt.marks.slice();
     var box = el('div');
+    var marksBox = el('div', { class: 'field' }, [el('label', { text: 'Mark scale (columns, in order)' })]);
+    var marksList = el('div'); marksBox.appendChild(marksList);
+    function redrawMarks() {
+      U.clear(marksList);
+      marks.forEach(function (m, mi) {
+        marksList.appendChild(el('div', { class: 'flex', style: 'margin-bottom:.25rem' }, [
+          el('input', { type: 'text', value: m, style: 'flex:1', oninput: function (e) { marks[mi] = e.target.value; } }),
+          el('button', { class: 'btn sm danger', text: '✕', onclick: function () { marks.splice(mi, 1); redrawMarks(); } })
+        ]));
+      });
+      marksList.appendChild(el('button', { class: 'btn sm ghost', text: '+ mark', onclick: function () { marks.push('New'); redrawMarks(); } }));
+    }
+    redrawMarks();
+    box.appendChild(marksBox);
+    box.appendChild(el('div', { class: 'divider' }));
+    var domBox = el('div');
     function redraw() {
-      U.clear(box);
+      U.clear(domBox);
       domains.forEach(function (d, di) {
         var dc = el('div', { class: 'card' });
         dc.appendChild(el('input', { type: 'text', value: d.name, style: 'font-weight:600; width:100%; margin-bottom:.4rem', oninput: function (e) { d.name = e.target.value; } }));
@@ -565,16 +629,18 @@
         });
         dc.appendChild(el('button', { class: 'btn sm ghost', text: '+ indicator', onclick: function () { d.indicators.push(''); redraw(); } }));
         dc.appendChild(el('button', { class: 'btn sm danger', text: 'Remove domain', style: 'margin-left:.4rem', onclick: function () { domains.splice(di, 1); redraw(); } }));
-        box.appendChild(dc);
+        domBox.appendChild(dc);
       });
-      box.appendChild(el('button', { class: 'btn sm', text: '+ Add domain', onclick: function () { domains.push({ name: 'New domain', indicators: [''] }); redraw(); } }));
+      domBox.appendChild(el('button', { class: 'btn sm', text: '+ Add domain', onclick: function () { domains.push({ name: 'New domain', indicators: [''] }); redraw(); } }));
     }
     redraw();
-    U.modal({ title: 'Checklist domains', wide: true, body: box, actions: [
+    box.appendChild(domBox);
+    U.modal({ title: fmt.label + ' — domains & marks', wide: true, body: box, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
-        t.checklistDomains = domains.map(function (d) { return { name: d.name, indicators: d.indicators.filter(Boolean) }; });
-        DB.update('reportTemplates', t.id, t).then(function () { x(); App.refresh(); U.toast('Checklist saved.'); done(); });
+        fmt.marks = marks.filter(Boolean);
+        fmt.domains = domains.map(function (d) { return { name: d.name, indicators: d.indicators.filter(Boolean) }; });
+        DB.update('reportTemplates', t.id, t).then(function () { x(); App.refresh(); U.toast('Saved.'); done(); });
       } }
     ] });
   }
