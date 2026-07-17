@@ -1,5 +1,5 @@
 # School Management System — Install & Test Guide
-_Last updated: 2026-06-26 · living document (updated at the end of each change)_
+_Last updated: 2026-07-17 · living document (updated at the end of each change)_
 
 This guide covers how to install/run the SMS web app and how to test every feature.
 The app has two run modes behind one swappable data layer:
@@ -67,6 +67,12 @@ this section should be updated to match.)
 - [ ] Profile → Branding: change primary/accent theme colors, confirm the app + a printed report
       pick up the new color; "Reset colors to default" restores the standard look.
 - [ ] Access Control → Login accounts: reset a password; add a new login account.
+- [ ] Admission Form: rename a core field (e.g. Class) and toggle one required — confirm Students →
+      "Admit student" picks up both immediately; add a custom field (any section), confirm it
+      appears and saves under the student's record, edit the same student and confirm the value
+      reloads; delete a custom field; add a "Siblings" field, add/remove sibling rows, save, and
+      confirm the sibling list reloads correctly on Edit; "Reset to sample-form defaults" restores
+      the full seeded set (8 core + 28 custom fields).
 
 ### Subscription & Licence
 - [ ] Subscription → Free trial settings: change trial length (e.g. 45 days), confirm "Days
@@ -130,6 +136,21 @@ this section should be updated to match.)
 ---
 
 ## 4. Change log
+- 2026-07-17 — Admission form is now fully admin-configurable (Settings → Admission Form, new
+  tab). Core fields used elsewhere in the app (first/last name, gender, DOB, class, parent, status,
+  admitted-on) can be renamed and marked required/optional but never removed, since the student
+  list, bulk upload, promotion and reports all depend on their keys. Admin can add unlimited custom
+  fields grouped into five sections — Personal Details, Health Needs, Parent/Guardian Details,
+  Declaration, For Office Use Only — each with a type (short text, long text, number, date,
+  dropdown, yes/no checkbox, or a repeatable "siblings" list capturing name + class), optional
+  helper text, and its own required flag; custom fields can be edited or deleted at any time, and
+  "Reset to sample-form defaults" restores the full seeded set. Seeded with 28 custom fields modeled
+  on a real Ghanaian school admission form (nationality, previous school, siblings already enrolled
+  with their class, special educational/medical needs, food allergies, guardian age/relationship/
+  address/profession/how-they-heard-about-the-school, a declaration acknowledgement, and
+  office-use admission-assessment scores). Custom field values are stored per student under
+  `student.extra` and do not appear in the student list, bulk upload template, or printed reports —
+  only on the Admit/Edit student form itself.
 - 2026-07-16 — Simplified login to exactly 3 fields: school name (now pre-filled), user type,
   password — removed the separate "your name" picker. The password itself now identifies which
   account among a shared role to sign in as (checked against each candidate's hash in turn), so
