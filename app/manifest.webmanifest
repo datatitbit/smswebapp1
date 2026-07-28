@@ -1,0 +1,19 @@
+{
+  "name": "School Management System",
+  "short_name": "SMS",
+  "description": "School Management System — attendance, scores, fees, reports and more, online or offline.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0f5e5e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
