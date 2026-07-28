@@ -161,7 +161,7 @@
       tools.appendChild(search); tools.appendChild(clsSel);
       tools.appendChild(el('div', { style: 'flex:1' }));
       if (canEdit) {
-        tools.appendChild(el('button', { class: 'btn', text: '+ Admit student', onclick: function () { editStudent(null, classes, parents, refresh); } }));
+        tools.appendChild(el('button', { class: 'btn', text: '+ Admit student', onclick: function () { editStudent(null, classes, parents, students, refresh); } }));
         tools.appendChild(el('button', { class: 'btn ghost', text: '⤓ New-admissions template', onclick: function () { downloadTemplate(classes); } }));
         tools.appendChild(el('button', { class: 'btn gold', text: '⤒ Upload new admissions', onclick: function () { uploadAdmissions(classes, refresh); } }));
       }
@@ -191,7 +191,7 @@
           var par = parents.filter(function (p) { return p.id === s.parent_id; })[0];
           var actions = el('div', { class: 'wrap-actions' });
           if (canEdit) {
-            actions.appendChild(el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editStudent(s, classes, parents, refresh); } }));
+            actions.appendChild(el('button', { class: 'btn sm', text: 'Edit', onclick: function () { editStudent(s, classes, parents, students, refresh); } }));
             actions.appendChild(el('button', { class: 'btn sm danger', text: 'Del', onclick: function () { U.confirm('Withdraw/delete ' + s.first_name + '?', function () { DB.remove('students', s.id).then(refresh); }); } }));
           } else actions.appendChild(el('span', { class: 'muted', text: 'view only' }));
           tb.appendChild(el('tr', {}, [
@@ -256,7 +256,7 @@
     return wrap;
   }
 
-  function editStudent(s, classes, parents, done) {
+  function editStudent(s, classes, parents, students, done) {
     var rules = App.ctx.idRules;
     var cf = {
       first_name: coreField('first_name', 'First name', true),
@@ -264,7 +264,6 @@
       gender: coreField('gender', 'Gender', false),
       dob: coreField('dob', 'Date of birth', false),
       class_id: coreField('class_id', 'Class', false),
-      parent_id: coreField('parent_id', 'Parent / Guardian', false),
       status: coreField('status', 'Status', false),
       admitted_on: coreField('admitted_on', 'Admitted on', false)
     };
@@ -274,68 +273,169 @@
       { name: 'gender', label: cf.gender.label, type: 'select', options: ['', 'M', 'F'], required: cf.gender.required },
       { name: 'dob', label: cf.dob.label, type: 'date', required: cf.dob.required },
       { name: 'class_id', label: cf.class_id.label, type: 'select', options: classes.map(function (c) { return { value: c.id, label: c.name }; }), required: cf.class_id.required },
-      { name: 'parent_id', label: cf.parent_id.label, type: 'select', options: [{ value: '', label: '— none —' }].concat(parents.map(function (p) { return { value: p.id, label: p.name }; })), required: cf.parent_id.required },
       { name: 'status', label: cf.status.label, type: 'select', options: ['active', 'withdrawn', 'completed'], required: cf.status.required },
       { name: 'admitted_on', label: cf.admitted_on.label, type: 'date', required: cf.admitted_on.required }
     ];
-    if (rules.allow_manual && !s) fields.unshift({ name: 'student_id', label: 'Student ID (leave blank to auto-generate)', placeholder: rules.student_prefix + '____' });
-    var f = U.form(fields, s || { status: 'active', admitted_on: U.todayISO() });
+
+    // Student ID is shown as soon as admission starts (auto-generated).
+    function nextStudentPreview() {
+      var pre = rules.student_prefix, digits = rules.digits, max = 0;
+      students.forEach(function (st) {
+        var m = new RegExp('^' + pre + '(\\d+)$').exec(st.student_id || '');
+        if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; }
+      });
+      var t = '' + (max + 1); while (t.length < digits) t = '0' + t; return pre + t;
+    }
+    var preview = s ? '' : nextStudentPreview();
+    var initial = s || { status: 'active', admitted_on: U.todayISO() };
+    if (!s && rules.allow_manual) { fields.unshift({ name: 'student_id', label: 'Student ID (auto-suggested — edit to override)' }); initial = Object.assign({ student_id: preview }, initial); }
+
+    var f = U.form(fields, initial);
     f.classList.add('form-grid');
 
-    // ---- Admin-defined custom fields (Settings → Admission Form), grouped by section ----
-    var customDefs = admissionCfg().filter(function (x) { return !x.system; });
-    var plainDefs = customDefs.filter(function (x) { return x.type !== 'siblings'; })
-      .sort(function (a, b) { return ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === a.section; }) - ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === b.section; }); });
-    var siblingDefs = customDefs.filter(function (x) { return x.type === 'siblings'; });
-    var extraVals = (s && s.extra) ? JSON.parse(JSON.stringify(s.extra)) : {};
+    // Read-only ID badge for new students when IDs are auto-only.
+    var idNode = (!s && !rules.allow_manual)
+      ? el('div', { class: 'field', style: 'grid-column:1/-1' }, [el('label', { text: 'Student ID' }),
+          el('div', {}, [el('span', { class: 'tag', text: preview }), el('span', { class: 'help', style: 'display:inline;margin-left:.5rem', text: 'auto-generated' })])])
+      : null;
 
+    // ---- Parent / Guardian + sibling linkage (replaces the separate "add parent") ----
+    var parentNode = parentSiblingSection();
+
+    // ---- Admin-defined custom fields (Settings → Admission Form), grouped by section ----
+    // (The old informational "siblings" field type is superseded by the section above.)
+    var plainDefs = admissionCfg().filter(function (x) { return !x.system && x.type !== 'siblings'; })
+      .sort(function (a, b) { return ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === a.section; }) - ADMISSION_SECTIONS.findIndex(function (sec) { return sec.key === b.section; }); });
+    var extraVals = (s && s.extra) ? JSON.parse(JSON.stringify(s.extra)) : {};
     var ef = null;
     if (plainDefs.length) {
       ef = U.form(plainDefs.map(function (d) { return { name: d.key, label: d.label, type: d.type, required: d.required, options: d.options, help: d.help, rows: d.type === 'textarea' ? 2 : undefined }; }), extraVals);
       ef.classList.add('form-grid');
-      var rows = U.$all('.field', ef), idx = 0;
+      var rws = U.$all('.field', ef), idx = 0;
       ADMISSION_SECTIONS.forEach(function (sec) {
         var count = plainDefs.filter(function (d) { return d.section === sec.key; }).length;
-        if (count) { ef.insertBefore(el('h4', { text: sec.title, style: 'grid-column:1/-1;margin:.6rem 0 0' }), rows[idx]); idx += count; }
+        if (count) { ef.insertBefore(el('h4', { text: sec.title, style: 'grid-column:1/-1;margin:.6rem 0 0' }), rws[idx]); idx += count; }
       });
     }
-    var sibNodes = siblingDefs.map(function (d) { return siblingsField(d, extraVals[d.key]); });
 
-    var body = el('div', {}, [f, ef, sibNodes.length ? el('h4', { text: 'Siblings', style: 'margin:.6rem 0 0' }) : null].concat(sibNodes));
+    var body = el('div', {}, [idNode, f, parentNode, ef]);
 
     U.modal({ title: s ? 'Edit student' : 'Admit student', wide: true, body: body, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var errs = f.validate();
         if (ef) errs = errs.concat(ef.validate());
-        sibNodes.forEach(function (w) { if (w._required && !w._getValue().length) errs.push(w._label + ' is required.'); });
         if (errs.length) return U.toast(errs[0], 'err');
         var v = f.readValues();
-        var extra = ef ? ef.readValues() : {};
-        sibNodes.forEach(function (w, i) { extra[siblingDefs[i].key] = w._getValue(); });
-        v.extra = extra;
-        // Stamp the date the first time a student transitions to withdrawn, so
-        // "Dropouts" on the Dashboard can be counted per period.
+        // Preserve any pre-existing extra keys not shown on the form (e.g. legacy siblings data).
+        v.extra = Object.assign({}, (s && s.extra) || {}, ef ? ef.readValues() : {});
         if (v.status === 'withdrawn' && (!s || s.status !== 'withdrawn')) v.withdrawn_on = U.todayISO();
+        var sv = parentNode._getValue();
+        if (sv.hasSibling && sv.siblingId) {
+          var sib0 = students.filter(function (x2) { return x2.id === sv.siblingId; })[0];
+          if (sib0) v.sibling_ref = { student_id: sib0.student_id, name: sib0.first_name + ' ' + sib0.last_name, class_id: sib0.class_id };
+        }
         if (s) {
-          DB.update('students', s.id, v).then(function () { linkParent(s.id, v.parent_id, s.parent_id).then(function () { x(); U.toast('Student updated.'); done(); }); });
-        } else {
-          var manualCode = v.student_id && v.student_id.trim();
-          var go = manualCode ? Promise.resolve(manualCode) : DB.nextCode('student', rules.student_prefix, rules.digits);
-          go.then(function (code) {
-            if (!manualCode) { proceed(code); return; }
-            DB.all('students').then(function (all) {
-              if (all.some(function (x2) { return x2.student_id === code; })) return U.toast('Student ID "' + code + '" is already in use — choose a different ID.', 'err');
-              proceed(code);
+          delete v.student_id; // never rewrite an existing code from the form
+          DB.update('students', s.id, v).then(function () {
+            resolveParentLink(s.id, s.student_id, sv, s.parent_id).then(function (pid) {
+              DB.update('students', s.id, { parent_id: pid || null }).then(function () { x(); U.toast('Student updated.'); done(); });
             });
           });
+        } else {
+          var manualCode = rules.allow_manual && v.student_id && v.student_id.trim();
           function proceed(code) {
-            v.student_id = code; v.id = 'stu-' + code;
-            DB.insert('students', v).then(function () { linkParent(v.id, v.parent_id, null).then(function () { x(); U.toast('Admitted as ' + code); done(); }); });
+            v.student_id = code; v.id = 'stu-' + code; v.parent_id = null;
+            DB.insert('students', v).then(function () {
+              resolveParentLink(v.id, code, sv, null).then(function (pid) {
+                DB.update('students', v.id, { parent_id: pid || null }).then(function () { x(); U.toast('Admitted as ' + code); done(); });
+              });
+            });
+          }
+          if (manualCode) {
+            DB.all('students').then(function (all) {
+              if (all.some(function (x2) { return x2.student_id === manualCode; })) return U.toast('Student ID "' + manualCode + '" is already in use — choose a different ID.', 'err');
+              proceed(manualCode);
+            });
+          } else {
+            DB.nextCode('student', rules.student_prefix, rules.digits).then(proceed);
           }
         }
       } }
     ] });
+
+    // ---- Parent + sibling picker (creates the parent record automatically) ----
+    function parentSiblingSection() {
+      var curParent = (s && s.parent_id) ? parents.filter(function (p) { return p.id === s.parent_id; })[0] : null;
+      var clsName = function (id) { var c = classes.filter(function (x) { return x.id === id; })[0]; return c ? c.name : ''; };
+      var wrap = el('div', { style: 'grid-column:1/-1;margin-top:.4rem' });
+      wrap.appendChild(el('h4', { text: 'Parent / Guardian', style: 'margin:.6rem 0 .3rem' }));
+      var sibChk = el('input', { type: 'checkbox' });
+      wrap.appendChild(el('label', { class: 'check-label', style: 'display:block;margin-bottom:.4rem' }, [sibChk, document.createTextNode(' This student has a sibling already enrolled here (share one parent account)')]));
+      var sibWrap = el('div', { class: 'field', style: 'display:none' }, [el('label', { text: 'Select the sibling — their parent will be shared' })]);
+      var sibSel = el('select');
+      sibSel.appendChild(el('option', { value: '', text: '— choose sibling —' }));
+      students.filter(function (x) { return !s || x.id !== s.id; }).forEach(function (x) {
+        sibSel.appendChild(el('option', { value: x.id, text: x.first_name + ' ' + x.last_name + ' — ' + x.student_id + ' — ' + clsName(x.class_id) }));
+      });
+      sibWrap.appendChild(sibSel);
+      var sibInfo = el('div', { class: 'help' });
+      sibWrap.appendChild(sibInfo);
+      wrap.appendChild(sibWrap);
+      var pGrid = el('div', { class: 'form-grid' });
+      var nameInp = el('input', { type: 'text', value: curParent ? (curParent.name || '') : '' });
+      var phoneInp = el('input', { type: 'text', value: curParent ? (curParent.phone || '') : '' });
+      var waInp = el('input', { type: 'text', value: curParent ? (curParent.whatsapp || '') : '' });
+      var emailInp = el('input', { type: 'email', value: curParent ? (curParent.email || '') : '' });
+      function fld(lbl, inp) { return el('div', { class: 'field' }, [el('label', { text: lbl }), inp]); }
+      pGrid.appendChild(fld('Parent / Guardian full name', nameInp));
+      pGrid.appendChild(fld('Phone', phoneInp));
+      pGrid.appendChild(fld('WhatsApp', waInp));
+      pGrid.appendChild(fld('Email', emailInp));
+      wrap.appendChild(pGrid);
+      wrap.appendChild(el('div', { class: 'help', text: 'Typing the parent here creates their record automatically — no separate step. To let one parent see all their children, tick the sibling box and pick an existing child (name, ID and class are shown) instead of re-typing the parent.' }));
+      function refreshMode() {
+        var on = sibChk.checked;
+        sibWrap.style.display = on ? '' : 'none';
+        var chosen = on && sibSel.value;
+        pGrid.style.display = chosen ? 'none' : '';
+        if (chosen) {
+          var sib = students.filter(function (x) { return x.id === sibSel.value; })[0];
+          var par = sib && parents.filter(function (p) { return p.id === sib.parent_id; })[0];
+          if (par) {
+            var kids = students.filter(function (x) { return (par.student_ids || []).indexOf(x.student_id) !== -1; }).map(function (x) { return x.first_name + ' ' + x.last_name; });
+            sibInfo.textContent = 'Will join ' + par.name + '’s account' + (kids.length ? (' (covers: ' + kids.join(', ') + ')') : '');
+          } else {
+            sibInfo.textContent = 'This sibling has no parent record yet — enter the parent below instead.';
+            pGrid.style.display = '';
+          }
+        } else if (on) { sibInfo.textContent = ''; }
+      }
+      sibChk.addEventListener('change', refreshMode);
+      sibSel.addEventListener('change', refreshMode);
+      refreshMode();
+      wrap._getValue = function () {
+        return { hasSibling: sibChk.checked && !!sibSel.value, siblingId: sibChk.checked ? sibSel.value : '', name: nameInp.value, phone: phoneInp.value, whatsapp: waInp.value, email: emailInp.value };
+      };
+      return wrap;
+    }
+
+    // Resolve the student's parent: reuse a sibling's parent, or create/update one
+    // from the details typed on the form. Keeps parent.student_ids in sync.
+    function resolveParentLink(studentId, studentCode, sv, oldParentId) {
+      if (sv.hasSibling && sv.siblingId) {
+        var sib = students.filter(function (x) { return x.id === sv.siblingId; })[0];
+        var pid = sib && sib.parent_id;
+        if (pid) return linkParent(studentId, pid, oldParentId).then(function () { return pid; });
+      }
+      var name = (sv.name || '').trim();
+      if (!name) return Promise.resolve(oldParentId || null);
+      var pdata = { name: name, phone: (sv.phone || '').trim(), whatsapp: (sv.whatsapp || sv.phone || '').trim(), email: (sv.email || '').trim() };
+      if (oldParentId) {
+        return DB.update('parents', oldParentId, pdata).then(function () { return linkParent(studentId, oldParentId, oldParentId); }).then(function () { return oldParentId; });
+      }
+      return DB.insert('parents', pdata).then(function (np) { return linkParent(studentId, np.id, oldParentId).then(function () { return np.id; }); });
+    }
   }
 
   // keep parent.student_ids in sync (by student code)
@@ -359,7 +459,7 @@
     Promise.all([DB.all('parents'), DB.all('students')]).then(function (r) {
       var parents = r[0], students = r[1], canEdit = App.canEdit('Students');
       var tools = el('div', { class: 'toolbar' });
-      if (canEdit) tools.appendChild(el('button', { class: 'btn', text: '+ Add parent / guardian', onclick: function () { editParent(null, students, refresh); } }));
+      if (canEdit) tools.appendChild(el('span', { class: 'muted', text: 'Parents are created automatically when you admit a student — use Edit to correct details or link another child.' }));
       panel.appendChild(tools);
       var c = el('div', { class: 'card' });
       var t = el('table', { class: 'data' });
@@ -381,7 +481,7 @@
       t.appendChild(tb);
       c.appendChild(el('div', { class: 'table-wrap' }, [t]));
       panel.appendChild(c);
-      panel.appendChild(el('div', { class: 'note', text: 'One parent links to several children — a single login covers all of them. Enabling/disabling a parent login and report-download control now live under Settings → Access Control (admin only).' }));
+      panel.appendChild(el('div', { class: 'note', text: 'Parents are created automatically during student admission — there is no separate "add parent" step. One parent links to several children (tick "sibling" when admitting, or use Edit here to link a child) and a single login covers all of them. Parent login and report-download control live under Settings → Access Control (admin only).' }));
     });
     function refresh() { U.clear(panel); tabParents(panel); }
   }
