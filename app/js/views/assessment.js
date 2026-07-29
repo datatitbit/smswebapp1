@@ -290,6 +290,15 @@
     });
   }
 
+  // Fallback suggestions if none configured in Settings → Report Templates → Template B.
+  var DEFAULT_TEACHER_REMARKS = [
+    'An excellent result. Keep it up!',
+    'A very good performance this term.',
+    'A good result; keep working hard.',
+    'A satisfactory result; more effort will bring improvement.',
+    'Fair; needs to be more focused and consistent next term.',
+    'Can do much better with more effort and concentration.'
+  ];
   function editStudentRemarks(s, tmpl, term, studentRemarks, done) {
     var existing = studentRemarks.filter(function (x) { return x.student_id === s.student_id && x.term === term; })[0] || {};
     var rf = tmpl.remarkFields || {};
@@ -298,14 +307,31 @@
       var f = rf[k]; if (!f || f.show === false) return;
       fields.push({ name: k, label: f.label, type: 'select', options: [''].concat(f.options || []), value: existing[k] || '' });
     });
-    fields.push({ name: 'teacher_remark', label: "Class Teacher's Remark", type: 'textarea', rows: 2, value: existing.teacher_remark || '' });
     var form = U.form(fields, {});
-    U.modal({ title: 'Report remarks · ' + s.first_name + ' ' + s.last_name, wide: true, body: form, actions: [
+
+    // ---- Class Teacher's Remark: pick a suggestion OR type your own ----
+    var tr = (tmpl.freeRemarks && tmpl.freeRemarks.teacher) || {};
+    var trLabel = tr.label || "Class Teacher's Remark";
+    var suggestions = (Array.isArray(tr.suggestions) && tr.suggestions.length) ? tr.suggestions : DEFAULT_TEACHER_REMARKS;
+    var ta = el('textarea', { rows: 2, style: 'width:100%' }); ta.value = existing.teacher_remark || '';
+    var sugSel = el('select');
+    sugSel.appendChild(el('option', { value: '', text: '— pick a suggested remark —' }));
+    suggestions.forEach(function (r) { sugSel.appendChild(el('option', { value: r, text: r })); });
+    sugSel.addEventListener('change', function () { if (sugSel.value) { ta.value = sugSel.value; sugSel.value = ''; } });
+    var trBlock = el('div', { class: 'field' }, [
+      el('label', { text: trLabel }),
+      sugSel,
+      el('div', { class: 'help', text: 'Choose a suggestion to fill the box, then edit it — or just type your own.' }),
+      ta
+    ]);
+    var body = el('div', {}, [form, trBlock]);
+
+    U.modal({ title: 'Report remarks · ' + s.first_name + ' ' + s.last_name, wide: true, body: body, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
       { label: 'Save', kind: 'gold', onClick: function (x) {
         var v = form.readValues();
         var rec = { student_id: s.student_id, class_id: s.class_id, term: term,
-          conduct: v.conduct, attitude: v.attitude, interest: v.interest, overall: v.overall, teacher_remark: v.teacher_remark };
+          conduct: v.conduct, attitude: v.attitude, interest: v.interest, overall: v.overall, teacher_remark: ta.value };
         var go = existing.id ? DB.update('studentRemarks', existing.id, rec) : DB.insert('studentRemarks', rec);
         go.then(function () { x(); U.toast('Remarks saved.'); done(); });
       } }
