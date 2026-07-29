@@ -10,7 +10,7 @@
  * ============================================================ */
 'use strict';
 
-var CACHE_VERSION = 'v20260729c';
+var CACHE_VERSION = 'v20260729d';
 var CACHE_NAME = 'sms-' + CACHE_VERSION;
 
 // Minimum shell needed to boot offline. Everything else is cached

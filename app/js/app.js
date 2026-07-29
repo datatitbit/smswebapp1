@@ -126,6 +126,7 @@
   App.can = function (module) {
     if (!App.user) return false;
     if (App.user.role === 'Admin') return true;      // Admin always full
+    if (module === 'Subscription') return App.user.role === 'Director'; // Admin above; Director may view
     if (App.user.role === 'Parent') {
       // Admin can switch OFF an individual parent's portal (Students → Parents).
       var pr = parentRecordFor(App.user);
@@ -403,7 +404,7 @@
       else a.addEventListener('click', closeSidebar);
       nav.appendChild(a);
     });
-    if (App.user.role === 'Admin') {
+    if (App.user.role === 'Admin' || App.user.role === 'Director') {
       var subA = U.el('a', { href: '#/subscription', 'data-mod': 'Subscription' }, [U.el('span', { class: 'ico', text: ICONS.Subscription }), document.createTextNode('Subscription')]);
       subA.addEventListener('click', closeSidebar);
       nav.appendChild(subA);
