@@ -1,6 +1,6 @@
 /* ============================================================
  * subscription.js — Admin: subscription status, plans & licence activation.
- * Reads state from License (license-lib.js). Admin-only (router-gated).
+ * Reads state from License (license-lib.js). Admin/Director view; Admin sets.
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -12,8 +12,13 @@
   function render(container) {
     U.clear(container);
     container.appendChild(el('div', { class: 'page-head' }, [el('h1', { text: 'Subscription & Licence' })]));
-    if (!App.user || App.user.role !== 'Admin') { container.appendChild(el('div', { class: 'empty', text: 'Only the Administrator can manage the subscription.' })); return; }
+    var canView = App.user && (App.user.role === 'Admin' || App.user.role === 'Director');
+    if (!canView) { container.appendChild(el('div', { class: 'empty', text: 'Only the Administrator or Director can view the subscription.' })); return; }
     if (!L) { container.appendChild(el('div', { class: 'empty', text: 'Licensing module not loaded.' })); return; }
+    var isAdmin = App.user.role === 'Admin';
+    // Developer-only controls (e.g. resetting the free-trial period) are never shown
+    // to subscribers. A developer reveals them by setting localStorage.sms_dev = '1'.
+    var devMode = (function () { try { return localStorage.getItem('sms_dev') === '1'; } catch (e) { return false; } })();
 
     L.resolve().then(function (st) {
       var badge = st.state === 'active' ? ['Active', '#0f5e5e'] : (st.state === 'trialing' ? ['Free trial', '#c99a2e'] : ['Expired', '#b91c1c']);
@@ -41,11 +46,11 @@
         tb.appendChild(el('tr', {}, [el('td', { text: p.label }), el('td', { text: p.max >= 100000 ? 'unlimited' : (p.max + ' students') }), el('td', { text: L.CURRENCY + ' ' + p.term }), el('td', { text: L.CURRENCY + ' ' + p.year })]));
       });
       t.appendChild(tb); pr.appendChild(el('div', { class: 'table-wrap' }, [t]));
-      pr.appendChild(el('div', { class: 'help', text: 'Every plan includes a 30-day free trial. Add-ons: bulk SMS credits and online fee payment. Prices are a guide and can be adjusted.' }));
+      pr.appendChild(el('div', { class: 'help', text: 'Tiers by enrolment — Basic (up to 199 pupils), Growth (200–499), Premium (500+). Every plan includes a 30-day free trial. Add-ons: bulk SMS credits and online fee payment. Prices are a guide and can be adjusted.' }));
       container.appendChild(pr);
 
-      if (st.source !== 'key') {
-        var trCard = el('div', { class: 'card' }, [el('h3', { text: 'Free trial settings' })]);
+      if (devMode && st.source !== 'key') {
+        var trCard = el('div', { class: 'card' }, [el('h3', { text: 'Free trial settings (developer only)' })]);
         trCard.appendChild(el('div', { class: 'help', text: 'Default free trial is 30 days. Extend or shorten it for this school below — this changes the trial length, not the start date, so extending an in-progress trial simply adds days.' }));
         var daysInp = el('input', { type: 'number', min: 1, max: 3650, value: st.trialDays || 30, style: 'width:120px' });
         trCard.appendChild(el('div', { class: 'field' }, [el('label', { text: 'Trial length (days)' }), daysInp]));
@@ -75,7 +80,8 @@
         } }),
         (st.source === 'key' ? el('button', { class: 'btn ghost', text: 'Remove key (revert to trial)', onclick: function () { U.confirm('Remove the current licence key?', function () { L.deactivate().then(function () { U.toast('Removed — reloading…'); setTimeout(function () { location.reload(); }, 600); }); }); } }) : null)
       ]));
-      container.appendChild(ac);
+      if (isAdmin) container.appendChild(ac);
+      else container.appendChild(el('div', { class: 'note', text: 'To change your plan, renew, or enter a licence key, please contact your school Administrator or Zetranova.' }));
     });
   }
 

@@ -33,6 +33,19 @@
     return all;
   }
 
+  // Attendance for a PREVIOUS term is locked: you can still go back and correct
+  // any date within the CURRENT term, but not one that falls in an earlier term.
+  // The current term begins on the reopening date of the previous term.
+  function currentTermStartISO() {
+    var a = App.ctx.academic || {}; var T = a.current_term; var terms = a.terms || [];
+    if (T > 1) { var prev = terms.filter(function (x) { return x.n === T - 1; })[0]; return (prev && prev.reopening) || ''; }
+    return '';
+  }
+  function isDateLocked(date) { var start = currentTermStartISO(); return !!(date && start && date < start); }
+  function lockNotice() {
+    return el('div', { class: 'note', style: 'background:#fde8e8;color:#8a1c1c;border:1px solid #f3b4b4', text: 'This date is in a previous term — attendance here is locked and cannot be changed. You can still correct any date within the current term.' });
+  }
+
   function tabDaily(panel) {
     var classes = classOptions();
     var tools = el('div', { class: 'toolbar' });
@@ -56,14 +69,16 @@
       Promise.all([DB.all('students'), DB.all('attendance')]).then(function (r) {
         var students = r[0].filter(function (s) { return s.class_id === classId && s.status === 'active'; });
         var existing = r[1].filter(function (a) { return a.class_id === classId && a.date === date; });
+        var locked = isDateLocked(date); var ro = App.readOnly || locked;
         var card = el('div', { class: 'card' });
         card.appendChild(el('h3', { text: App.className(classId) + ' · ' + U.fmtDate(date) }));
+        if (locked) card.appendChild(lockNotice());
         if (!students.length) { card.appendChild(el('div', { class: 'empty', text: 'No pupils.' })); area.appendChild(card); return; }
         var state = {}; students.forEach(function (s) {
           var ex = existing.filter(function (a) { return a.student_id === s.student_id; })[0];
           state[s.student_id] = ex ? ex.status : 'present';
         });
-        if (!App.readOnly) card.appendChild(el('div', { class: 'btn-row', style: 'margin-bottom:.5rem' }, [
+        if (!ro) card.appendChild(el('div', { class: 'btn-row', style: 'margin-bottom:.5rem' }, [
           el('button', { class: 'btn sm ghost', text: 'All present', onclick: function () { students.forEach(function (s) { state[s.student_id] = 'present'; }); paint(); } }),
           el('button', { class: 'btn sm ghost', text: 'All absent', onclick: function () { students.forEach(function (s) { state[s.student_id] = 'absent'; }); paint(); } })
         ]));
@@ -92,14 +107,14 @@
             row.appendChild(el('span', {}, [el('span', { class: 'muted', style: 'display:inline-block;min-width:70px', text: s.student_id }), document.createTextNode(s.first_name + ' ' + s.last_name)]));
             var btns = el('div', { class: 'btn-row' });
             [['present', 'P'], ['absent', 'A'], ['late', 'L']].forEach(function (o) {
-              var b = el('button', { class: 'btn sm ' + (state[s.student_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (App.readOnly) return; state[s.student_id] = o[0]; paint(); } });
+              var b = el('button', { class: 'btn sm ' + (state[s.student_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (ro) return; state[s.student_id] = o[0]; paint(); } });
               btns.appendChild(b);
             });
             row.appendChild(btns); listBox.appendChild(row);
           });
         }
         paint();
-        if (!App.readOnly) card.appendChild(el('button', { class: 'btn gold', style: 'margin-top:.7rem', text: 'Save attendance', onclick: function () {
+        if (!ro) card.appendChild(el('button', { class: 'btn gold', style: 'margin-top:.7rem', text: 'Save attendance', onclick: function () {
           var ops = students.map(function (s) {
             var ex = existing.filter(function (a) { return a.student_id === s.student_id; })[0];
             var rec = { student_id: s.student_id, class_id: classId, date: date, status: state[s.student_id] };
@@ -123,6 +138,7 @@
       });
     }
     function upload(classId, date, done) {
+      if (isDateLocked(date)) return U.toast('That date is in a previous term and is locked — pick a date in the current term.', 'err');
       DB.all('students').then(function (st) {
         var codes = {}; st.forEach(function (s) { codes[s.student_id] = s; });
         Bulk.pickFile().then(function (file) {
@@ -165,14 +181,16 @@
       var date = dateInp.value;
       Promise.all([DB.all('staff'), DB.all('staffAttendance')]).then(function (r) {
         var staff = r[0], existing = r[1].filter(function (a) { return a.date === date; });
+        var locked = isDateLocked(date); var ro = App.readOnly || locked;
         var card = el('div', { class: 'card' });
         card.appendChild(el('h3', { text: 'Staff attendance · ' + U.fmtDate(date) }));
+        if (locked) card.appendChild(lockNotice());
         if (!staff.length) { card.appendChild(el('div', { class: 'empty', text: 'No staff records.' })); area.appendChild(card); return; }
         var state = {}; staff.forEach(function (s) {
           var ex = existing.filter(function (a) { return a.staff_id === s.staff_id; })[0];
           state[s.staff_id] = ex ? ex.status : 'present'; // present by default
         });
-        if (!App.readOnly) card.appendChild(el('div', { class: 'btn-row', style: 'margin-bottom:.5rem' }, [
+        if (!ro) card.appendChild(el('div', { class: 'btn-row', style: 'margin-bottom:.5rem' }, [
           el('button', { class: 'btn sm ghost', text: 'All present', onclick: function () { staff.forEach(function (s) { state[s.staff_id] = 'present'; }); paint(); } }),
           el('button', { class: 'btn sm ghost', text: 'All absent', onclick: function () { staff.forEach(function (s) { state[s.staff_id] = 'absent'; }); paint(); } })
         ]));
@@ -201,13 +219,13 @@
             row.appendChild(el('span', {}, [el('span', { class: 'muted', style: 'display:inline-block;min-width:70px', text: s.staff_id }), document.createTextNode(s.name + ' (' + s.role + ')')]));
             var btns = el('div', { class: 'btn-row' });
             [['present', 'P'], ['absent', 'A'], ['late', 'L']].forEach(function (o) {
-              btns.appendChild(el('button', { class: 'btn sm ' + (state[s.staff_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (App.readOnly) return; state[s.staff_id] = o[0]; paint(); } }));
+              btns.appendChild(el('button', { class: 'btn sm ' + (state[s.staff_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (ro) return; state[s.staff_id] = o[0]; paint(); } }));
             });
             row.appendChild(btns); listBox.appendChild(row);
           });
         }
         paint();
-        if (!App.readOnly) card.appendChild(el('button', { class: 'btn gold', style: 'margin-top:.7rem', text: 'Save staff attendance', onclick: function () {
+        if (!ro) card.appendChild(el('button', { class: 'btn gold', style: 'margin-top:.7rem', text: 'Save staff attendance', onclick: function () {
           var ops = staff.map(function (s) {
             var ex = existing.filter(function (a) { return a.staff_id === s.staff_id; })[0];
             var rec = { staff_id: s.staff_id, date: date, status: state[s.staff_id] };
@@ -226,6 +244,7 @@
       });
     }
     function staffUpload(date, done) {
+      if (isDateLocked(date)) return U.toast('That date is in a previous term and is locked — pick a date in the current term.', 'err');
       DB.all('staff').then(function (staff) {
         var codes = {}; staff.forEach(function (s) { codes[s.staff_id] = s; });
         Bulk.pickFile().then(function (file) {

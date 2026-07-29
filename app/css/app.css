@@ -131,6 +131,14 @@ table.data th { background: var(--teal-light); color: var(--teal-dark); font-wei
 table.data tbody tr:nth-child(even) td { background: #fbfcfb; }
 table.data tbody tr:hover td { background: var(--teal-light); }
 table.data td.actions { white-space: nowrap; }
+/* Keep the last (actions) column reachable when a data table scrolls sideways —
+   the Edit/Delete buttons stay pinned to the right instead of being cut off. */
+.table-wrap table.data td:last-child,
+.table-wrap table.data th:last-child { position: sticky; right: 0; }
+.table-wrap table.data td:last-child { background:#fff; box-shadow:-8px 0 8px -8px rgba(0,0,0,.18); z-index:1; }
+.table-wrap table.data tbody tr:nth-child(even) td:last-child { background:#fbfcfb; }
+.table-wrap table.data tbody tr:hover td:last-child { background: var(--teal-light); }
+.table-wrap table.data th:last-child { background: var(--teal-light); z-index:3; }
 .tag { display:inline-block; font-size:.7rem; padding:.14rem .5rem; border-radius:999px; background: var(--teal-light); color: var(--teal-dark); font-weight:600; }
 .tag.req { background: var(--gold-soft); color:#6f5300; }
 .tag.muted { background:#ececea; color:#666; }

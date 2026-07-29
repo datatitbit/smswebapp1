@@ -15,10 +15,12 @@
   var TRIAL_DAYS = 30;
   var CURRENCY = 'GHS';
   // Plans: enrolment cap + termly / annual (3-term prepay) price in GHS. Tune freely.
+  // Tiers by enrolment: Basic 0–199, Growth 200–499, Premium 500+ (unlimited).
+  // term = per-term price, year = 3-term prepay. Prices are a guide; tune freely.
   var PLANS = {
-    starter:  { label: 'Starter',  max: 150,    term: 600,  year: 1500 },
-    standard: { label: 'Standard', max: 400,    term: 1200, year: 3000 },
-    premium:  { label: 'Premium',  max: 100000, term: 2000, year: 5000 }
+    basic:   { label: 'Basic',   max: 199,    term: 600,  year: 1500 },
+    growth:  { label: 'Growth',  max: 499,    term: 1200, year: 3000 },
+    premium: { label: 'Premium', max: 100000, term: 2000, year: 5000 }
   };
 
   function b64uToBytes(s) {
@@ -93,7 +95,7 @@
         return verify(rec.token).then(function (res) {
           if (res.valid && res.payload) {
             var p = res.payload, exp = p.expires || '2100-01-01', left = daysBetween(today, exp);
-            return finalize({ state: left >= 0 ? (p.trial ? 'trialing' : 'active') : 'expired', plan: p.plan || 'standard', school: p.school || '', expires: exp, daysLeft: left, trial: !!p.trial, source: 'key' });
+            return finalize({ state: left >= 0 ? (p.trial ? 'trialing' : 'active') : 'expired', plan: p.plan || 'growth', school: p.school || '', expires: exp, daysLeft: left, trial: !!p.trial, source: 'key' });
           }
           return localTrial(rec, today); // bad/foreign key -> fall back to trial (never lock on a bad paste)
         });
