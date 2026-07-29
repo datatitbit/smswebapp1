@@ -67,12 +67,29 @@
           el('button', { class: 'btn sm ghost', text: 'All present', onclick: function () { students.forEach(function (s) { state[s.student_id] = 'present'; }); paint(); } }),
           el('button', { class: 'btn sm ghost', text: 'All absent', onclick: function () { students.forEach(function (s) { state[s.student_id] = 'absent'; }); paint(); } })
         ]));
+        // Sortable ID / Name headers make marking a long list easier.
+        var sortKey = 'id', sortDir = 'asc';
+        function arrow(k) { return sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'; }
+        var idH = el('button', { class: 'btn sm ghost' });
+        var nameH = el('button', { class: 'btn sm ghost' });
+        function setSort(k) { if (sortKey === k) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; } else { sortKey = k; sortDir = 'asc'; } idH.textContent = 'ID' + arrow('id'); nameH.textContent = 'Name' + arrow('name'); paint(); }
+        idH.onclick = function () { setSort('id'); }; nameH.onclick = function () { setSort('name'); };
+        idH.textContent = 'ID' + arrow('id'); nameH.textContent = 'Name' + arrow('name');
+        card.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:2px solid var(--line);gap:.5rem;flex-wrap:wrap' }, [
+          el('div', { class: 'btn-row' }, [el('span', { class: 'muted', text: 'Sort:' }), idH, nameH]),
+          el('span', { class: 'muted', style: 'font-size:.8rem', text: 'P = present · A = absent · L = late' })
+        ]));
         var listBox = el('div'); card.appendChild(listBox);
         function paint() {
           U.clear(listBox);
-          students.forEach(function (s) {
+          var ordered = students.slice().sort(function (a, b) {
+            var av = sortKey === 'name' ? (a.first_name + ' ' + a.last_name).toLowerCase() : a.student_id;
+            var bv = sortKey === 'name' ? (b.first_name + ' ' + b.last_name).toLowerCase() : b.student_id;
+            var c = av < bv ? -1 : av > bv ? 1 : 0; return sortDir === 'asc' ? c : -c;
+          });
+          ordered.forEach(function (s) {
             var row = el('div', { class: 'flex', style: 'justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--line);gap:.5rem' });
-            row.appendChild(el('span', { text: s.first_name + ' ' + s.last_name }));
+            row.appendChild(el('span', {}, [el('span', { class: 'muted', style: 'display:inline-block;min-width:70px', text: s.student_id }), document.createTextNode(s.first_name + ' ' + s.last_name)]));
             var btns = el('div', { class: 'btn-row' });
             [['present', 'P'], ['absent', 'A'], ['late', 'L']].forEach(function (o) {
               var b = el('button', { class: 'btn sm ' + (state[s.student_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (App.readOnly) return; state[s.student_id] = o[0]; paint(); } });
@@ -159,12 +176,29 @@
           el('button', { class: 'btn sm ghost', text: 'All present', onclick: function () { staff.forEach(function (s) { state[s.staff_id] = 'present'; }); paint(); } }),
           el('button', { class: 'btn sm ghost', text: 'All absent', onclick: function () { staff.forEach(function (s) { state[s.staff_id] = 'absent'; }); paint(); } })
         ]));
+        // Sortable ID / Name headers make marking easier.
+        var sortKey = 'id', sortDir = 'asc';
+        function arrow(k) { return sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'; }
+        var idH = el('button', { class: 'btn sm ghost' });
+        var nameH = el('button', { class: 'btn sm ghost' });
+        function setSort(k) { if (sortKey === k) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; } else { sortKey = k; sortDir = 'asc'; } idH.textContent = 'ID' + arrow('id'); nameH.textContent = 'Name' + arrow('name'); paint(); }
+        idH.onclick = function () { setSort('id'); }; nameH.onclick = function () { setSort('name'); };
+        idH.textContent = 'ID' + arrow('id'); nameH.textContent = 'Name' + arrow('name');
+        card.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:2px solid var(--line);gap:.5rem;flex-wrap:wrap' }, [
+          el('div', { class: 'btn-row' }, [el('span', { class: 'muted', text: 'Sort:' }), idH, nameH]),
+          el('span', { class: 'muted', style: 'font-size:.8rem', text: 'P = present · A = absent · L = late' })
+        ]));
         var listBox = el('div'); card.appendChild(listBox);
         function paint() {
           U.clear(listBox);
-          staff.forEach(function (s) {
+          var ordered = staff.slice().sort(function (a, b) {
+            var av = sortKey === 'name' ? (a.name || '').toLowerCase() : a.staff_id;
+            var bv = sortKey === 'name' ? (b.name || '').toLowerCase() : b.staff_id;
+            var c = av < bv ? -1 : av > bv ? 1 : 0; return sortDir === 'asc' ? c : -c;
+          });
+          ordered.forEach(function (s) {
             var row = el('div', { class: 'flex', style: 'justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--line);gap:.5rem' });
-            row.appendChild(el('span', { text: s.name + ' (' + s.staff_id + ' · ' + s.role + ')' }));
+            row.appendChild(el('span', {}, [el('span', { class: 'muted', style: 'display:inline-block;min-width:70px', text: s.staff_id }), document.createTextNode(s.name + ' (' + s.role + ')')]));
             var btns = el('div', { class: 'btn-row' });
             [['present', 'P'], ['absent', 'A'], ['late', 'L']].forEach(function (o) {
               btns.appendChild(el('button', { class: 'btn sm ' + (state[s.staff_id] === o[0] ? (o[0] === 'absent' ? 'danger' : 'gold') : 'ghost'), text: o[1], onclick: function () { if (App.readOnly) return; state[s.staff_id] = o[0]; paint(); } }));
