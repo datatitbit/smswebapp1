@@ -499,6 +499,13 @@
     body.appendChild(el('div', { class: 'divider' }));
 
     body.appendChild(labelEditor('Scores columns', t.labels, ['classScore', 'examScore', 'total', 'remarks']));
+    body.appendChild(el('button', { class: 'btn sm ghost', text: 'Restore / reset score columns to default', onclick: function () {
+      U.confirm('Reset the score-column labels (Class Score %, Exam Score %, Total %, Remarks) to default?', function () {
+        var def = seedTemplateA();
+        if (def.labels) { t.labels = JSON.parse(JSON.stringify(def.labels)); }
+        DB.update('reportTemplates', t.id, t).then(function () { App.refresh(); U.toast('Score columns reset to default.'); done(); });
+      });
+    } }));
     body.appendChild(textField('KEYS legend', t, 'keysLegend'));
     body.appendChild(textField('Footer note', t, 'footer'));
     body.appendChild(el('p', { class: 'help', text: 'Domains/areas and indicators for the currently-selected format — edit below.' }));
@@ -540,6 +547,25 @@
       var inp = el('input', { type: 'text', value: fr.label, style: 'flex:1;min-width:160px' }); inp.addEventListener('input', function () { fr.label = inp.value; });
       body.appendChild(el('div', { class: 'flex', style: 'margin-bottom:.4rem;gap:.5rem;flex-wrap:wrap' }, [el('label', { class: 'check-label' }, [cb, document.createTextNode(' show')]), inp]));
     });
+    // Suggested Class-Teacher remarks — shown as a pick-list when a teacher enters a pupil's remark.
+    if (!Array.isArray(t.freeRemarks.teacher.suggestions)) t.freeRemarks.teacher.suggestions = DEFAULT_TEACHER_REMARKS.slice();
+    body.appendChild(el('h4', { text: 'Suggested Class-Teacher remarks (pick-list)', style: 'margin:.6rem 0 .2rem' }));
+    body.appendChild(el('div', { class: 'help', text: 'These appear as a dropdown when a teacher enters a pupil’s remark — they can pick one or type their own.' }));
+    (function () {
+      var sugBox = el('div');
+      function renderSug() {
+        U.clear(sugBox);
+        t.freeRemarks.teacher.suggestions.forEach(function (r, i) {
+          sugBox.appendChild(el('div', { class: 'flex', style: 'margin-bottom:.25rem;gap:.4rem' }, [
+            (function () { var inp = el('input', { type: 'text', value: r, style: 'flex:1' }); inp.addEventListener('input', function () { t.freeRemarks.teacher.suggestions[i] = inp.value; }); return inp; })(),
+            el('button', { class: 'btn sm danger', text: '✕', onclick: function () { t.freeRemarks.teacher.suggestions.splice(i, 1); renderSug(); } })
+          ]));
+        });
+        sugBox.appendChild(el('button', { class: 'btn sm ghost', text: '+ suggestion', onclick: function () { t.freeRemarks.teacher.suggestions.push(''); renderSug(); } }));
+      }
+      renderSug();
+      body.appendChild(sugBox);
+    })();
 
     body.appendChild(el('div', { class: 'divider' }));
     body.appendChild(textField('Footer note', t, 'footer'));
@@ -563,6 +589,18 @@
   function seedTemplateB() {
     return (global.SMS_SEED.reportTemplates || []).filter(function (x) { return x.id === 'B'; })[0] || {};
   }
+  function seedTemplateA() {
+    return (global.SMS_SEED.reportTemplates || []).filter(function (x) { return x.id === 'A'; })[0] || {};
+  }
+  // Default suggested Class-Teacher remarks (kept in sync with assessment.js).
+  var DEFAULT_TEACHER_REMARKS = [
+    'An excellent result. Keep it up!',
+    'A very good performance this term.',
+    'A good result; keep working hard.',
+    'A satisfactory result; more effort will bring improvement.',
+    'Fair; needs to be more focused and consistent next term.',
+    'Can do much better with more effort and concentration.'
+  ];
 
   function remarkSetEditor(t, key) {
     var set = t.remarkFields[key];
@@ -584,7 +622,7 @@
       });
       optBox.appendChild(el('div', { class: 'btn-row' }, [
         el('button', { class: 'btn sm ghost', text: '+ option', onclick: function () { set.options.push(''); redraw(); } }),
-        el('button', { class: 'btn sm ghost', text: 'Reset this set', onclick: function () {
+        el('button', { class: 'btn sm ghost', text: 'Restore / reset to default', onclick: function () {
           var def = seedTemplateB().remarkFields[key];
           set.label = def.label; set.show = true; set.options = def.options.slice(); redraw(); nameInp.value = set.label; cb.checked = true;
         } })
