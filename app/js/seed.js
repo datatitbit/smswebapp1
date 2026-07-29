@@ -328,7 +328,7 @@
   // required, but cannot delete it or change its key/type. Everything else is
   // a fully admin-managed custom field (add/edit/delete/reorder-by-section),
   // stored per student under student.extra[key]. Modeled on a real Ghanaian
-  // school admission form (health needs, guardian & office-use details).
+  // school admission form (siblings, health needs, guardian & office-use details).
   var admissionFields = [
     { key: 'first_name',  label: 'First name',            type: 'text',   required: true,  section: 'personal', system: true },
     { key: 'last_name',   label: 'Last name',              type: 'text',   required: true,  section: 'personal', system: true },
@@ -411,7 +411,7 @@
     { id: 'u-admin',   school_id: SCHOOL_ID, name: 'School Administrator', username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [],
       password_salt: 'bdd6096a9cccf365986520af2c6c38cd', password_hash: '5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764', must_change_password: true },
     { id: 'u-dir',     school_id: SCHOOL_ID, name: 'The Director',          username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [],
-      password_salt: '7ff64936b8ce0f27cbdeed5a5cc765d4', password_hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6 ab7a84f6c74719c', must_change_password: true },
+      password_salt: '7ff64936b8ce0f27cbdeed5a5cc765d4', password_hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c', must_change_password: true },
     { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [],
       password_salt: '04676b70f2981d9df4f2d798b15da396', password_hash: 'c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da', must_change_password: true },
     { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [],
