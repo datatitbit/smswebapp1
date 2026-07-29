@@ -104,7 +104,7 @@
       var rf = t.remarkFields || {};
       ['conduct', 'attitude', 'interest', 'overall'].forEach(function (k) {
         var f = rf[k]; if (!f || f.show === false) return;
-        var val = sel[k] || '………………………………………………';
+        var val = sel[k] || '……………………………………………………';
         lines.appendChild(elx('div', '', f.label + ': ' + val));
       });
       var fr = t.freeRemarks || {};
@@ -112,7 +112,7 @@
         lines.appendChild(elx('div', '', fr.teacher.label + ': ' + (sel.teacher_remark || '………………………………………………………………')));
       }
       if (fr.head && fr.head.show !== false) {
-        lines.appendChild(elx('div', '', fr.head.label + ': ' + '………………………………………………'));
+        lines.appendChild(elx('div', '', fr.head.label + ': ' + '……………………………………………………'));
       }
       card.appendChild(lines);
     }
@@ -132,7 +132,7 @@
 
     // ---- Overall remarks / signature ----
     if (t.kind === 'A') {
-      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: ………………………………………………………………………')).parentNode);
+      card.appendChild(elx('div', 'rc-lines', '').appendChild(elx('div', '', 'REMARKS: …………………………………………………………………')).parentNode);
     }
     // Signature area — skipped for Template B when the conduct block already
     // renders the teacher remark + head signature lines.
@@ -236,7 +236,7 @@
   }
 
   function initials(name) {
-    return (name || 'S').split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+    return (name || 'S').split(/\s+/).slice(0, 3).map(function (w) { return w[0]; }).join('').toUpperCase();
   }
 
   // Print one or many cards.

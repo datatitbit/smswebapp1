@@ -207,7 +207,7 @@
   function clearSession() { localStorage.removeItem('sms_session'); }
 
   function initials(name) {
-    return (name || 'School').split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+    return (name || 'School').split(/\s+/).slice(0, 3).map(function (w) { return w[0]; }).join('').toUpperCase();
   }
 
   function logout() { App.user = null; clearSession(); chooseRole(); }
