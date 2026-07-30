@@ -44,6 +44,13 @@
     schoolId: null,
     schoolIdHint: null,
     schoolSlugLabel: null,
+    // Set once at load by the /school/:slug and /admin path parser below.
+    // pendingHash/pendingAdminHash are consumed (and cleared) the first time
+    // boot()/the admin area renders, so they only ever affect the very next
+    // render — later in-app navigation is untouched.
+    isAdminArea: false,
+    pendingHash: null,
+    pendingAdminHash: null,
     // API mode only: set when a background request comes back 403 (subscription
     // inactive) — rendered as a persistent banner until the page is reloaded.
     forbiddenMessage: null,
@@ -494,6 +501,48 @@
     });
   }
 
+  // ============================================================
+  // Path-based routing: /school/:slug/... and /admin/...
+  // ============================================================
+  // NOT A TRUST BOUNDARY. This only ever reads the URL to (a) pre-fill which
+  // school's login screen renders, and (b) remember which section to land on
+  // right after login. Nothing derived from this URL is ever sent to the
+  // server as something to be trusted: school_id reaches ?r=auth/login purely
+  // as a LOOKUP HINT (see store.js ApiAdapter.login's comment), and every
+  // route after login is scoped solely by the signed token it returns. A
+  // wrong or hostile slug in the address bar can, at worst, pre-fill the
+  // wrong login form or fail to find a matching user — it can never grant
+  // access to another school's data once a session exists.
+  function parsePathRoute() {
+    var path = (global.location && global.location.pathname) || '/';
+    var parts = path.split('/').filter(Boolean); // drop leading/trailing slashes
+    if (parts[0] === 'admin') {
+      return { area: 'admin', subRoute: parts[1] || null };
+    }
+    if (parts[0] === 'school' && parts[1]) {
+      var slug = decodeURIComponent(parts[1]);
+      var sub = parts[2] || null; // 'login', 'dashboard', 'students', ... (mirrors ROUTES)
+      return { area: 'school', slug: slug, subRoute: (sub && sub !== 'login') ? sub : null };
+    }
+    return { area: 'root' };
+  }
+  // Local mode ignores the URL entirely — path-based tenant selection only
+  // means anything once there is more than one tenant to select (API mode).
+  function applyPathRoute() {
+    if (!DB.isApi) return;
+    var r = parsePathRoute();
+    if (r.area === 'admin') {
+      App.isAdminArea = true;
+      App.pendingAdminHash = r.subRoute ? ('#/' + r.subRoute) : null;
+    } else if (r.area === 'school') {
+      App.schoolIdHint = r.slug;
+      // Cosmetic-only label for the PRE-login screen — the real school name
+      // is only known after login, from an authenticated App.refresh() call.
+      App.schoolSlugLabel = r.slug.replace(/^sch-/, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      App.pendingHash = r.subRoute ? ('#/' + r.subRoute) : null;
+    }
+  }
+
   // ---- Router ----
   function router() {
     var hash = (location.hash || '#/dashboard').replace(/^#\//, '');
@@ -520,6 +569,9 @@
     }).then(function (lic) {
       App.license = lic;
       renderShell();
+      // One-shot: land on the URL's intended section (e.g. /school/x/students),
+      // then clear it so ordinary in-app navigation is unaffected afterwards.
+      if (App.pendingHash) { location.hash = App.pendingHash; App.pendingHash = null; }
       router();
       // Automation "night clerk": routine admin done automatically (Settings → Automation).
       if (global.Automation) {
@@ -596,12 +648,86 @@
     userInput.focus();
   }
 
+  // ---- Platform super-admin area (/admin/...) ----
+  // Deliberately rendered OUTSIDE renderShell()/router(): a platform account
+  // has no school context (App.ctx, permissions, the 12-module sidebar all
+  // assume a school), so trying to force it through the existing shell would
+  // be more awkward than just giving it its own small entry point. The real
+  // dashboard (schools list, provision/suspend, impersonation) is built in
+  // the next increment on top of this same startAdmin()/chooseRoleAdmin() pair.
+  function startAdmin() {
+    var meta = loadApiSessionMeta();
+    if (meta && meta.role === 'Platform' && DB.hasApiToken()) {
+      App.user = meta.user || { name: 'Platform', role: 'Platform' };
+      renderAdminPlaceholder();
+    } else {
+      chooseRoleAdmin();
+    }
+  }
+  function chooseRoleAdmin() {
+    var root = U.clear(U.$('#root'));
+    var wrap = U.el('div', { class: 'login-wrap' });
+    var card = U.el('div', { class: 'card' });
+    card.appendChild(U.el('div', { class: 'login-badge', text: 'ZP' }));
+    card.appendChild(U.el('h1', { text: 'Zetranova Platform' }));
+    card.appendChild(U.el('p', { class: 'muted', text: 'Owner / developer sign-in.' }));
+    var errBox = U.el('div', { class: 'login-error', style: 'display:none;color:#b3261e;font-size:.85rem;margin:.4rem 0' });
+    function field(l, i) { return U.el('div', { class: 'field' }, [U.el('label', { text: l }), i]); }
+    var userInput = U.el('input', { type: 'text', autocomplete: 'username', placeholder: 'Platform username' });
+    var passInput = U.el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password' });
+    function showError(msg) { errBox.textContent = msg; errBox.style.display = 'block'; }
+    var submitBtn = U.el('button', { class: 'btn gold', type: 'submit', text: 'Sign in' });
+    function doLogin(e) {
+      if (e) e.preventDefault();
+      errBox.style.display = 'none';
+      var u = userInput.value.trim(), p = passInput.value;
+      if (!u || !p) { showError('Please enter your username and password.'); return; }
+      submitBtn.disabled = true; submitBtn.textContent = 'Signing in…';
+      DB.apiLogin(u, p, null).then(function (res) {
+        submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
+        if (res.role !== 'Platform') { showError('This account is not a platform account.'); return; }
+        // The platform login response has no `user` object (see index.php) —
+        // it's a cross-school account, not a school user record.
+        App.user = res.user || { name: 'Platform', role: 'Platform' };
+        saveApiSessionMeta({ user: App.user, school_id: null, role: 'Platform' });
+        renderAdminPlaceholder();
+      }).catch(function (err) {
+        submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
+        showError((err && err.message) || 'Incorrect username or password.');
+      });
+    }
+    var form = U.el('form', { class: 'form login-form', onsubmit: doLogin });
+    form.appendChild(errBox);
+    form.appendChild(field('Username', userInput));
+    form.appendChild(field('Password', passInput));
+    form.appendChild(submitBtn);
+    card.appendChild(form);
+    wrap.appendChild(card);
+    root.appendChild(wrap);
+    userInput.focus();
+  }
+  // Placeholder landing screen — replaced by the real schools-list dashboard
+  // in the next increment. Kept honest rather than faking a finished UI.
+  function renderAdminPlaceholder() {
+    var root = U.clear(U.$('#root'));
+    var wrap = U.el('div', { class: 'login-wrap' });
+    var card = U.el('div', { class: 'card' });
+    card.appendChild(U.el('h1', { text: 'Platform dashboard' }));
+    card.appendChild(U.el('p', { class: 'muted', text: 'Signed in as ' + ((App.user && App.user.name) || 'Platform') + '. The schools list and provisioning UI are built in the next increment.' }));
+    card.appendChild(U.el('button', { class: 'btn ghost', text: 'Log out', onclick: function () {
+      DB.apiLogout().then(function () { App.user = null; clearApiSessionMeta(); chooseRoleAdmin(); });
+    } }));
+    wrap.appendChild(card); root.appendChild(wrap);
+  }
+
   global.App = App;
   global.Views = global.Views || {};
 
   window.addEventListener('hashchange', function () { if (App.user) router(); });
   window.addEventListener('DOMContentLoaded', start);
+  applyPathRoute(); // must run before start()/startApi()/startAdmin() below
   function start() {
+    if (App.isAdminArea) { startAdmin(); return; }
     if (DB.isApi) { startApi(); return; }
     App.refresh().then(function () {
       var s = loadSession();
