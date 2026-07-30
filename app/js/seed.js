@@ -405,19 +405,18 @@
 
   // ---- Default users (one per role) for demo login ----
   // Passwords are PBKDF2-SHA256 hashed (see auth-lib.js), never stored in plaintext.
-  // DEMO PASSWORDS (change at go-live — see README "Placeholders"):
-  //   admin/admin123, director/director123, teacher/teacher123, staff/staff123, parent/parent123
+  // DEMO PASSWORD (change at go-live — see README "Placeholders"): 123 (same for every role)
   var users = [
     { id: 'u-admin',   school_id: SCHOOL_ID, name: 'School Administrator', username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [],
-      password_salt: 'bdd6096a9cccf365986520af2c6c38cd', password_hash: '5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764', must_change_password: true },
+      password_salt: '801996da7c05539ac10e6f24afb4d0d6', password_hash: '13c96df114026eb5585524e418b7d24f422b5ccfb982ab5dfc4bbbc96d7293ef', must_change_password: true },
     { id: 'u-dir',     school_id: SCHOOL_ID, name: 'The Director',          username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [],
-      password_salt: '7ff64936b8ce0f27cbdeed5a5cc765d4', password_hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c', must_change_password: true },
+      password_salt: '726e4a07e4f2520116c93d54d8be74bb', password_hash: '6fca94685b351d4fc0de847e6bcd440abf9593fd588acda346d634fbc29a87ee', must_change_password: true },
     { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [],
-      password_salt: '04676b70f2981d9df4f2d798b15da396', password_hash: 'c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da', must_change_password: true },
+      password_salt: '1e521ab3eb3d3f5bff0462190ea9eef6', password_hash: 'd3f5d81d2cdb78af4cd59958e71fa09dc2fc501ddb7ca43cb75358f7c01e2327', must_change_password: true },
     { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [],
-      password_salt: 'a4e321aa36c33a28e0c94c9b8cdf62cf', password_hash: '119570daabe181e0cfbebf03cc76afcccc5d6bf1721b7b1d8902102ed146b019', must_change_password: true },
+      password_salt: 'c82d75e7a982657abaab6d7928e5d55a', password_hash: '6a8c3db8ad51f7cd31e2c327c53a993f754a714634897bf17614005f01c13f77', must_change_password: true },
     { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001'],
-      password_salt: 'bd118eecf734755b7e7691fc18b52c14', password_hash: 'ba3af436dd8f9363645143b03709483a4ea07da9b6b7fe7c43cb541617ece706', must_change_password: true }
+      password_salt: '45f5558dbac1e710faae477606f6beb5', password_hash: '43715fc1427c99b4274c03a585233547449e99427b4d942dd792cc9b6fc87dee', must_change_password: true }
   ];
 
   // ---- Staff records ----

@@ -220,11 +220,11 @@
   // stops matching here, so auto-fill silently and permanently stops for that account.
   // It never applies to accounts the school creates itself (Settings -> Access Control).
   var DEMO_CREDS = {
-    'u-admin':   { hash: '5e53a758512b9074082dfd890884eba14d56061b728d130ef2a23eb1e3ecb764', password: 'admin123' },
-    'u-dir':     { hash: '84fe3ec4a95b5e494b3948ee202fa54fbfeab91ba4e9c18d6ab7a84f6c74719c', password: 'director123' },
-    'u-teacher': { hash: 'c7ec5397a81a36e91c3ec1133215f98381e1c46b0cca0868906f80f7be4587da', password: 'teacher123' },
-    'u-staff':   { hash: '119570daabe181e0cfbebf03cc76afcccc5d6bf1721b7b1d8902102ed146b019', password: 'staff123' },
-    'u-parent':  { hash: 'ba3af436dd8f9363645143b03709483a4ea07da9b6b7fe7c43cb541617ece706', password: 'parent123' }
+    'u-admin':   { hash: '13c96df114026eb5585524e418b7d24f422b5ccfb982ab5dfc4bbbc96d7293ef', password: '123' },
+    'u-dir':     { hash: '6fca94685b351d4fc0de847e6bcd440abf9593fd588acda346d634fbc29a87ee', password: '123' },
+    'u-teacher': { hash: 'd3f5d81d2cdb78af4cd59958e71fa09dc2fc501ddb7ca43cb75358f7c01e2327', password: '123' },
+    'u-staff':   { hash: '6a8c3db8ad51f7cd31e2c327c53a993f754a714634897bf17614005f01c13f77', password: '123' },
+    'u-parent':  { hash: '43715fc1427c99b4274c03a585233547449e99427b4d942dd792cc9b6fc87dee', password: '123' }
   };
   function knownDemoPassword(user) {
     var d = user && DEMO_CREDS[user.id];

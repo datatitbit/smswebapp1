@@ -100,7 +100,7 @@ Isolation is security-critical, so verify all of these pass:
 
 1. `php -l` on every file in `api/` reports "No syntax errors".
 2. Fresh DB: first request seeds the default school; `schools` has 1 row.
-3. `POST ?r=auth/login {username:"admin",password:"admin123"}` returns a token.
+3. `POST ?r=auth/login {username:"admin",password:"123"}` returns a token.
 4. Wrong password returns **401**; no token.
 5. Any data route **without** a token returns **401**.
 6. With a valid token, `GET ?r=students` returns only that school's students.
