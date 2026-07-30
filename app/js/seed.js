@@ -349,7 +349,6 @@
     { key: 'previous_school_place', label: 'Previous school — place',           type: 'text',     required: false, section: 'personal', system: false },
     { key: 'previous_class',        label: 'Previous school — class',           type: 'text',     required: false, section: 'personal', system: false },
     { key: 'previous_school_year',  label: 'Previous school — year',            type: 'text',     required: false, section: 'personal', system: false },
-    { key: 'siblings',              label: 'Siblings in this school',           type: 'siblings', required: false, section: 'personal', system: false, help: 'Add each sibling already enrolled here, with their class.' },
     { key: 'special_educational_need', label: 'Special educational need (if any)', type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
     { key: 'special_medical_need',     label: 'Special medical need (if any)',     type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
     { key: 'food_allergies',           label: 'Food allergies (if any)',           type: 'text', required: false, section: 'health', system: false, help: 'Leave blank if none.' },
