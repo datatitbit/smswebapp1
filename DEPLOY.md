@@ -7,15 +7,11 @@ host, and Render can never run the PHP API — understanding that split is the
 point of this document.
 
 ```
-┌───────────────────────────────────┐      Bearer token       ┌─────────────────────────────────────┐
-│  Render — Static Site        │ ───── fetch() calls ───▶│  cPanel / Namecheap host      │
-│  (app/ only, api/ stripped)  │ ◀──── JSON responses ───│  PHP + MySQL (app/api/)       │
-│  https://smswebapp1          │                          │  api/index.php + PDO/MySQL    │
-│    .onrender.com             │                          │                                │
-└───────────────────────────────────┘                          └─────────────────────────────────────┘
-        serves index.html,                                    the multi-tenant REST API:
-        js/, css/ — static                                    login, CRUD, platform routes
-        files only, no PHP                                    (provision/suspend/impersonate)
+Render (Static Site)                          cPanel / Namecheap host
+  app/ only, api/ stripped     -- Bearer -->     PHP + MySQL (app/api/)
+  https://smswebapp1.onrender.com                api/index.php + PDO/MySQL
+  serves index.html, js/, css/  <-- JSON ---      login, CRUD, platform routes
+  static files only, no PHP                       (provision/suspend/impersonate)
 ```
 
 ## 1. Render — static frontend only
