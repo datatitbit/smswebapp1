@@ -38,6 +38,15 @@
     user: null,
     permissions: {},
     license: null,  // licence/trial state, set at boot by License.resolve()
+    // API mode only: the current session's school id (from the login response —
+    // never client-chosen after login) and optional URL-slug hints a router can
+    // set BEFORE start()/chooseRoleApi() run, purely to pre-fill the login form.
+    schoolId: null,
+    schoolIdHint: null,
+    schoolSlugLabel: null,
+    // API mode only: set when a background request comes back 403 (subscription
+    // inactive) — rendered as a persistent banner until the page is reloaded.
+    forbiddenMessage: null,
     // View-only roles: Parent and Director can view & download but never edit.
     get readOnly() { return App.user && (App.user.role === 'Parent' || App.user.role === 'Director'); },
     // When the free trial / subscription has lapsed the whole app becomes read-only.
@@ -207,11 +216,48 @@
   }
   function clearSession() { localStorage.removeItem('sms_session'); }
 
+  // ---- API-mode session metadata (non-secret: user/role/school_id only).
+  // The actual bearer token lives separately in store.js's own storage key,
+  // so the adapter can rehydrate itself independently of this file.
+  var API_SESSION_KEY = 'sms_api_session_meta';
+  function loadApiSessionMeta() {
+    try { return JSON.parse(localStorage.getItem(API_SESSION_KEY)); } catch (e) { return null; }
+  }
+  function saveApiSessionMeta(meta) {
+    try { localStorage.setItem(API_SESSION_KEY, JSON.stringify(meta)); } catch (e) {}
+  }
+  function clearApiSessionMeta() { try { localStorage.removeItem(API_SESSION_KEY); } catch (e) {} }
+
   function initials(name) {
     return (name || 'School').split(/\s+/).slice(0, 3).map(function (w) { return w[0]; }).join('').toUpperCase();
   }
 
-  function logout() { App.user = null; clearSession(); chooseRole(); }
+  function logout() {
+    if (DB.isApi) {
+      DB.apiLogout().then(function () {
+        App.user = null; App.schoolId = null; App.forbiddenMessage = null;
+        clearApiSessionMeta(); chooseRoleApi();
+      });
+      return;
+    }
+    App.user = null; clearSession(); chooseRole();
+  }
+
+  // ---- API mode: global 401/403 handling ----
+  // Registered unconditionally (harmless in local mode — ApiAdapter is never
+  // instantiated there, so these callbacks simply never fire).
+  global.DB_CONFIG = global.DB_CONFIG || {};
+  global.DB_CONFIG.onUnauthorized = function () {
+    clearApiSessionMeta();
+    App.user = null; App.schoolId = null; App.forbiddenMessage = null;
+    if (U && U.toast) U.toast('Your session has expired. Please sign in again.', 'warn');
+    chooseRoleApi();
+  };
+  global.DB_CONFIG.onForbidden = function (message) {
+    App.forbiddenMessage = message || "This school's subscription is inactive.";
+    if (App.user && App.ctx && App.ctx.school) { renderShell(); router(); }
+    else if (U && U.toast) U.toast(App.forbiddenMessage, 'err');
+  };
 
   // Fingerprint of each seeded demo account's UNCHANGED password hash -> its known
   // demo password. These 5 passwords are already public (README, seed.js comments) —
@@ -335,12 +381,20 @@
           errBox.style.display = 'none';
           if (next.value.length < 6) { errBox.textContent = 'New password must be at least 6 characters.'; errBox.style.display = 'block'; return; }
           if (next.value !== next2.value) { errBox.textContent = 'New passwords do not match.'; errBox.style.display = 'block'; return; }
-          global.Auth.verifyPassword(cur.value, App.user.password_salt, App.user.password_hash).then(function (ok) {
+          // Re-fetch the full record for the CURRENT-password check: in API mode
+          // App.user came from the login response, which deliberately omits
+          // password_salt/password_hash (never sent over the wire at login).
+          DB.get('users', App.user.id).then(function (fullUser) {
+            return global.Auth.verifyPassword(cur.value, fullUser && fullUser.password_salt, fullUser && fullUser.password_hash);
+          }).then(function (ok) {
             if (!ok) { errBox.textContent = 'Current password is incorrect.'; errBox.style.display = 'block'; return; }
             return global.Auth.hashPassword(next.value).then(function (r) {
               return DB.update('users', App.user.id, { password_salt: r.salt, password_hash: r.hash, must_change_password: false });
             }).then(function (u) {
-              App.user = u; saveSession(u); U.toast('Password changed.'); c(); renderShell(); router();
+              App.user = u;
+              if (DB.isApi) { saveApiSessionMeta({ user: u, school_id: App.schoolId, role: u.role }); }
+              else { saveSession(u); }
+              U.toast('Password changed.'); c(); renderShell(); router();
             });
           });
         } }
@@ -375,6 +429,13 @@
     var bar = U.el('div', { style: style }, [U.el('span', { text: 'You are using a default password — please change it.' })]);
     bar.appendChild(U.el('button', { class: 'btn sm', text: 'Change password', onclick: openChangePasswordModal }));
     return bar;
+  }
+
+  // ---- API mode: subscription-inactive banner (set by DB_CONFIG.onForbidden) ----
+  function forbiddenBanner() {
+    if (!App.forbiddenMessage) return null;
+    var style = 'display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.45rem .8rem;font-size:.85rem;font-weight:600;flex-wrap:wrap;background:#fde8e8;color:#8a1c1c;border-bottom:1px solid #f3b4b4';
+    return U.el('div', { style: style }, [U.el('span', { text: App.forbiddenMessage })]);
   }
 
   // ---- Shell ----
@@ -418,6 +479,7 @@
     root.appendChild(topbar);
     var lb = licenseBanner(); if (lb) root.appendChild(lb);
     var pb = passwordBanner(); if (pb) root.appendChild(pb);
+    var fb = forbiddenBanner(); if (fb) root.appendChild(fb);
     root.appendChild(sidebar);
     root.appendChild(backdrop);
     root.appendChild(main);
@@ -465,7 +527,73 @@
           if (acts && acts.length) router(); // re-render current view with fresh data
         }).catch(function (e) { console.error('Automation error:', e); });
       }
+    }).catch(function (e) {
+      // In API mode, a 401 on the very first authenticated call (expired/invalid
+      // saved token) already triggered onUnauthorized above — this just stops it
+      // from surfacing as a noisy unhandled promise rejection.
+      console.error('Boot error:', e);
     });
+  }
+
+  // ---- API-mode login screen: School ID + Username + Password ----
+  // Distinct from chooseRole() (local mode) because the two modes have genuinely
+  // different trust models: local mode's browser already holds every account's
+  // data, so guessing a role and trying its password client-side costs nothing.
+  // API mode must not fetch other users' password hashes to the client just to
+  // guess among them — it needs a real username, verified server-side.
+  function chooseRoleApi() {
+    var root = U.clear(U.$('#root'));
+    var wrap = U.el('div', { class: 'login-wrap' });
+    var card = U.el('div', { class: 'card' });
+    var label = App.schoolSlugLabel || 'School Management System';
+    card.appendChild(U.el('div', { class: 'login-badge', text: initials(label) }));
+    card.appendChild(U.el('h1', { text: label }));
+    card.appendChild(U.el('p', { class: 'muted', text: 'Sign in to your school portal.' }));
+
+    var errBox = U.el('div', { class: 'login-error', style: 'display:none;color:#b3261e;font-size:.85rem;margin:.4rem 0' });
+    function field(labelText, inputEl) { return U.el('div', { class: 'field' }, [U.el('label', { text: labelText }), inputEl]); }
+
+    // school_id is only ever a LOOKUP HINT for the login call (pre-filled by a
+    // URL-slug router when present) — the server never trusts it for anything
+    // beyond finding this school's user by username; every route after login
+    // is scoped purely by the signed token, never by anything the client sends.
+    var schoolInput = U.el('input', { type: 'text', value: App.schoolIdHint || '', placeholder: 'e.g. sch-stmarys' });
+    var userInput = U.el('input', { type: 'text', autocomplete: 'username', placeholder: 'Username' });
+    var passInput = U.el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password' });
+
+    function showError(msg) { errBox.textContent = msg; errBox.style.display = 'block'; }
+
+    var submitBtn = U.el('button', { class: 'btn gold', type: 'submit', text: 'Sign in' });
+    function doLogin(e) {
+      if (e) e.preventDefault();
+      errBox.style.display = 'none';
+      var schoolVal = schoolInput.value.trim();
+      var userVal = userInput.value.trim();
+      var passVal = passInput.value;
+      if (!userVal || !passVal) { showError('Please enter your username and password.'); return; }
+      submitBtn.disabled = true; submitBtn.textContent = 'Signing in…';
+      DB.apiLogin(userVal, passVal, schoolVal).then(function (res) {
+        submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
+        App.user = res.user; App.schoolId = res.school_id; App.forbiddenMessage = null;
+        saveApiSessionMeta({ user: res.user, school_id: res.school_id, role: res.role });
+        boot();
+      }).catch(function (err) {
+        submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
+        showError((err && err.message) || 'Incorrect username, password, or school.');
+      });
+    }
+
+    var form = U.el('form', { class: 'form login-form', onsubmit: doLogin });
+    form.appendChild(errBox);
+    form.appendChild(field('School ID', schoolInput));
+    form.appendChild(field('Username', userInput));
+    form.appendChild(field('Password', passInput));
+    form.appendChild(submitBtn);
+
+    card.appendChild(form);
+    wrap.appendChild(card);
+    root.appendChild(wrap);
+    userInput.focus();
   }
 
   global.App = App;
@@ -474,6 +602,7 @@
   window.addEventListener('hashchange', function () { if (App.user) router(); });
   window.addEventListener('DOMContentLoaded', start);
   function start() {
+    if (DB.isApi) { startApi(); return; }
     App.refresh().then(function () {
       var s = loadSession();
       if (s) {
@@ -484,6 +613,21 @@
         });
       } else chooseRole();
     });
+  }
+
+  // API mode: NEVER call App.refresh() before a token exists — every route it
+  // touches (school/academic/etc.) requires Authorization, and there is no
+  // token yet on a fresh visit. Restore a saved session's metadata (if any)
+  // and let boot() -> App.refresh() be the first authenticated call; a stale
+  // token surfaces there as a 401 and onUnauthorized routes back to login.
+  function startApi() {
+    var meta = loadApiSessionMeta();
+    if (meta && DB.hasApiToken()) {
+      App.user = meta.user; App.schoolId = meta.school_id;
+      boot();
+    } else {
+      chooseRoleApi();
+    }
   }
   // In case DOMContentLoaded already fired
   if (document.readyState !== 'loading') start();

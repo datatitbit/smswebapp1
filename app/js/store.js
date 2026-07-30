@@ -88,14 +88,49 @@
   };
 
   /* ---------------- ApiAdapter (PHP/MySQL) ---------------- */
-  function ApiAdapter(base) { this.base = base; }
-  ApiAdapter.prototype._req = function (method, path, body) {
-    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
-    if (body) opts.body = JSON.stringify(body);
-    return fetch(this.base + '?r=' + encodeURIComponent(path), opts).then(function (r) {
-      if (!r.ok) throw new Error('API request failed (' + r.status + '): ' + path);
-      return r.json();
+  // Bearer token persistence: kept separate from the app-level session (app.js
+  // owns non-secret user/role/school_id metadata) so the adapter can rehydrate
+  // itself and start sending authenticated requests before app.js's boot logic
+  // even runs. The token is the ONLY thing that decides which school a request
+  // is scoped to (the server never trusts a client-sent school_id on any
+  // authenticated route) — this file never invents or overrides that.
+  var API_TOKEN_KEY = 'sms_api_token';
+  function loadApiToken() { try { return localStorage.getItem(API_TOKEN_KEY) || null; } catch (e) { return null; } }
+  function saveApiToken(t) {
+    try { if (t) localStorage.setItem(API_TOKEN_KEY, t); else localStorage.removeItem(API_TOKEN_KEY); } catch (e) {}
+  }
+
+  function ApiAdapter(base) { this.base = base; this.token = loadApiToken(); }
+  ApiAdapter.prototype._req = function (method, path, body, opts) {
+    opts = opts || {};
+    var headers = { 'Content-Type': 'application/json' };
+    if (this.token && !opts.noAuth) headers['Authorization'] = 'Bearer ' + this.token;
+    var fetchOpts = { method: method, headers: headers };
+    if (body) fetchOpts.body = JSON.stringify(body);
+    return fetch(this.base + '?r=' + encodeURIComponent(path), fetchOpts).then(function (r) {
+      return r.text().then(function (txt) {
+        var data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch (e) { /* non-JSON error page etc. */ }
+        if (!r.ok) {
+          var msg = (data && data.error) ? data.error : ('API request failed (' + r.status + '): ' + path);
+          var err = new Error(msg);
+          err.status = r.status; err.body = data;
+          // 401 = token missing/expired/invalid -> the session is dead, force re-login.
+          // 403 = valid session but the school's subscription is inactive -> surface
+          // the server's own message rather than a generic one.
+          if (r.status === 401 && global.DB_CONFIG && typeof global.DB_CONFIG.onUnauthorized === 'function') {
+            global.DB_CONFIG.onUnauthorized();
+          } else if (r.status === 403 && global.DB_CONFIG && typeof global.DB_CONFIG.onForbidden === 'function') {
+            global.DB_CONFIG.onForbidden(msg);
+          } else if (global.U && global.U.toast) {
+            global.U.toast('Network/API error — check your connection.', 'err');
+          }
+          throw err;
+        }
+        return data;
+      });
     }).catch(function (e) {
+      if (e && e.status) throw e; // already reported above (401/403/other HTTP error)
       if (global.U && global.U.toast) global.U.toast('Network/API error — check your connection.', 'err');
       throw e;
     });
@@ -112,6 +147,19 @@
   ApiAdapter.prototype.exportAll = function () { return this._req('GET', 'export'); };
   ApiAdapter.prototype.importAll = function (data) { return this._req('PUT', 'import', data); };
   ApiAdapter.prototype.reset = function () { return this._req('POST', 'reset', {}); };
+
+  // login/logout are the only calls that ever send a client-chosen school_id —
+  // and only as a LOOKUP HINT for ?r=auth/login (find this school's user by
+  // username), never as something the server trusts. A wrong/malicious value
+  // here just fails to find a matching user; no other route accepts school_id
+  // from the client at all (every other request is scoped by the token alone).
+  ApiAdapter.prototype.login = function (username, password, schoolId) {
+    var self = this;
+    return this._req('POST', 'auth/login', { username: username, password: password, school_id: schoolId || undefined }, { noAuth: true })
+      .then(function (res) { self.token = res.token; saveApiToken(res.token); return res; });
+  };
+  ApiAdapter.prototype.logout = function () { this.token = null; saveApiToken(null); return Promise.resolve(true); };
+  ApiAdapter.prototype.hasToken = function () { return !!this.token; };
 
   var adapter = DB_CONFIG.useApi ? new ApiAdapter(DB_CONFIG.apiBase) : new LocalAdapter();
 
@@ -134,6 +182,14 @@
     exportAll: function () { return adapter.exportAll(); },
     importAll: function (d) { return adapter.importAll(d); },
     reset: function () { return adapter.reset(); },
+
+    // ---- API-mode session (no-ops / rejects when running in local mode) ----
+    apiLogin: function (username, password, schoolId) {
+      if (!DB.isApi) return Promise.reject(new Error('apiLogin is only available when DB_CONFIG.useApi is true.'));
+      return adapter.login(username, password, schoolId);
+    },
+    apiLogout: function () { return DB.isApi ? adapter.logout() : Promise.resolve(true); },
+    hasApiToken: function () { return DB.isApi && adapter.hasToken(); },
 
     // Convenience: find within a collection
     find: function (coll, pred) {

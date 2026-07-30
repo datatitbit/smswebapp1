@@ -25,6 +25,7 @@
  *   PUT    ?r=singleton/{name}             set singleton
  *   POST   ?r=seq/{kind}                   next sequence number
  *   GET    ?r=export                       this school's full dataset
+ *   PUT    ?r=import      {...}            replace this school's full dataset
  *   POST   ?r=pay        {amount,...}      mock payment (test mode)
  *   POST   ?r=sms        {to,body}         mock SMS (test mode)
  *   -- platform super-admin only --
@@ -213,6 +214,42 @@ if ($head === 'export' && $method === 'GET') {
     foreach ($seqs->fetchAll() as $m) { $seq[$m['kind']] = (int)$m['val']; }
     $data['meta'] = ['seq' => $seq];
     out($data);
+}
+
+/* ---- import: replace this school's ENTIRE dataset from an uploaded blob ----
+ * Mirrors db_seed_school()'s write logic exactly, but WITHOUT touching the
+ * `schools` registry row, and scoped to $SCHOOL from the token — a client
+ * can never import data into (or overwrite) any school but its own, and
+ * every row/singleton/seq is force-stamped with $SCHOOL regardless of what
+ * school_id (if any) is present in the uploaded JSON. */
+if ($head === 'import' && $method === 'PUT') {
+    $data = body();
+    $pdo->prepare("DELETE FROM documents WHERE school_id=?")->execute([$SCHOOL]);
+    $pdo->prepare("DELETE FROM singletons WHERE school_id=?")->execute([$SCHOOL]);
+    $pdo->prepare("DELETE FROM meta_seq WHERE school_id=?")->execute([$SCHOOL]);
+    $singletons = db_singletons();
+    $insDoc = $pdo->prepare("INSERT INTO documents(id,collection,school_id,data) VALUES(?,?,?,?)");
+    $insOne = $pdo->prepare("REPLACE INTO singletons(school_id,name,data) VALUES(?,?,?)");
+    foreach ($data as $key => $val) {
+        if ($key === 'meta' || $key === 'constants') { continue; }
+        if (in_array($key, $singletons)) {
+            if (is_array($val)) { $val['school_id'] = $SCHOOL; }
+            $insOne->execute([$SCHOOL, $key, json_encode($val)]);
+        } elseif (is_array($val)) {
+            foreach ($val as $rec) {
+                if (!is_array($rec)) { continue; }
+                $id = $rec['id'] ?? uniqid($key . '-');
+                $rec['id'] = $id;
+                $rec['school_id'] = $SCHOOL; // force tenant tag; ignore any client-supplied value
+                $insDoc->execute([$id, $key, $SCHOOL, json_encode($rec)]);
+            }
+        }
+    }
+    if (isset($data['meta']['seq'])) {
+        $insSeq = $pdo->prepare("REPLACE INTO meta_seq(school_id,kind,val) VALUES(?,?,?)");
+        foreach ($data['meta']['seq'] as $k => $v) { $insSeq->execute([$SCHOOL, $k, (int)$v]); }
+    }
+    out(['ok' => true]);
 }
 
 if ($head === 'pay' && $method === 'POST')  out(svc_payment_charge($cfg, body()));
