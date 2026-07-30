@@ -23,7 +23,16 @@
   <div id="toast-host" aria-live="polite" role="status"></div>
 
   <script>
-    window.DB_CONFIG = { useApi: false, apiBase: 'api/index.php' };
+    // ---- API base URL per environment (see /DEPLOY.md) ----
+    // Render hosts this static frontend ONLY and never runs api/index.php.
+    // SMS_API_BASE must be a URL this page can reach the PHP API at:
+    //   - same-origin PHP host (frontend + api/ deployed together)  -> 'api/index.php'
+    //   - split-origin (frontend on Render, API on cPanel/Namecheap) -> the API's
+    //     full URL, e.g. 'https://api.yourschoolsms.com/api/index.php'
+    // useApi stays false (Local/localStorage mode) until that PHP+MySQL API is
+    // actually deployed and reachable at SMS_API_BASE.
+    var SMS_API_BASE = 'api/index.php';
+    window.DB_CONFIG = { useApi: false, apiBase: SMS_API_BASE };
   </script>
 
   <script src="js/seed.js?v=20260729d"></script>
