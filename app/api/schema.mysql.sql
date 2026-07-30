@@ -50,6 +50,18 @@ CREATE TABLE IF NOT EXISTS meta_seq (
   PRIMARY KEY (school_id, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Append-only audit trail for platform-admin "impersonate school Admin"
+-- sessions (Owner/Platform Dashboard -> Impersonate). Never read by the app
+-- except for a future audit screen.
+CREATE TABLE IF NOT EXISTS impersonation_log (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  platform_uid  VARCHAR(60) NOT NULL,
+  school_id     VARCHAR(40) NOT NULL,
+  issued_at     VARCHAR(30) NOT NULL,
+  expires_at    VARCHAR(30) NOT NULL,
+  KEY idx_imp_school (school_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ---------- PART B: normalised relational reference model ----------
 -- NOTE: the tenant registry table is `schools` from PART A above (id, name,
 -- status, plan, created_at) — it is NOT redefined here. A previous version of

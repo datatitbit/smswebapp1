@@ -161,6 +161,28 @@
   ApiAdapter.prototype.logout = function () { this.token = null; saveApiToken(null); return Promise.resolve(true); };
   ApiAdapter.prototype.hasToken = function () { return !!this.token; };
 
+  // ---- Platform (super-admin) routes — only meaningful for a Platform token.
+  // The server independently re-checks claims.plat on every one of these; the
+  // client never decides who is allowed to call them, it just relays 403s.
+  ApiAdapter.prototype.platformSchoolsList = function () { return this._req('GET', 'schools/list'); };
+  ApiAdapter.prototype.platformProvision = function (schoolId, name) {
+    return this._req('POST', 'provision', { school_id: schoolId || undefined, name: name });
+  };
+  ApiAdapter.prototype.platformSuspend = function (schoolId, status) {
+    return this._req('POST', 'suspend', { school_id: schoolId, status: status });
+  };
+  ApiAdapter.prototype.platformReset = function (schoolId) { return this._req('POST', 'reset', { school_id: schoolId }); };
+  // Impersonation issues a NEW token scoped to the target school — swap the
+  // adapter's active token to it exactly like login() does, so every
+  // subsequent request (until the impersonated token expires or the caller
+  // logs out) acts as that school, not the platform account.
+  ApiAdapter.prototype.impersonate = function (schoolId) {
+    var self = this;
+    return this._req('POST', 'impersonate', { school_id: schoolId }).then(function (res) {
+      self.token = res.token; saveApiToken(res.token); return res;
+    });
+  };
+
   var adapter = DB_CONFIG.useApi ? new ApiAdapter(DB_CONFIG.apiBase) : new LocalAdapter();
 
   // ---- Public facade. The whole app talks only to DB.* ----
@@ -190,6 +212,13 @@
     },
     apiLogout: function () { return DB.isApi ? adapter.logout() : Promise.resolve(true); },
     hasApiToken: function () { return DB.isApi && adapter.hasToken(); },
+
+    // ---- Platform (super-admin) routes — API mode only; reject in local mode. ----
+    platformSchoolsList: function () { return DB.isApi ? adapter.platformSchoolsList() : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformProvision: function (schoolId, name) { return DB.isApi ? adapter.platformProvision(schoolId, name) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformSuspend: function (schoolId, status) { return DB.isApi ? adapter.platformSuspend(schoolId, status) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformReset: function (schoolId) { return DB.isApi ? adapter.platformReset(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformImpersonate: function (schoolId) { return DB.isApi ? adapter.impersonate(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
 
     // Convenience: find within a collection
     find: function (coll, pred) {

@@ -54,6 +54,11 @@
     // API mode only: set when a background request comes back 403 (subscription
     // inactive) — rendered as a persistent banner until the page is reloaded.
     forbiddenMessage: null,
+    // API mode only: true when the current school session was opened via the
+    // platform admin's "Impersonate" control (POST ?r=impersonate), not a real
+    // login. impExpiresAt is the server-issued expiry of that short-lived token.
+    impersonating: false,
+    impExpiresAt: null,
     // View-only roles: Parent and Director can view & download but never edit.
     get readOnly() { return App.user && (App.user.role === 'Parent' || App.user.role === 'Director'); },
     // When the free trial / subscription has lapsed the whole app becomes read-only.
@@ -243,6 +248,7 @@
     if (DB.isApi) {
       DB.apiLogout().then(function () {
         App.user = null; App.schoolId = null; App.forbiddenMessage = null;
+        App.impersonating = false; App.impExpiresAt = null;
         clearApiSessionMeta(); chooseRoleApi();
       });
       return;
@@ -257,6 +263,7 @@
   global.DB_CONFIG.onUnauthorized = function () {
     clearApiSessionMeta();
     App.user = null; App.schoolId = null; App.forbiddenMessage = null;
+    App.impersonating = false; App.impExpiresAt = null;
     if (U && U.toast) U.toast('Your session has expired. Please sign in again.', 'warn');
     chooseRoleApi();
   };
@@ -445,6 +452,30 @@
     return U.el('div', { style: style }, [U.el('span', { text: App.forbiddenMessage })]);
   }
 
+  // ---- API mode: platform-admin impersonation banner ----
+  // Visible for the whole life of an impersonated session so the operator
+  // never forgets they are inside a subscriber's data as that school's Admin;
+  // "Exit impersonation" is the explicit control, the token's own short TTL
+  // (see index.php ?r=impersonate) is the automatic backstop.
+  function impersonationBanner() {
+    if (!App.impersonating) return null;
+    var style = 'display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.45rem .8rem;font-size:.85rem;font-weight:600;flex-wrap:wrap;background:#eef2ff;color:#1e3a8a;border-bottom:1px solid #c7d2fe';
+    var msg = 'Impersonating this school as Admin (platform session)';
+    if (App.impExpiresAt) { msg += ' — expires ' + new Date(App.impExpiresAt).toLocaleTimeString(); }
+    var bar = U.el('div', { style: style }, [U.el('span', { text: msg })]);
+    bar.appendChild(U.el('button', { class: 'btn sm', text: 'Exit impersonation', onclick: exitImpersonation }));
+    return bar;
+  }
+  function exitImpersonation() {
+    DB.apiLogout().then(function () {
+      App.user = null; App.schoolId = null; App.impersonating = false; App.impExpiresAt = null;
+      App.forbiddenMessage = null;
+      clearApiSessionMeta();
+      App.isAdminArea = true; // land back in the platform area, not this school's login
+      startAdmin();
+    });
+  }
+
   // ---- Shell ----
   function renderShell() {
     var root = U.clear(U.$('#root'));
@@ -487,6 +518,7 @@
     var lb = licenseBanner(); if (lb) root.appendChild(lb);
     var pb = passwordBanner(); if (pb) root.appendChild(pb);
     var fb = forbiddenBanner(); if (fb) root.appendChild(fb);
+    var ib = impersonationBanner(); if (ib) root.appendChild(ib);
     root.appendChild(sidebar);
     root.appendChild(backdrop);
     root.appendChild(main);
@@ -652,14 +684,12 @@
   // Deliberately rendered OUTSIDE renderShell()/router(): a platform account
   // has no school context (App.ctx, permissions, the 12-module sidebar all
   // assume a school), so trying to force it through the existing shell would
-  // be more awkward than just giving it its own small entry point. The real
-  // dashboard (schools list, provision/suspend, impersonation) is built in
-  // the next increment on top of this same startAdmin()/chooseRoleAdmin() pair.
+  // be more awkward than just giving it its own small entry point.
   function startAdmin() {
     var meta = loadApiSessionMeta();
     if (meta && meta.role === 'Platform' && DB.hasApiToken()) {
       App.user = meta.user || { name: 'Platform', role: 'Platform' };
-      renderAdminPlaceholder();
+      renderAdminDashboard();
     } else {
       chooseRoleAdmin();
     }
@@ -690,7 +720,7 @@
         // it's a cross-school account, not a school user record.
         App.user = res.user || { name: 'Platform', role: 'Platform' };
         saveApiSessionMeta({ user: App.user, school_id: null, role: 'Platform' });
-        renderAdminPlaceholder();
+        renderAdminDashboard();
       }).catch(function (err) {
         submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
         showError((err && err.message) || 'Incorrect username or password.');
@@ -706,18 +736,119 @@
     root.appendChild(wrap);
     userInput.focus();
   }
-  // Placeholder landing screen — replaced by the real schools-list dashboard
-  // in the next increment. Kept honest rather than faking a finished UI.
-  function renderAdminPlaceholder() {
+  // ---- Platform dashboard: schools list + provision/suspend/reset/impersonate ----
+  function renderAdminDashboard() {
     var root = U.clear(U.$('#root'));
-    var wrap = U.el('div', { class: 'login-wrap' });
+
+    var topbar = U.el('div', { class: 'topbar' }, [
+      U.el('div', { class: 'school-name' }, [document.createTextNode('Zetranova Platform')]),
+      U.el('div', { class: 'spacer' }),
+      U.el('button', { class: 'role-pill', text: ((App.user && App.user.name) || 'Platform') + ' ▾', onclick: function () {
+        var body = U.el('div', { class: 'role-grid' });
+        body.appendChild(U.el('button', { text: 'Log out', onclick: function () {
+          m.close();
+          DB.apiLogout().then(function () { App.user = null; clearApiSessionMeta(); chooseRoleAdmin(); });
+        } }));
+        var m = U.modal({ title: 'Platform account', body: body, actions: [{ label: 'Close', onClick: function (c) { c(); } }] });
+      } })
+    ]);
+    root.appendChild(topbar);
+
+    var wrap = U.el('div', { style: 'padding:1.2rem;max-width:1100px;margin:0 auto' });
     var card = U.el('div', { class: 'card' });
-    card.appendChild(U.el('h1', { text: 'Platform dashboard' }));
-    card.appendChild(U.el('p', { class: 'muted', text: 'Signed in as ' + ((App.user && App.user.name) || 'Platform') + '. The schools list and provisioning UI are built in the next increment.' }));
-    card.appendChild(U.el('button', { class: 'btn ghost', text: 'Log out', onclick: function () {
-      DB.apiLogout().then(function () { App.user = null; clearApiSessionMeta(); chooseRoleAdmin(); });
+    var head = U.el('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem' });
+    head.appendChild(U.el('h1', { text: 'Schools', style: 'margin:0' }));
+    head.appendChild(U.el('button', { class: 'btn gold', text: '+ Add school', onclick: openProvisionModal }));
+    card.appendChild(head);
+
+    var tableWrap = U.el('div', { id: 'admin-schools-table' }, [U.el('div', { class: 'loader', text: 'Loading…' })]);
+    card.appendChild(tableWrap);
+    wrap.appendChild(card);
+    root.appendChild(wrap);
+
+    loadSchoolsTable();
+  }
+
+  function loadSchoolsTable() {
+    var tableWrap = U.$('#admin-schools-table');
+    if (!tableWrap) return;
+    U.clear(tableWrap).appendChild(U.el('div', { class: 'loader', text: 'Loading…' }));
+    DB.platformSchoolsList().then(function (schools) {
+      var tw = U.$('#admin-schools-table');
+      if (!tw) return; // navigated away while the request was in flight
+      U.clear(tw);
+      if (!schools || !schools.length) { tw.appendChild(U.el('p', { class: 'muted', text: 'No schools yet.' })); return; }
+      var outer = U.el('div', { class: 'table-wrap' });
+      var table = U.el('table', { class: 'data' });
+      var thead = U.el('thead', {}, [U.el('tr', {}, ['Name', 'School ID', 'Status', 'Plan', 'Created', 'Users', 'Actions'].map(function (h) { return U.el('th', { text: h }); }))]);
+      table.appendChild(thead);
+      var tbody = U.el('tbody');
+      schools.forEach(function (s) { tbody.appendChild(schoolRow(s)); });
+      table.appendChild(tbody);
+      outer.appendChild(table);
+      tw.appendChild(outer);
+    }).catch(function (err) {
+      var tw = U.$('#admin-schools-table');
+      if (tw) { U.clear(tw).appendChild(U.el('p', { style: 'color:#b3261e', text: 'Could not load schools: ' + ((err && err.message) || 'error') })); }
+    });
+  }
+
+  function schoolRow(s) {
+    var isActive = s.status === 'active' || s.status === 'trial' || s.status === 'grace';
+    var actions = U.el('td', { class: 'actions', style: 'display:flex;gap:.35rem;flex-wrap:wrap' });
+    actions.appendChild(U.el('button', { class: 'btn sm', text: isActive ? 'Suspend' : 'Activate', onclick: function () {
+      DB.platformSuspend(s.id, isActive ? 'suspended' : 'active').then(loadSchoolsTable)
+        .catch(function (err) { U.toast((err && err.message) || 'Could not update status.', 'err'); });
     } }));
-    wrap.appendChild(card); root.appendChild(wrap);
+    actions.appendChild(U.el('button', { class: 'btn sm', text: 'Reset', onclick: function () {
+      if (!global.confirm('Reset ' + (s.name || s.id) + ' to its default seed data? This cannot be undone.')) return;
+      DB.platformReset(s.id).then(function () { U.toast('School reset.'); loadSchoolsTable(); })
+        .catch(function (err) { U.toast((err && err.message) || 'Could not reset school.', 'err'); });
+    } }));
+    actions.appendChild(U.el('button', { class: 'btn sm gold', text: 'Impersonate', onclick: function () {
+      DB.platformImpersonate(s.id).then(function (res) {
+        App.user = res.user; App.schoolId = res.school_id; App.forbiddenMessage = null;
+        App.impersonating = true; App.impExpiresAt = res.expires_at;
+        saveApiSessionMeta({ user: res.user, school_id: res.school_id, role: res.role, imp: true, imp_expires_at: res.expires_at });
+        App.isAdminArea = false;
+        boot();
+      }).catch(function (err) { U.toast((err && err.message) || 'Could not impersonate.', 'err'); });
+    } }));
+    return U.el('tr', {}, [
+      U.el('td', { text: s.name || '—' }),
+      U.el('td', { text: s.id }),
+      U.el('td', { text: s.status }),
+      U.el('td', { text: s.plan || '—' }),
+      U.el('td', { text: (s.created_at || '').slice(0, 10) }),
+      U.el('td', { text: String(s.user_count || 0) }),
+      actions
+    ]);
+  }
+
+  function openProvisionModal() {
+    var body = U.el('div');
+    var idInput = U.el('input', { type: 'text', placeholder: 'sch-yourschool (leave blank to auto-generate)' });
+    var nameInput = U.el('input', { type: 'text', placeholder: 'School name' });
+    function field(l, i) { return U.el('div', { class: 'field' }, [U.el('label', { text: l }), i]); }
+    body.appendChild(field('School ID (optional)', idInput));
+    body.appendChild(field('School name', nameInput));
+    var errBox = U.el('div', { style: 'color:#b3261e;font-size:.85rem;display:none' });
+    body.appendChild(errBox);
+    U.modal({
+      title: 'Add a new school', body: body,
+      actions: [
+        { label: 'Cancel', onClick: function (c) { c(); } },
+        { label: 'Create', kind: 'gold', onClick: function (c) {
+          errBox.style.display = 'none';
+          if (!nameInput.value.trim()) { errBox.textContent = 'School name is required.'; errBox.style.display = 'block'; return; }
+          DB.platformProvision(idInput.value.trim(), nameInput.value.trim()).then(function () {
+            U.toast('School created.'); c(); loadSchoolsTable();
+          }).catch(function (err) {
+            errBox.textContent = (err && err.message) || 'Could not create school.'; errBox.style.display = 'block';
+          });
+        } }
+      ]
+    });
   }
 
   global.App = App;
@@ -750,6 +881,7 @@
     var meta = loadApiSessionMeta();
     if (meta && DB.hasApiToken()) {
       App.user = meta.user; App.schoolId = meta.school_id;
+      App.impersonating = !!meta.imp; App.impExpiresAt = meta.imp_expires_at || null;
       boot();
     } else {
       chooseRoleApi();
