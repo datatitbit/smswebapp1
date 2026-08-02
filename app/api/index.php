@@ -25,12 +25,16 @@
  *   PUT    ?r=singleton/{name}             set singleton
  *   POST   ?r=seq/{kind}                   next sequence number
  *   GET    ?r=export                       this school's full dataset
+ *   PUT    ?r=import      {...}            replace this school's full dataset
  *   POST   ?r=pay        {amount,...}      mock payment (test mode)
  *   POST   ?r=sms        {to,body}         mock SMS (test mode)
  *   -- platform super-admin only --
- *   POST   ?r=provision  {school_id,name}  create + seed a new school
- *   POST   ?r=suspend    {school_id,status}set a school's status
- *   POST   ?r=reset      {school_id}       re-seed one school
+ *   GET    ?r=schools/list                 list schools + user counts
+ *   POST   ?r=provision   {school_id,name}  create + seed a new school
+ *   POST   ?r=suspend     {school_id,status}set a school's status
+ *   POST   ?r=reset       {school_id}       re-seed one school
+ *   POST   ?r=impersonate {school_id}       issue a short-lived Admin token
+ *                                           for that school (logged)
  * ============================================================ */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -119,6 +123,17 @@ $claims = require_auth($cfg);
 $isPlat = !empty($claims['plat']);
 
 /* ---- platform super-admin routes ---- */
+if ($head === 'schools' && $arg === 'list' && $method === 'GET') {
+    if (!$isPlat) { out(['error' => 'Forbidden'], 403); }
+    $rows = $pdo->query("SELECT id, name, status, plan, created_at FROM schools ORDER BY created_at DESC")->fetchAll();
+    $cntStmt = $pdo->prepare("SELECT COUNT(*) c FROM documents WHERE collection='users' AND school_id=?");
+    foreach ($rows as &$row) {
+        $cntStmt->execute([$row['id']]);
+        $row['user_count'] = (int)$cntStmt->fetch()['c'];
+    }
+    unset($row);
+    out($rows);
+}
 if ($head === 'provision' && $method === 'POST') {
     if (!$isPlat) { out(['error' => 'Forbidden'], 403); }
     $b = body();
@@ -148,6 +163,60 @@ if ($head === 'reset' && $method === 'POST') {
     $pdo->prepare("DELETE FROM meta_seq WHERE school_id=?")->execute([$sid]);
     db_seed_school($pdo, $sid, db_load_seed(), null);
     out(['ok' => true, 'school_id' => $sid]);
+}
+if ($head === 'impersonate' && $method === 'POST') {
+    if (!$isPlat) { out(['error' => 'Forbidden'], 403); }
+    $b = body();
+    $sid = $b['school_id'] ?? '';
+    if (!$sid) { out(['error' => 'school_id required'], 400); }
+    $sc = $pdo->prepare("SELECT id FROM schools WHERE id=?"); $sc->execute([$sid]);
+    if (!$sc->fetch()) { out(['error' => 'School not found'], 404); }
+
+    // Impersonate as that school's first Admin user, if one exists — falls
+    // back to a synthetic Admin identity (no linked user record) otherwise.
+    $adminUser = null;
+    $us = $pdo->prepare("SELECT data FROM documents WHERE collection='users' AND school_id=?");
+    $us->execute([$sid]);
+    foreach ($us->fetchAll() as $row) {
+        $u = json_decode($row['data'], true);
+        if (($u['role'] ?? '') === 'Admin') { $adminUser = $u; break; }
+    }
+
+    // Deliberately much shorter than a normal session (TOKEN_TTL) — this is a
+    // support/debugging session, not a login, and every one is logged below.
+    $impTtl = 900; // 15 minutes
+    $platUid = $claims['uid'] ?? 'platform';
+    $tok = token_issue($cfg['APP_SECRET'], [
+        'sid'    => $sid,
+        'uid'    => $adminUser['id'] ?? ('platform-imp-' . $sid),
+        'role'   => 'Admin',
+        'plat'   => false,
+        'imp'    => true,
+        'imp_by' => $platUid,
+    ], $impTtl);
+
+    $issuedAt = gmdate('c');
+    $expiresAt = gmdate('c', time() + $impTtl);
+    $pdo->prepare("INSERT INTO impersonation_log(platform_uid,school_id,issued_at,expires_at) VALUES(?,?,?,?)")
+        ->execute([$platUid, $sid, $issuedAt, $expiresAt]);
+
+    out([
+        'token'      => $tok,
+        'role'       => 'Admin',
+        'school_id'  => $sid,
+        'imp'        => true,
+        'expires_at' => $expiresAt,
+        'user' => [
+            'id'                   => $adminUser['id'] ?? ('platform-imp-' . $sid),
+            'name'                 => ($adminUser['name'] ?? 'Impersonated Admin') . ' (impersonated)',
+            'username'             => $adminUser['username'] ?? '',
+            'role'                 => 'Admin',
+            'staff_id'             => $adminUser['staff_id'] ?? null,
+            'class_ids'            => $adminUser['class_ids'] ?? [],
+            'linked_student_ids'   => $adminUser['linked_student_ids'] ?? [],
+            'must_change_password' => false,
+        ],
+    ]);
 }
 
 /* ============================================================
@@ -213,6 +282,42 @@ if ($head === 'export' && $method === 'GET') {
     foreach ($seqs->fetchAll() as $m) { $seq[$m['kind']] = (int)$m['val']; }
     $data['meta'] = ['seq' => $seq];
     out($data);
+}
+
+/* ---- import: replace this school's ENTIRE dataset from an uploaded blob ----
+ * Mirrors db_seed_school()'s write logic exactly, but WITHOUT touching the
+ * `schools` registry row, and scoped to $SCHOOL from the token — a client
+ * can never import data into (or overwrite) any school but its own, and
+ * every row/singleton/seq is force-stamped with $SCHOOL regardless of what
+ * school_id (if any) is present in the uploaded JSON. */
+if ($head === 'import' && $method === 'PUT') {
+    $data = body();
+    $pdo->prepare("DELETE FROM documents WHERE school_id=?")->execute([$SCHOOL]);
+    $pdo->prepare("DELETE FROM singletons WHERE school_id=?")->execute([$SCHOOL]);
+    $pdo->prepare("DELETE FROM meta_seq WHERE school_id=?")->execute([$SCHOOL]);
+    $singletons = db_singletons();
+    $insDoc = $pdo->prepare("INSERT INTO documents(id,collection,school_id,data) VALUES(?,?,?,?)");
+    $insOne = $pdo->prepare("REPLACE INTO singletons(school_id,name,data) VALUES(?,?,?)");
+    foreach ($data as $key => $val) {
+        if ($key === 'meta' || $key === 'constants') { continue; }
+        if (in_array($key, $singletons)) {
+            if (is_array($val)) { $val['school_id'] = $SCHOOL; }
+            $insOne->execute([$SCHOOL, $key, json_encode($val)]);
+        } elseif (is_array($val)) {
+            foreach ($val as $rec) {
+                if (!is_array($rec)) { continue; }
+                $id = $rec['id'] ?? uniqid($key . '-');
+                $rec['id'] = $id;
+                $rec['school_id'] = $SCHOOL; // force tenant tag; ignore any client-supplied value
+                $insDoc->execute([$id, $key, $SCHOOL, json_encode($rec)]);
+            }
+        }
+    }
+    if (isset($data['meta']['seq'])) {
+        $insSeq = $pdo->prepare("REPLACE INTO meta_seq(school_id,kind,val) VALUES(?,?,?)");
+        foreach ($data['meta']['seq'] as $k => $v) { $insSeq->execute([$SCHOOL, $k, (int)$v]); }
+    }
+    out(['ok' => true]);
 }
 
 if ($head === 'pay' && $method === 'POST')  out(svc_payment_charge($cfg, body()));

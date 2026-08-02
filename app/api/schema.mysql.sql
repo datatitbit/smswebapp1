@@ -14,33 +14,66 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ---------- PART A: operational document store ----------
+-- Mirrors db.php's auto-create schema exactly (that PHP code is the live
+-- source of truth; this file just lets a DBA create the same tables by
+-- hand). All four tables are tenant-tagged; singletons/meta_seq are keyed
+-- by (school_id, name)/(school_id, kind) so per-school settings and ID
+-- counters never collide across schools sharing this database.
+CREATE TABLE IF NOT EXISTS schools (
+  id         VARCHAR(40)  PRIMARY KEY,
+  name       VARCHAR(160) NULL,
+  status     VARCHAR(20)  NOT NULL DEFAULT 'active',
+  plan       VARCHAR(40)  NULL,
+  created_at VARCHAR(30)  NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS documents (
   id         VARCHAR(80)  NOT NULL,
   collection VARCHAR(60)  NOT NULL,
-  school_id  VARCHAR(40)  NULL,
+  school_id  VARCHAR(40)  NOT NULL,
   data       LONGTEXT     NULL,
   PRIMARY KEY (collection, id),
-  KEY idx_school (school_id)
+  KEY idx_docs_coll_school (collection, school_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS singletons (
-  name VARCHAR(60) PRIMARY KEY,
-  data LONGTEXT NULL
+  school_id VARCHAR(40) NOT NULL,
+  name      VARCHAR(60) NOT NULL,
+  data      LONGTEXT    NULL,
+  PRIMARY KEY (school_id, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS meta_seq (
-  kind VARCHAR(40) PRIMARY KEY,
-  val  INT NOT NULL DEFAULT 0
+  school_id VARCHAR(40) NOT NULL,
+  kind      VARCHAR(40) NOT NULL,
+  val       INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (school_id, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Append-only audit trail for platform-admin "impersonate school Admin"
+-- sessions (Owner/Platform Dashboard -> Impersonate). Never read by the app
+-- except for a future audit screen.
+CREATE TABLE IF NOT EXISTS impersonation_log (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  platform_uid  VARCHAR(60) NOT NULL,
+  school_id     VARCHAR(40) NOT NULL,
+  issued_at     VARCHAR(30) NOT NULL,
+  expires_at    VARCHAR(30) NOT NULL,
+  KEY idx_imp_school (school_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- PART B: normalised relational reference model ----------
-CREATE TABLE IF NOT EXISTS schools (
-  id VARCHAR(40) PRIMARY KEY,
-  name VARCHAR(160) NOT NULL,
-  motto VARCHAR(200), address VARCHAR(200), location VARCHAR(160),
-  phone VARCHAR(60), whatsapp VARCHAR(60), email VARCHAR(120),
-  website VARCHAR(120), logo TEXT, currency VARCHAR(8) DEFAULT 'GHS'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- NOTE: the tenant registry table is `schools` from PART A above (id, name,
+-- status, plan, created_at) — it is NOT redefined here. A previous version of
+-- this file declared a second, richer `CREATE TABLE IF NOT EXISTS schools`
+-- here; because MySQL's IF NOT EXISTS is a silent no-op on a name collision,
+-- running this file top-to-bottom would have created PART A's schools table
+-- first and quietly dropped every extra column below (motto, address, phone,
+-- whatsapp, email, website, logo, currency). Fixed by removing the duplicate;
+-- add those as a future `school_profiles(school_id VARCHAR(40) PRIMARY KEY
+-- REFERENCES schools(id), motto, address, ...)` table if/when PART B's
+-- normalised model is actually wired up. All FKs below reference PART A's
+-- schools(id) (same VARCHAR(40) type), so nothing else needs to change.
 
 CREATE TABLE IF NOT EXISTS academic_years (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,

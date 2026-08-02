@@ -60,6 +60,16 @@ function db_connect($cfg) {
         val INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (school_id, kind)
     )");
+    // Audit trail for platform-admin "impersonate school Admin" sessions —
+    // append-only, never read by the app except for a future audit screen.
+    $impPk = ($cfg['DB_DRIVER'] === 'mysql') ? 'INT AUTO_INCREMENT PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    $pdo->exec("CREATE TABLE IF NOT EXISTS impersonation_log (
+        id $impPk,
+        platform_uid VARCHAR(60) NOT NULL,
+        school_id VARCHAR(40) NOT NULL,
+        issued_at VARCHAR(30) NOT NULL,
+        expires_at VARCHAR(30) NOT NULL
+    )");
 
     // First-run: seed the default single-school install.
     db_seed_if_empty($pdo, $cfg['SCHOOL_ID']);

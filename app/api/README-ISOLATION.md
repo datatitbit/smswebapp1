@@ -113,10 +113,21 @@ Isolation is security-critical, so verify all of these pass:
 
 ---
 
-## Still pending (next increment — Stage 4)
+## Front-end wiring (done) and deployment (see /DEPLOY.md)
 
-The **front-end wiring** is not done yet: `store.js` must log in via
-`?r=auth/login`, store the token, and send it on every request; the login
-screen (`app.js`) must call the server in API mode instead of checking
-passwords in the browser. Until then, the app runs in its current client-only
-mode. This backend is ready to receive that wiring and be tested end-to-end.
+The front-end wiring described in earlier versions of this doc is done:
+`store.js`'s `ApiAdapter` logs in via `?r=auth/login`, stores the returned
+token, and attaches `Authorization: Bearer <token>` to every request;
+`app.js` has a dedicated API-mode login screen (`chooseRoleApi`), path-based
+routing (`/school/:slug/...`, `/admin/...`), and a platform dashboard
+(`/admin`) for provisioning, suspending, resetting, and impersonating schools.
+Flip `DB_CONFIG.useApi = true` in `app/index.html` to switch the app into API
+mode — see that file's `SMS_API_BASE` comment and **`/DEPLOY.md`** for how to
+point it at a PHP host that may not share the frontend's origin (Render
+serves the static frontend only; the PHP API is deployed separately).
+
+What is still genuinely pending: real execution of the TEST CHECKLIST above on
+an actual PHP host (this sandbox has no PHP interpreter, so the API code has
+only been reviewed statically) and the impersonation audit log
+(`impersonation_log`) has no admin-facing viewer yet — it is written on every
+`?r=impersonate` call but only queryable directly in the database today.
