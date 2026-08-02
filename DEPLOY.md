@@ -14,6 +14,49 @@ Render (Static Site)                          cPanel / Namecheap host
   static files only, no PHP                       (provision/suspend/impersonate)
 ```
 
+## 0. Domain structure — client name NOW vs. LATER (read this first)
+
+> **Plain-English summary:** right now, a school's name goes **after** the
+> domain, as part of the page address. **Later**, once we move to a proper
+> server, a school's name will go **before** the domain instead. This is a
+> deliberate, staged decision — not an accident — and it is the single most
+> important thing to remember about how client URLs work in this app.
+
+| Stage | Example URL for a school called "Schoola" | Pattern |
+|---|---|---|
+| **NOW** (this build, on shared hosting) | `novasms1.com/school/schoola` | client name comes **AFTER** the domain (**path-based routing**) |
+| **LATER** (once on a bigger server) | `schoola.novasms1.com` | client name comes **BEFORE** the domain (**subdomain routing**) |
+
+**Why NOW is path-based:** subdomain routing needs a **wildcard SSL
+certificate** (a security certificate that covers `*.novasms1.com` — i.e. any
+name in front of the domain — instead of just one exact address) plus
+**wildcard DNS** (telling the internet's address book that *any* name before
+`novasms1.com` should point at our server). Ordinary shared hosting (cPanel /
+Namecheap, which is what this app targets today — see §2 below) does not make
+that easy or automatic. Path-based routing needs none of that extra setup, so
+it is what `app.js`'s `/school/:slug/...` routing (see §3) actually
+implements today — this is **not a trust boundary or security feature**, it
+only decides which login screen pre-fills; see the code comment at the top of
+`parsePathRoute()` in `app/js/app.js` for the full explanation.
+
+**Why LATER should move to subdomains:** once there are enough paying
+schools to justify a **VPS** (Virtual Private Server — your own dedicated
+slice of a real server, instead of shared hosting where you share a machine
+with other websites), subdomains become easy to set up properly and are the
+standard, more professional pattern serious SaaS (Software-as-a-Service —
+software rented online rather than installed) products use. It also gives
+each school session a cleaner separation in the browser (via **cookies** —
+small pieces of login data a browser stores per address).
+
+**When switching, what actually changes:** only the URL pattern and the
+hosting/DNS/SSL setup around it — the underlying security model does NOT
+change. The school's data is, and always will be, isolated by the **signed
+token** issued at login (see `README-ISOLATION.md`), never by the URL itself.
+Whether a school's address is `novasms1.com/school/schoola` or
+`schoola.novasms1.com`, the server never trusts what's in the URL for
+security — only the token. So this is purely a URL-presentation/hosting
+decision, safe to defer and change later without touching the security design.
+
 ## 1. Render — static frontend only
 
 - `render.yaml`'s `buildCommand: rm -rf app/api` **removes the entire `api/`
