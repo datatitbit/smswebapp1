@@ -8,7 +8,7 @@
 -- PART B: normalised relational reference schema that mirrors the
 --         data model in the brief (section 20), tenant-aware.
 --         Provided for schools/DBAs and future server-side modules.
--- Charset utf8mb4 throughout. One install = one school.
+-- Charset utf8mb4 throughout.
 -- ============================================================
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -16,15 +16,20 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ---------- PART A: operational document store ----------
 -- Mirrors db.php's auto-create schema exactly (that PHP code is the live
 -- source of truth; this file just lets a DBA create the same tables by
--- hand). All four tables are tenant-tagged; singletons/meta_seq are keyed
+-- hand). All tables are tenant-tagged; singletons/meta_seq are keyed
 -- by (school_id, name)/(school_id, kind) so per-school settings and ID
 -- counters never collide across schools sharing this database.
+
+-- trial_ends_at is the SERVER-side source of truth for a school's free trial
+-- (YYYY-MM-DD, or NULL for a fully paid school). It deliberately does NOT
+-- live in the school's own data, so a school cannot extend its own trial.
 CREATE TABLE IF NOT EXISTS schools (
-  id         VARCHAR(40)  PRIMARY KEY,
-  name       VARCHAR(160) NULL,
-  status     VARCHAR(20)  NOT NULL DEFAULT 'active',
-  plan       VARCHAR(40)  NULL,
-  created_at VARCHAR(30)  NULL
+  id            VARCHAR(40)  PRIMARY KEY,
+  name          VARCHAR(160) NULL,
+  status        VARCHAR(20)  NOT NULL DEFAULT 'active',
+  plan          VARCHAR(40)  NULL,
+  created_at    VARCHAR(30)  NULL,
+  trial_ends_at VARCHAR(30)  NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -50,30 +55,38 @@ CREATE TABLE IF NOT EXISTS meta_seq (
   PRIMARY KEY (school_id, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Append-only audit trail for platform-admin "impersonate school Admin"
--- sessions (Owner/Platform Dashboard -> Impersonate). Never read by the app
--- except for a future audit screen.
-CREATE TABLE IF NOT EXISTS impersonation_log (
+-- Append-only audit trail for EVERY platform (owner) action: provision,
+-- status change, trial change, plan change, reset, per-user enable/disable
+-- and impersonation. Written by api/index.php's audit() helper; never
+-- updated or deleted by the app.
+--   action    -- provision | status | trial | plan | reset
+--               | user_disable | user_enable | impersonate
+--   target_id -- the user id, where the action targets one account
+--   detail    -- JSON blob of action-specific before/after values
+CREATE TABLE IF NOT EXISTS platform_audit (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   platform_uid  VARCHAR(60) NOT NULL,
-  school_id     VARCHAR(40) NOT NULL,
-  issued_at     VARCHAR(30) NOT NULL,
-  expires_at    VARCHAR(30) NOT NULL,
-  KEY idx_imp_school (school_id)
+  action        VARCHAR(40) NOT NULL,
+  school_id     VARCHAR(40) NULL,
+  target_id     VARCHAR(80) NULL,
+  detail        LONGTEXT    NULL,
+  created_at    VARCHAR(30) NOT NULL,
+  KEY idx_audit_school (school_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------- PART B: normalised relational reference model ----------
 -- NOTE: the tenant registry table is `schools` from PART A above (id, name,
--- status, plan, created_at) — it is NOT redefined here. A previous version of
--- this file declared a second, richer `CREATE TABLE IF NOT EXISTS schools`
--- here; because MySQL's IF NOT EXISTS is a silent no-op on a name collision,
--- running this file top-to-bottom would have created PART A's schools table
--- first and quietly dropped every extra column below (motto, address, phone,
--- whatsapp, email, website, logo, currency). Fixed by removing the duplicate;
--- add those as a future `school_profiles(school_id VARCHAR(40) PRIMARY KEY
--- REFERENCES schools(id), motto, address, ...)` table if/when PART B's
--- normalised model is actually wired up. All FKs below reference PART A's
--- schools(id) (same VARCHAR(40) type), so nothing else needs to change.
+-- status, plan, created_at, trial_ends_at) — it is NOT redefined here. A
+-- previous version of this file declared a second, richer
+-- `CREATE TABLE IF NOT EXISTS schools` here; because MySQL's IF NOT EXISTS is
+-- a silent no-op on a name collision, running this file top-to-bottom would
+-- have created PART A's schools table first and quietly dropped every extra
+-- column below (motto, address, phone, whatsapp, email, website, logo,
+-- currency). Fixed by removing the duplicate; add those as a future
+-- `school_profiles(school_id VARCHAR(40) PRIMARY KEY REFERENCES schools(id),
+-- motto, address, ...)` table if/when PART B's normalised model is actually
+-- wired up. All FKs below reference PART A's schools(id) (same VARCHAR(40)
+-- type), so nothing else needs to change.
 
 CREATE TABLE IF NOT EXISTS academic_years (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL,
@@ -150,9 +163,12 @@ CREATE TABLE IF NOT EXISTS staff_classes (
   PRIMARY KEY (staff_id, class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- NOTE: in the live document store, a user's "disabled" flag lives inside the
+-- users document JSON (set from the owner console via POST ?r=platform/user).
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(40) PRIMARY KEY, school_id VARCHAR(40) NOT NULL, name VARCHAR(140),
-  username VARCHAR(60), password_hash VARCHAR(255) NULL, role VARCHAR(40), staff_id VARCHAR(12) NULL
+  username VARCHAR(60), password_hash VARCHAR(255) NULL, role VARCHAR(40), staff_id VARCHAR(12) NULL,
+  disabled TINYINT(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS grade_bands (
