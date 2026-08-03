@@ -4,15 +4,21 @@
  *
  * Multi-tenant document store. Every row is tagged with school_id and
  * the API filters every query by the school in the request's token:
- *   schools(id, name, status, plan, created_at)     -- tenant registry
+ *   schools(id, name, status, plan, created_at,
+ *           trial_ends_at)                            -- tenant registry
  *   documents(id, collection, school_id, data)       -- array collections
  *   singletons(school_id, name, data)                -- per-school settings
  *   meta_seq(school_id, kind, val)                    -- per-school counters
+ *   platform_audit(...)                               -- owner-action audit log
  *
  * NOTE ON MIGRATION: the singletons/meta_seq tables are now keyed by
  * school_id. A database created by the OLD schema (name-only PK) must be
  * migrated or rebuilt before use — see README-ISOLATION.md.
  * ============================================================ */
+
+// Free-trial length given to a newly provisioned school, in days. Mirrors
+// license-lib.js's TRIAL_DAYS default; the owner can override per school.
+if (!defined('DEFAULT_TRIAL_DAYS')) { define('DEFAULT_TRIAL_DAYS', 30); }
 
 function db_connect($cfg) {
     if ($cfg['DB_DRIVER'] === 'mysql') {
@@ -32,12 +38,15 @@ function db_connect($cfg) {
         $jsonType = 'TEXT';
     }
 
+    // trial_ends_at is listed here so a FRESH database gets it directly; the
+    // ALTER further down is only for databases created before it existed.
     $pdo->exec("CREATE TABLE IF NOT EXISTS schools (
         id VARCHAR(40) PRIMARY KEY,
         name VARCHAR(160),
         status VARCHAR(20) NOT NULL DEFAULT 'active',
         plan VARCHAR(40),
-        created_at VARCHAR(30)
+        created_at VARCHAR(30),
+        trial_ends_at VARCHAR(30)
     )");
     $pdo->exec("CREATE TABLE IF NOT EXISTS documents (
         id VARCHAR(80) NOT NULL,
@@ -60,16 +69,30 @@ function db_connect($cfg) {
         val INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (school_id, kind)
     )");
-    // Audit trail for platform-admin "impersonate school Admin" sessions —
-    // append-only, never read by the app except for a future audit screen.
-    $impPk = ($cfg['DB_DRIVER'] === 'mysql') ? 'INT AUTO_INCREMENT PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    $pdo->exec("CREATE TABLE IF NOT EXISTS impersonation_log (
-        id $impPk,
+    // Append-only audit trail for EVERY platform (owner) action — provisioning,
+    // suspending, resetting, trial/plan changes, per-user enable/disable and
+    // impersonation. Nothing here is ever updated or deleted by the app; it is
+    // the accountability record for the owner plane.
+    $auditPk = ($cfg['DB_DRIVER'] === 'mysql') ? 'INT AUTO_INCREMENT PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    $pdo->exec("CREATE TABLE IF NOT EXISTS platform_audit (
+        id $auditPk,
         platform_uid VARCHAR(60) NOT NULL,
-        school_id VARCHAR(40) NOT NULL,
-        issued_at VARCHAR(30) NOT NULL,
-        expires_at VARCHAR(30) NOT NULL
+        action VARCHAR(40) NOT NULL,
+        school_id VARCHAR(40),
+        target_id VARCHAR(80),
+        detail $jsonType,
+        created_at VARCHAR(30) NOT NULL
     )");
+    try { $pdo->exec("CREATE INDEX idx_audit_school ON platform_audit (school_id)"); } catch (Throwable $e) {}
+
+    // ---- Additive migrations ----
+    // Columns added after the first release. ALTER TABLE ... ADD COLUMN throws
+    // if the column already exists on both MySQL and SQLite, so each is wrapped
+    // and the failure ignored — that is the "already migrated" case.
+    // trial_ends_at is the SERVER-side source of truth for a school's free
+    // trial. It replaces the old browser-side trial clock, which a school could
+    // reset simply by clearing its own browser storage.
+    try { $pdo->exec("ALTER TABLE schools ADD COLUMN trial_ends_at VARCHAR(30)"); } catch (Throwable $e) {}
 
     // First-run: seed the default single-school install.
     db_seed_if_empty($pdo, $cfg['SCHOOL_ID']);
@@ -104,10 +127,19 @@ function db_seed_school($pdo, $school, $seed, $name = null) {
     if (!$seed) { $seed = db_load_seed(); }
     if (!$seed) { return; }
 
-    // registry row
-    $reg = $pdo->prepare("INSERT INTO schools(id,name,status,plan,created_at) VALUES(?,?,?,?,?)");
+    // Registry row. A brand-new school starts on a server-side free trial:
+    // DEFAULT_TRIAL_DAYS from today, recorded as trial_ends_at. The owner can
+    // extend, shorten or clear it later from the platform dashboard.
+    $reg = $pdo->prepare("INSERT INTO schools(id,name,status,plan,created_at,trial_ends_at) VALUES(?,?,?,?,?,?)");
     try {
-        $reg->execute([$school, $name ?: ($seed['school']['name'] ?? 'School'), 'active', 'standard', gmdate('c')]);
+        $reg->execute([
+            $school,
+            $name ?: ($seed['school']['name'] ?? 'School'),
+            'active',
+            'basic',
+            gmdate('c'),
+            gmdate('Y-m-d', time() + (DEFAULT_TRIAL_DAYS * 86400)),
+        ]);
     } catch (Throwable $e) { /* already registered */ }
 
     $singletons = db_singletons();
