@@ -16,9 +16,11 @@
     if (!canView) { container.appendChild(el('div', { class: 'empty', text: 'Only the Administrator or Director can view the subscription.' })); return; }
     if (!L) { container.appendChild(el('div', { class: 'empty', text: 'Licensing module not loaded.' })); return; }
     var isAdmin = App.user.role === 'Admin';
-    // Developer-only controls (e.g. resetting the free-trial period) are never shown
-    // to subscribers. A developer reveals them by setting localStorage.sms_dev = '1'.
-    var devMode = (function () { try { return localStorage.getItem('sms_dev') === '1'; } catch (e) { return false; } })();
+    // NOTE: there is deliberately no hidden "developer mode" here any more.
+    // Trial length used to be editable from this screen behind a secret
+    // localStorage flag (sms_dev) — security by obscurity, and it let the
+    // school's own device change its own trial. Trial and plan are now set by
+    // the owner from the platform dashboard (/admin) and stored server-side.
 
     L.resolve().then(function (st) {
       var badge = st.state === 'active' ? ['Active', '#0f5e5e'] : (st.state === 'trialing' ? ['Free trial', '#c99a2e'] : ['Expired', '#b91c1c']);
@@ -49,23 +51,12 @@
       pr.appendChild(el('div', { class: 'help', text: 'Tiers by enrolment — Basic (up to 199 pupils), Growth (200–499), Premium (500+). Every plan includes a 30-day free trial. Add-ons: bulk SMS credits and online fee payment. Prices are a guide and can be adjusted.' }));
       container.appendChild(pr);
 
-      if (devMode && st.source !== 'key') {
-        var trCard = el('div', { class: 'card' }, [el('h3', { text: 'Free trial settings (developer only)' })]);
-        trCard.appendChild(el('div', { class: 'help', text: 'Default free trial is 30 days. Extend or shorten it for this school below — this changes the trial length, not the start date, so extending an in-progress trial simply adds days.' }));
-        var daysInp = el('input', { type: 'number', min: 1, max: 3650, value: st.trialDays || 30, style: 'width:120px' });
-        trCard.appendChild(el('div', { class: 'field' }, [el('label', { text: 'Trial length (days)' }), daysInp]));
-        trCard.appendChild(el('div', { class: 'btn-row' }, [
-          el('button', { class: 'btn gold', text: 'Save', onclick: function () {
-            L.setTrialDays(daysInp.value).then(function (r) {
-              if (!r.ok) return U.toast(r.error, 'err');
-              U.toast('Trial length updated.'); render(container);
-            });
-          } }),
-          el('button', { class: 'btn ghost', text: 'Reset to default (30 days)', onclick: function () {
-            L.setTrialDays(null).then(function () { U.toast('Trial reset to 30 days.'); render(container); });
-          } })
-        ]));
-        container.appendChild(trCard);
+      // Hosted (API) mode: the plan and trial are set centrally by Zetranova and
+      // read from the server, so there is nothing for the school to enter here.
+      // Offline licence keys only apply to a standalone/local install.
+      if (st.source === 'server') {
+        container.appendChild(el('div', { class: 'note', text: 'Your plan and free-trial period are managed by Zetranova. To change your plan, extend a trial, or renew, please contact us — quote your school name shown above.' }));
+        return;
       }
 
       var ta = el('textarea', { rows: 3, placeholder: 'Paste licence key here…', style: 'width:100%;font-family:monospace;font-size:.8rem' });

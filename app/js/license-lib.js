@@ -87,7 +87,44 @@
   }
 
   // resolve() -> Promise<state>  { state, plan, planLabel, school, expires, daysLeft, trial, source, locked }
+  //
+  // TWO MODES, deliberately different:
+  //   API mode   — the SERVER is authoritative. Trial end date, plan and status
+  //                live on the school's registry row and are only changeable
+  //                from the owner/platform dashboard. A school cannot extend
+  //                its own trial by clearing browser storage, editing its own
+  //                singletons, or importing a doctored dataset. Offline licence
+  //                keys are ignored here: in a hosted (SaaS) deployment the
+  //                owner sets the plan centrally, so a pasted key must not be
+  //                able to override what the owner decided.
+  //   Local mode — no server exists, so the original offline behaviour stands:
+  //                a signed licence key if one is pasted, otherwise a local
+  //                trial clock. Local mode is for demos/training only.
   function resolve() {
+    if (DB.isApi && DB.subscriptionState) {
+      return DB.subscriptionState().then(function (s) {
+        if (!s || s.source !== 'server') { return localResolve(); }
+        var onTrial = !!s.trial_ends_at;
+        // A suspended school is surfaced as locked/read-only, same as expired —
+        // it should never silently look like a healthy paid account.
+        var state = (s.state === 'suspended') ? 'expired' : s.state;
+        return finalize({
+          state:     state,
+          plan:      s.plan || null,
+          school:    s.name || '',
+          expires:   s.trial_ends_at || '',
+          // No trial running means nothing is counting down; a large number
+          // keeps "days remaining" displays harmless rather than showing 0.
+          daysLeft:  (s.days_left === null || s.days_left === undefined) ? 9999 : s.days_left,
+          trial:     onTrial,
+          source:    'server'
+        });
+      }).catch(function () { return localResolve(); });
+    }
+    return localResolve();
+  }
+
+  function localResolve() {
     return DB.singleton('license').then(function (rec) {
       rec = rec || {};
       var today = todayISO();
@@ -122,6 +159,8 @@
   // setTrialDays(n) -> Promise<{ok, error}>. Pass null/0 to reset to the 30-day default.
   // Changes only the LENGTH of the trial, never the recorded start date, so extending
   // an in-progress trial adds days rather than restarting the clock.
+  // LOCAL MODE ONLY — in API mode the trial lives on the server and is set from
+  // the owner console; nothing in the school's own app can change it.
   function setTrialDays(n) {
     var days = (n == null || n === '') ? null : Number(n);
     if (days != null && (!isFinite(days) || days < 1 || days > 3650)) {

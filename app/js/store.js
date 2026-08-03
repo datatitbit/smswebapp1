@@ -94,10 +94,18 @@
   // even runs. The token is the ONLY thing that decides which school a request
   // is scoped to (the server never trusts a client-sent school_id on any
   // authenticated route) — this file never invents or overrides that.
+  // Kept in sessionStorage (not localStorage) so the signed-in session ends
+  // when the browser window closes — opening the app fresh always requires
+  // logging in again. See the matching note in app.js. Any token left behind
+  // by a pre-2026-08-03 build is purged on sight.
   var API_TOKEN_KEY = 'sms_api_token';
-  function loadApiToken() { try { return localStorage.getItem(API_TOKEN_KEY) || null; } catch (e) { return null; } }
+  function loadApiToken() {
+    try { localStorage.removeItem(API_TOKEN_KEY); } catch (e) {}
+    try { return sessionStorage.getItem(API_TOKEN_KEY) || null; } catch (e) { return null; }
+  }
   function saveApiToken(t) {
-    try { if (t) localStorage.setItem(API_TOKEN_KEY, t); else localStorage.removeItem(API_TOKEN_KEY); } catch (e) {}
+    try { if (t) sessionStorage.setItem(API_TOKEN_KEY, t); else sessionStorage.removeItem(API_TOKEN_KEY); } catch (e) {}
+    try { localStorage.removeItem(API_TOKEN_KEY); } catch (e) {}
   }
 
   function ApiAdapter(base) { this.base = base; this.token = loadApiToken(); }
@@ -107,7 +115,17 @@
     if (this.token && !opts.noAuth) headers['Authorization'] = 'Bearer ' + this.token;
     var fetchOpts = { method: method, headers: headers };
     if (body) fetchOpts.body = JSON.stringify(body);
-    return fetch(this.base + '?r=' + encodeURIComponent(path), fetchOpts).then(function (r) {
+    // opts.query adds extra querystring parameters alongside ?r= — used by the
+    // platform routes that scope by ?school=<id> rather than by the token.
+    var url = this.base + '?r=' + encodeURIComponent(path);
+    if (opts.query) {
+      Object.keys(opts.query).forEach(function (k) {
+        var v = opts.query[k];
+        if (v === undefined || v === null || v === '') return;
+        url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(v);
+      });
+    }
+    return fetch(url, fetchOpts).then(function (r) {
       return r.text().then(function (txt) {
         var data = null;
         try { data = txt ? JSON.parse(txt) : null; } catch (e) { /* non-JSON error page etc. */ }
@@ -172,6 +190,29 @@
     return this._req('POST', 'suspend', { school_id: schoolId, status: status });
   };
   ApiAdapter.prototype.platformReset = function (schoolId) { return this._req('POST', 'reset', { school_id: schoolId }); };
+  ApiAdapter.prototype.platformExtendTrial = function (schoolId, days) {
+    return this._req('POST', 'trial', { school_id: schoolId, days: days });
+  };
+  // Set an exact trial end date (YYYY-MM-DD), or clear the trial entirely to
+  // mark a school as fully paid. Same server route as platformExtendTrial.
+  ApiAdapter.prototype.platformSetTrial = function (schoolId, endDate) {
+    return this._req('POST', 'trial', { school_id: schoolId, trial_ends_at: endDate });
+  };
+  ApiAdapter.prototype.platformClearTrial = function (schoolId) {
+    return this._req('POST', 'trial', { school_id: schoolId, clear: true });
+  };
+  ApiAdapter.prototype.platformPlan = function (schoolId, plan) {
+    return this._req('POST', 'plan', { school_id: schoolId, plan: plan });
+  };
+  ApiAdapter.prototype.platformUsers = function (schoolId) {
+    return this._req('GET', 'platform/users', null, { query: { school: schoolId } });
+  };
+  ApiAdapter.prototype.platformUserStatus = function (schoolId, userId, disabled) {
+    return this._req('POST', 'platform/user', { school_id: schoolId, user_id: userId, disabled: !!disabled });
+  };
+  ApiAdapter.prototype.platformAudit = function (schoolId, limit) {
+    return this._req('GET', 'platform/audit', null, { query: { school: schoolId, limit: limit } });
+  };
   // Impersonation issues a NEW token scoped to the target school — swap the
   // adapter's active token to it exactly like login() does, so every
   // subsequent request (until the impersonated token expires or the caller
@@ -213,11 +254,26 @@
     apiLogout: function () { return DB.isApi ? adapter.logout() : Promise.resolve(true); },
     hasApiToken: function () { return DB.isApi && adapter.hasToken(); },
 
+    // This school's own licence/trial state, straight from the server. Resolves
+    // to null in local mode so license-lib.js can fall back to its offline
+    // trial clock — there is no server to be authoritative in that mode.
+    subscriptionState: function () {
+      if (!DB.isApi) return Promise.resolve(null);
+      return adapter._req('GET', 'subscription').catch(function () { return null; });
+    },
+
     // ---- Platform (super-admin) routes — API mode only; reject in local mode. ----
     platformSchoolsList: function () { return DB.isApi ? adapter.platformSchoolsList() : Promise.reject(new Error('Platform routes require API mode.')); },
     platformProvision: function (schoolId, name) { return DB.isApi ? adapter.platformProvision(schoolId, name) : Promise.reject(new Error('Platform routes require API mode.')); },
     platformSuspend: function (schoolId, status) { return DB.isApi ? adapter.platformSuspend(schoolId, status) : Promise.reject(new Error('Platform routes require API mode.')); },
     platformReset: function (schoolId) { return DB.isApi ? adapter.platformReset(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformExtendTrial: function (schoolId, days) { return DB.isApi ? adapter.platformExtendTrial(schoolId, days) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformSetTrial: function (schoolId, endDate) { return DB.isApi ? adapter.platformSetTrial(schoolId, endDate) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformClearTrial: function (schoolId) { return DB.isApi ? adapter.platformClearTrial(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformPlan: function (schoolId, plan) { return DB.isApi ? adapter.platformPlan(schoolId, plan) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformUsers: function (schoolId) { return DB.isApi ? adapter.platformUsers(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformUserStatus: function (schoolId, userId, disabled) { return DB.isApi ? adapter.platformUserStatus(schoolId, userId, disabled) : Promise.reject(new Error('Platform routes require API mode.')); },
+    platformAudit: function (schoolId, limit) { return DB.isApi ? adapter.platformAudit(schoolId, limit) : Promise.reject(new Error('Platform routes require API mode.')); },
     platformImpersonate: function (schoolId) { return DB.isApi ? adapter.impersonate(schoolId) : Promise.reject(new Error('Platform routes require API mode.')); },
 
     // Convenience: find within a collection
