@@ -1,0 +1,16 @@
+# Keep the owner/platform console and every school portal out of search
+# engines. This is NOT a security control — anyone can still type these
+# addresses, and robots.txt is itself public. It only stops the owner console
+# and customer portals being indexed and turning up in search results, which
+# is what makes an admin URL easy to find in the first place.
+#
+# The real controls live at the server, not here — see /DEPLOY.md:
+#   - serve /admin from its own hostname (admin.yourdomain.com)
+#   - restrict that hostname by IP allowlist / VPN / HTTP Basic Auth
+#   - two-factor authentication on the platform account
+User-agent: *
+Disallow: /admin
+Disallow: /school/
+
+# The marketing/landing root stays indexable.
+Allow: /$

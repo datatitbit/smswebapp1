@@ -220,25 +220,48 @@
   // ---- Session ----
   // Only non-sensitive fields are persisted; the fresh record (incl. password
   // hash, used only for change-password checks) is re-fetched from DB on boot.
+  //
+  // Stored in sessionStorage, NOT localStorage. sessionStorage is wiped when
+  // the browser tab/window is closed, so opening the app fresh always lands on
+  // the login screen, while reloading the same tab keeps you signed in.
+  // localStorage would survive indefinitely — on a shared school computer that
+  // means the next person to open the link walks straight into the previous
+  // user's account, which is exactly what we do not want.
+  var SESSION_KEY = 'sms_session';
+  function purgeLegacySession(key) {
+    // Builds before 2026-08-03 kept sessions in localStorage, which made the
+    // app auto-open straight into the dashboard. Remove any leftover on sight
+    // so upgrading installs stop silently auto-logging in.
+    try { localStorage.removeItem(key); } catch (e) {}
+  }
   function loadSession() {
-    try { return JSON.parse(localStorage.getItem('sms_session')); } catch (e) { return null; }
+    purgeLegacySession(SESSION_KEY);
+    try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch (e) { return null; }
   }
   function saveSession(u) {
-    localStorage.setItem('sms_session', JSON.stringify({ id: u.id, role: u.role, name: u.name }));
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, role: u.role, name: u.name })); } catch (e) {}
   }
-  function clearSession() { localStorage.removeItem('sms_session'); }
+  function clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    purgeLegacySession(SESSION_KEY);
+  }
 
   // ---- API-mode session metadata (non-secret: user/role/school_id only).
   // The actual bearer token lives separately in store.js's own storage key,
   // so the adapter can rehydrate itself independently of this file.
+  // Same sessionStorage reasoning as above.
   var API_SESSION_KEY = 'sms_api_session_meta';
   function loadApiSessionMeta() {
-    try { return JSON.parse(localStorage.getItem(API_SESSION_KEY)); } catch (e) { return null; }
+    purgeLegacySession(API_SESSION_KEY);
+    try { return JSON.parse(sessionStorage.getItem(API_SESSION_KEY)); } catch (e) { return null; }
   }
   function saveApiSessionMeta(meta) {
-    try { localStorage.setItem(API_SESSION_KEY, JSON.stringify(meta)); } catch (e) {}
+    try { sessionStorage.setItem(API_SESSION_KEY, JSON.stringify(meta)); } catch (e) {}
   }
-  function clearApiSessionMeta() { try { localStorage.removeItem(API_SESSION_KEY); } catch (e) {} }
+  function clearApiSessionMeta() {
+    try { sessionStorage.removeItem(API_SESSION_KEY); } catch (e) {}
+    purgeLegacySession(API_SESSION_KEY);
+  }
 
   function initials(name) {
     return (name || 'School').split(/\s+/).slice(0, 3).map(function (w) { return w[0]; }).join('').toUpperCase();
@@ -366,6 +389,16 @@
       form.appendChild(field('School name', schoolInput));
       form.appendChild(field('User type', roleSelect));
       form.appendChild(field('Password', passInput));
+
+      // Demo hint. Shown only while at least one seeded account is still on its
+      // original password — those are already published in the README, so
+      // stating them here costs nothing. The instant a school changes any of
+      // them the stored hash stops matching DEMO_CREDS and this disappears for
+      // good, so a real school never shows its password on the login screen.
+      if (users.some(function (u) { return !!knownDemoPassword(u); })) {
+        form.appendChild(U.el('div', { class: 'help', style: 'margin:-.4rem 0 .8rem', text: 'Demo password: 123 — for every user type. It fills in automatically once you pick one. Change it in Settings → Access Control before a real school uses this.' }));
+      }
+
       form.appendChild(submitBtn);
 
       card.appendChild(form);
@@ -561,8 +594,20 @@
   // Local mode ignores the URL entirely — path-based tenant selection only
   // means anything once there is more than one tenant to select (API mode).
   function applyPathRoute() {
-    if (!DB.isApi) return;
     var r = parsePathRoute();
+    // Ask crawlers not to index the owner console or a school portal, even if
+    // one is opened directly. This backs up /robots.txt. NEITHER is a security
+    // control — anyone can still type the address. They only keep these URLs
+    // out of search results, which is the usual way an admin page gets found.
+    // The real controls are server-side (own hostname + IP allowlist / VPN /
+    // HTTP Basic Auth + 2FA) and are documented in DEPLOY.md.
+    if (r.area === 'admin' || r.area === 'school') {
+      var noIndex = document.createElement('meta');
+      noIndex.setAttribute('name', 'robots');
+      noIndex.setAttribute('content', 'noindex, nofollow');
+      document.head.appendChild(noIndex);
+    }
+    if (!DB.isApi) return;
     if (r.area === 'admin') {
       App.isAdminArea = true;
       App.pendingAdminHash = r.subRoute ? ('#/' + r.subRoute) : null;
@@ -736,118 +781,37 @@
     root.appendChild(wrap);
     userInput.focus();
   }
-  // ---- Platform dashboard: schools list + provision/suspend/reset/impersonate ----
+  // ---- Platform dashboard ----
+  // The owner console itself now lives in js/platform.js — its own file,
+  // because it has no school context and is growing its own screens
+  // (subscription, per-user accounts, activity log). app.js keeps only the
+  // platform LOGIN above, then hands over, passing the three things
+  // platform.js cannot reach from outside this closure: who is signed in,
+  // how to log out, and how to switch this browser into an impersonated
+  // school session.
   function renderAdminDashboard() {
-    var root = U.clear(U.$('#root'));
-
-    var topbar = U.el('div', { class: 'topbar' }, [
-      U.el('div', { class: 'school-name' }, [document.createTextNode('Zetranova Platform')]),
-      U.el('div', { class: 'spacer' }),
-      U.el('button', { class: 'role-pill', text: ((App.user && App.user.name) || 'Platform') + ' ▾', onclick: function () {
-        var body = U.el('div', { class: 'role-grid' });
-        body.appendChild(U.el('button', { text: 'Log out', onclick: function () {
-          m.close();
-          DB.apiLogout().then(function () { App.user = null; clearApiSessionMeta(); chooseRoleAdmin(); });
-        } }));
-        var m = U.modal({ title: 'Platform account', body: body, actions: [{ label: 'Close', onClick: function (c) { c(); } }] });
-      } })
-    ]);
-    root.appendChild(topbar);
-
-    var wrap = U.el('div', { style: 'padding:1.2rem;max-width:1100px;margin:0 auto' });
-    var card = U.el('div', { class: 'card' });
-    var head = U.el('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem' });
-    head.appendChild(U.el('h1', { text: 'Schools', style: 'margin:0' }));
-    head.appendChild(U.el('button', { class: 'btn gold', text: '+ Add school', onclick: openProvisionModal }));
-    card.appendChild(head);
-
-    var tableWrap = U.el('div', { id: 'admin-schools-table' }, [U.el('div', { class: 'loader', text: 'Loading…' })]);
-    card.appendChild(tableWrap);
-    wrap.appendChild(card);
-    root.appendChild(wrap);
-
-    loadSchoolsTable();
-  }
-
-  function loadSchoolsTable() {
-    var tableWrap = U.$('#admin-schools-table');
-    if (!tableWrap) return;
-    U.clear(tableWrap).appendChild(U.el('div', { class: 'loader', text: 'Loading…' }));
-    DB.platformSchoolsList().then(function (schools) {
-      var tw = U.$('#admin-schools-table');
-      if (!tw) return; // navigated away while the request was in flight
-      U.clear(tw);
-      if (!schools || !schools.length) { tw.appendChild(U.el('p', { class: 'muted', text: 'No schools yet.' })); return; }
-      var outer = U.el('div', { class: 'table-wrap' });
-      var table = U.el('table', { class: 'data' });
-      var thead = U.el('thead', {}, [U.el('tr', {}, ['Name', 'School ID', 'Status', 'Plan', 'Created', 'Users', 'Actions'].map(function (h) { return U.el('th', { text: h }); }))]);
-      table.appendChild(thead);
-      var tbody = U.el('tbody');
-      schools.forEach(function (s) { tbody.appendChild(schoolRow(s)); });
-      table.appendChild(tbody);
-      outer.appendChild(table);
-      tw.appendChild(outer);
-    }).catch(function (err) {
-      var tw = U.$('#admin-schools-table');
-      if (tw) { U.clear(tw).appendChild(U.el('p', { style: 'color:#b3261e', text: 'Could not load schools: ' + ((err && err.message) || 'error') })); }
-    });
-  }
-
-  function schoolRow(s) {
-    var isActive = s.status === 'active' || s.status === 'trial' || s.status === 'grace';
-    var actions = U.el('td', { class: 'actions', style: 'display:flex;gap:.35rem;flex-wrap:wrap' });
-    actions.appendChild(U.el('button', { class: 'btn sm', text: isActive ? 'Suspend' : 'Activate', onclick: function () {
-      DB.platformSuspend(s.id, isActive ? 'suspended' : 'active').then(loadSchoolsTable)
-        .catch(function (err) { U.toast((err && err.message) || 'Could not update status.', 'err'); });
-    } }));
-    actions.appendChild(U.el('button', { class: 'btn sm', text: 'Reset', onclick: function () {
-      if (!global.confirm('Reset ' + (s.name || s.id) + ' to its default seed data? This cannot be undone.')) return;
-      DB.platformReset(s.id).then(function () { U.toast('School reset.'); loadSchoolsTable(); })
-        .catch(function (err) { U.toast((err && err.message) || 'Could not reset school.', 'err'); });
-    } }));
-    actions.appendChild(U.el('button', { class: 'btn sm gold', text: 'Impersonate', onclick: function () {
-      DB.platformImpersonate(s.id).then(function (res) {
+    if (!global.Platform || !global.Platform.render) {
+      var root = U.clear(U.$('#root'));
+      root.appendChild(U.el('div', { class: 'login-wrap' }, [
+        U.el('div', { class: 'card' }, [
+          U.el('h1', { text: 'Platform console unavailable' }),
+          U.el('p', { class: 'muted', text: 'js/platform.js did not load — check its <script> tag in index.html.' })
+        ])
+      ]));
+      return;
+    }
+    global.Platform.render({
+      user: App.user,
+      onLogout: function () {
+        DB.apiLogout().then(function () { App.user = null; clearApiSessionMeta(); chooseRoleAdmin(); });
+      },
+      onImpersonate: function (res) {
         App.user = res.user; App.schoolId = res.school_id; App.forbiddenMessage = null;
         App.impersonating = true; App.impExpiresAt = res.expires_at;
         saveApiSessionMeta({ user: res.user, school_id: res.school_id, role: res.role, imp: true, imp_expires_at: res.expires_at });
         App.isAdminArea = false;
         boot();
-      }).catch(function (err) { U.toast((err && err.message) || 'Could not impersonate.', 'err'); });
-    } }));
-    return U.el('tr', {}, [
-      U.el('td', { text: s.name || '—' }),
-      U.el('td', { text: s.id }),
-      U.el('td', { text: s.status }),
-      U.el('td', { text: s.plan || '—' }),
-      U.el('td', { text: (s.created_at || '').slice(0, 10) }),
-      U.el('td', { text: String(s.user_count || 0) }),
-      actions
-    ]);
-  }
-
-  function openProvisionModal() {
-    var body = U.el('div');
-    var idInput = U.el('input', { type: 'text', placeholder: 'sch-yourschool (leave blank to auto-generate)' });
-    var nameInput = U.el('input', { type: 'text', placeholder: 'School name' });
-    function field(l, i) { return U.el('div', { class: 'field' }, [U.el('label', { text: l }), i]); }
-    body.appendChild(field('School ID (optional)', idInput));
-    body.appendChild(field('School name', nameInput));
-    var errBox = U.el('div', { style: 'color:#b3261e;font-size:.85rem;display:none' });
-    body.appendChild(errBox);
-    U.modal({
-      title: 'Add a new school', body: body,
-      actions: [
-        { label: 'Cancel', onClick: function (c) { c(); } },
-        { label: 'Create', kind: 'gold', onClick: function (c) {
-          errBox.style.display = 'none';
-          if (!nameInput.value.trim()) { errBox.textContent = 'School name is required.'; errBox.style.display = 'block'; return; }
-          DB.platformProvision(idInput.value.trim(), nameInput.value.trim()).then(function () {
-            U.toast('School created.'); c(); loadSchoolsTable();
-          }).catch(function (err) {
-            errBox.textContent = (err && err.message) || 'Could not create school.'; errBox.style.display = 'block';
-          });
-        } }
-      ]
+      }
     });
   }
 
