@@ -1,5 +1,5 @@
 /* ============================================================
- * sw.js — service worker for SMSWebApp1 (hand-rolled, no libraries)
+ * sw.js — service worker for Zetclass (hand-rolled, no libraries)
  * Makes the app installable + usable offline:
  *   - Navigation: network-first (always get the latest code when online),
  *     fall back to the cached page when offline.
@@ -10,8 +10,8 @@
  * ============================================================ */
 'use strict';
 
-var CACHE_VERSION = 'v20260803b';
-var CACHE_NAME = 'sms-' + CACHE_VERSION;
+var CACHE_VERSION = 'v20260804';
+var CACHE_NAME = 'zetclass-' + CACHE_VERSION;
 
 // Minimum shell needed to boot offline. Everything else is cached
 // automatically the first time the app is opened online.
