@@ -28,7 +28,7 @@
       'Admin': mk(MODULES),
       'Director': mk(MODULES.filter(function (m) { return m !== 'Settings'; })),
       'Teacher': mk(['Dashboard', 'Students', 'Assessment', 'Attendance']),
-      'Other staff': mk(['Dashboard', 'Students', 'Finance', 'Communication', 'Administration', 'Inventory', 'Accounting', 'Payroll']),
+      'Bursar': mk(['Dashboard', 'Students', 'Finance', 'Communication', 'Administration', 'Inventory', 'Accounting', 'Payroll']),
       'Parent': mk(['Dashboard', 'Students', 'Assessment', 'Finance', 'Attendance', 'Communication'])
     };
   }
@@ -44,7 +44,7 @@
     schoolId: null,
     schoolIdHint: null,
     schoolSlugLabel: null,
-    // Set once at load by the /:slug and /admin path parser below.
+    // Set once at load by the /school/:slug and /admin path parser below.
     // pendingHash/pendingAdminHash are consumed (and cleared) the first time
     // boot()/the admin area renders, so they only ever affect the very next
     // render — later in-app navigation is untouched.
@@ -165,7 +165,7 @@
     if (role === 'Admin') return true;                         // edit everywhere
     if (role === 'Director' || role === 'Parent') return false; // view / download only
     if (role === 'Teacher') return module === 'Assessment' || module === 'Attendance';
-    if (role === 'Other staff') return ['Finance', 'Accounting', 'Payroll', 'Inventory', 'Students', 'Administration'].indexOf(module) !== -1;
+    if (role === 'Bursar') return ['Finance', 'Accounting', 'Payroll', 'Inventory', 'Students', 'Administration'].indexOf(module) !== -1;
     return false;
   };
 
@@ -196,13 +196,13 @@
   };
 
   // Full dashboard (Finance KPIs + enrolment/attendance) is open to Admin,
-  // Director, Other staff (Account/Finance office) by default, plus any staff
+  // Director, Bursar (Account/Finance office) by default, plus any staff
   // member an Admin has explicitly flagged via Administration → Staff.
   // Everyone else with Dashboard access sees the Enrolment & Attendance side only.
   App.canFullDashboard = function () {
     if (!App.user) return false;
     var role = App.user.role;
-    if (role === 'Admin' || role === 'Director' || role === 'Other staff') return true;
+    if (role === 'Admin' || role === 'Director' || role === 'Bursar') return true;
     var st = App.myStaff();
     return !!(st && st.dashboard_full_access);
   };

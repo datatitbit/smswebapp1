@@ -48,7 +48,7 @@
         // ---- Part 1: Enrolment & Attendance (all staff) ----
         enrolAttendanceCard(container, allStudents, attendance);
 
-        // ---- Part 2: Finance (Admin / Director / Other staff / staff granted access) ----
+        // ---- Part 2: Finance (Admin / Director / Bursar / staff granted access) ----
         if (fullBoard) financeKpiCard(container, { billed: billed, paid: paid, otherIncome: otherIncome, expenses: expenses, cur: cur, term: term });
 
         trendsSection(container, { students: allStudents, attendance: attendance, payments: allPayments, otherIncome: otherIncome, expenses: expenses, cur: cur });
