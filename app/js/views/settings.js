@@ -832,7 +832,7 @@
       t.appendChild(tb);
       var body = el('div', { class: 'table-wrap' }, [t]);
       var c = card('Roles & Permission Matrix', body);
-      c.appendChild(el('div', { class: 'help', text: 'Admin is always full access. These toggles control which modules each role can OPEN AND VIEW. What a role can edit inside a module it can see follows its fixed job function and does not change here: Director and Parent are always view/download-only; Teacher can only edit Assessment and Attendance; Bursar (Account/Finance office) can only edit Finance, Accounting, Payroll, Inventory, Students and Administration.' }));
+      c.appendChild(el('div', { class: 'help', text: 'Admin is always full access. These toggles control which modules each role can OPEN AND VIEW. What a role can edit inside a module it can see follows its fixed job function and does not change here: Director and Parent are always view/download-only; Teacher can only edit Assessment and Attendance; Other staff (Account/Finance office) can only edit Finance, Accounting, Payroll, Inventory, Students and Administration.' }));
       c.appendChild(saveBtn(function () {
         // ensure Admin full
         perms['Admin'] = {}; MODULES.forEach(function (m) { perms['Admin'][m] = true; });
@@ -987,7 +987,7 @@
 
   function addAccountModal(staffList, parentsList, onDone) {
     var roleSel = el('select');
-    ['Admin', 'Director', 'Teacher', 'Bursar', 'Parent'].forEach(function (r) { roleSel.appendChild(el('option', { value: r, text: r })); });
+    ['Admin', 'Director', 'Teacher', 'Other staff', 'Parent'].forEach(function (r) { roleSel.appendChild(el('option', { value: r, text: r })); });
     var linkSel = el('select');
     function refreshLink() {
       U.clear(linkSel);
