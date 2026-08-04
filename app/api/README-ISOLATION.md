@@ -100,7 +100,7 @@ Isolation is security-critical, so verify all of these pass:
 
 1. `php -l` on every file in `api/` reports "No syntax errors".
 2. Fresh DB: first request seeds the default school; `schools` has 1 row.
-3. `POST ?r=auth/login {username:"admin",password:"123"}` returns a token.
+3. `POST ?r=auth/login {username:"admin",password:"admin123"}` returns a token.
 4. Wrong password returns **401**; no token.
 5. Any data route **without** a token returns **401**.
 6. With a valid token, `GET ?r=students` returns only that school's students.
@@ -110,6 +110,9 @@ Isolation is security-critical, so verify all of these pass:
    stores the row under the **token's** school (spoofing ignored).
 9. `seq` counters increment **independently** per school (ST numbering).
 10. Suspend a school → its users can no longer log in or call the API (403).
+11. `POST ?r=trial {school_id, days}` as platform → that school's
+    `singletons.license.trial_days` increases by `days`; a non-platform token
+    gets 403.
 
 ---
 
@@ -120,9 +123,10 @@ The front-end wiring described in earlier versions of this doc is done:
 token, and attaches `Authorization: Bearer <token>` to every request;
 `app.js` has a dedicated API-mode login screen (`chooseRoleApi`), path-based
 routing (`/school/:slug/...`, `/admin/...`), and a platform dashboard
-(`/admin`) for provisioning, suspending, resetting, and impersonating schools.
+(`/admin`) for provisioning, suspending, resetting, extending trials, and
+impersonating schools.
 Flip `DB_CONFIG.useApi = true` in `app/index.html` to switch the app into API
-mode — see that file's `SMS_API_BASE` comment and **`/DEPLOY.md`** for how to
+mode — see that file's `API_BASE` comment and **`/DEPLOY.md`** for how to
 point it at a PHP host that may not share the frontend's origin (Render
 serves the static frontend only; the PHP API is deployed separately).
 
