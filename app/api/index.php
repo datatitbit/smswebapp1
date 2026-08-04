@@ -64,6 +64,22 @@ require __DIR__ . '/services-stub.php';
 function out($data, $code = 200) { http_response_code($code); echo json_encode($data); exit; }
 function body() { $raw = file_get_contents('php://input'); return $raw ? json_decode($raw, true) : []; }
 
+/* ---- Reserved school-slug guard ---------------------------------------
+ * A school's id is used directly in its public URL (zetclass.com/<id>, no
+ * /school/ prefix), so it must never collide with a real top-level route —
+ * kept in sync with app/js/app.js's RESERVED_SLUGS for the same reason (see
+ * that file's comment). Add new reserved words to BOTH lists. Format is
+ * restricted to lowercase letters/digits/hyphens so URLs stay clean. */
+$RESERVED_SLUGS = [
+    'admin', 'school', 'api', 'app', 'login', 'logout', 'signup', 'register',
+    'pricing', 'about', 'contact', 'help', 'support', 'www', 'blog', 'terms',
+    'privacy', 'docs', 'status', 'assets', 'static',
+];
+function valid_school_slug($sid, $reserved) {
+    if (!preg_match('/^[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$/', $sid)) { return false; }
+    return !in_array(strtolower($sid), $reserved, true);
+}
+
 /* ---- Owner-plane audit trail ----------------------------------------------
  * Appends one row per privileged action. Returns false if the write failed;
  * callers surface that as "audit": false in their response rather than
@@ -211,6 +227,9 @@ if ($head === 'provision' && $method === 'POST') {
     if (!$isPlat) { out(['error' => 'Forbidden'], 403); }
     $b = body();
     $sid  = !empty($b['school_id']) ? $b['school_id'] : ('sch-' . bin2hex(random_bytes(5)));
+    if (!valid_school_slug($sid, $RESERVED_SLUGS)) {
+        out(['error' => 'school_id must be lowercase letters, numbers and hyphens only, and cannot be a reserved word (' . implode(', ', $RESERVED_SLUGS) . ')'], 400);
+    }
     $name = $b['name'] ?? 'New School';
     $exists = $pdo->prepare("SELECT id FROM schools WHERE id=?"); $exists->execute([$sid]);
     if ($exists->fetch()) { out(['error' => 'School already exists', 'school_id' => $sid], 409); }

@@ -24,7 +24,7 @@ Render (Static Site)                          cPanel / Namecheap host
 
 | Stage | Example URL for a school called "Schoola" | Pattern |
 |---|---|---|
-| **NOW** (this build, on shared hosting) | `zetclass.com/school/schoola` | client name comes **AFTER** the domain (**path-based routing**) |
+| **NOW** (this build, on shared hosting) | `zetclass.com/schoola` | client name comes **AFTER** the domain, directly at the root (**path-based routing**) |
 | **LATER** (once on a bigger server) | `schoola.zetclass.com` | client name comes **BEFORE** the domain (**subdomain routing**) |
 
 **Why NOW is path-based:** subdomain routing needs a **wildcard SSL
@@ -34,10 +34,18 @@ name in front of the domain — instead of just one exact address) plus
 `zetclass.com` should point at our server). Ordinary shared hosting (cPanel /
 Namecheap, which is what this app targets today — see §2 below) does not make
 that easy or automatic. Path-based routing needs none of that extra setup, so
-it is what `app.js`'s `/school/:slug/...` routing (see §3) actually
-implements today — this is **not a trust boundary or security feature**, it
-only decides which login screen pre-fills; see the code comment at the top of
+it is what `app.js`'s `/:slug/...` routing (see §3) actually implements
+today — this is **not a trust boundary or security feature**, it only decides
+which login screen pre-fills; see the code comment at the top of
 `parsePathRoute()` in `app/js/app.js` for the full explanation.
+
+**Reserved slugs:** since a school's URL has no `/school/` prefix separating
+it from real pages, a fixed list of words (`admin`, `pricing`, `about`, `api`,
+etc. — see `RESERVED_SLUGS` in `app/js/app.js` and the matching list in
+`app/api/index.php`) can never be used as a school's id/slug. This is
+enforced both in the URL router and at school-creation time (`?r=provision`),
+so a colliding slug can never be created. Add any new top-level marketing/
+system page to both lists before building it.
 
 **Why LATER should move to subdomains:** once there are enough paying
 schools to justify a **VPS** (Virtual Private Server — your own dedicated
@@ -52,7 +60,7 @@ small pieces of login data a browser stores per address).
 hosting/DNS/SSL setup around it — the underlying security model does NOT
 change. The school's data is, and always will be, isolated by the **signed
 token** issued at login (see `README-ISOLATION.md`), never by the URL itself.
-Whether a school's address is `zetclass.com/school/schoola` or
+Whether a school's address is `zetclass.com/schoola` or
 `schoola.zetclass.com`, the server never trusts what's in the URL for
 security — only the token. So this is purely a URL-presentation/hosting
 decision, safe to defer and change later without touching the security design.
@@ -129,14 +137,14 @@ directly before publishing:
 | Render (frontend) + cPanel (API), split-origin | `true` | `'https://api.zetclass.com/api/index.php'` |
 | Single PHP host serving both frontend + API | `true` | `'api/index.php'` |
 
-Path-based routing (`/school/:slug/...`, `/admin/...` — see `app.js`) only
+Path-based routing (`/:slug/...`, `/admin/...` — see `app.js`) only
 activates once `DB.isApi` is true; it has no effect in Local mode.
 
 ## 4. What is NOT yet done
 
 - The PHP host's own SPA-fallback rewrite (equivalent to `render.yaml`'s
   `routes: [{type: rewrite, source: /*, destination: /index.html}]`, needed so
-  a hard refresh on `/school/sch-x/students` doesn't 404) is **not yet
+  a hard refresh on `/sch-x/students` doesn't 404) is **not yet
   written**. On Apache/cPanel this is a one-line `.htaccess`:
   ```
   RewriteEngine On

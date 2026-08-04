@@ -44,7 +44,7 @@
     schoolId: null,
     schoolIdHint: null,
     schoolSlugLabel: null,
-    // Set once at load by the /school/:slug and /admin path parser below.
+    // Set once at load by the /:slug and /admin path parser below.
     // pendingHash/pendingAdminHash are consumed (and cleared) the first time
     // boot()/the admin area renders, so they only ever affect the very next
     // render — later in-app navigation is untouched.
@@ -567,7 +567,7 @@
   }
 
   // ============================================================
-  // Path-based routing: /school/:slug/... and /admin/...
+  // Path-based routing: /:slug/... and /admin/...
   // ============================================================
   // NOT A TRUST BOUNDARY. This only ever reads the URL to (a) pre-fill which
   // school's login screen renders, and (b) remember which section to land on
@@ -578,15 +578,29 @@
   // wrong or hostile slug in the address bar can, at worst, pre-fill the
   // wrong login form or fail to find a matching user — it can never grant
   // access to another school's data once a session exists.
+  //
+  // There is no /school/ prefix: a school's slug sits directly at the root
+  // (zetclass.com/indigo-academy) instead of zetclass.com/school/indigo-academy.
+  // Because there's no namespace separating "this is a school" from "this is
+  // a real page," every word that might ever become a real top-level route
+  // (or already means something, like /admin) must be reserved here so a
+  // school's slug can never collide with one. api/index.php's ?r=provision
+  // enforces the SAME list server-side, so a colliding slug can never be
+  // created in the first place either — add new reserved words to BOTH.
+  var RESERVED_SLUGS = [
+    'admin', 'school', 'api', 'app', 'login', 'logout', 'signup', 'register',
+    'pricing', 'about', 'contact', 'help', 'support', 'www', 'blog', 'terms',
+    'privacy', 'docs', 'status', 'assets', 'static'
+  ];
   function parsePathRoute() {
     var path = (global.location && global.location.pathname) || '/';
     var parts = path.split('/').filter(Boolean); // drop leading/trailing slashes
     if (parts[0] === 'admin') {
       return { area: 'admin', subRoute: parts[1] || null };
     }
-    if (parts[0] === 'school' && parts[1]) {
-      var slug = decodeURIComponent(parts[1]);
-      var sub = parts[2] || null; // 'login', 'dashboard', 'students', ... (mirrors ROUTES)
+    if (parts[0] && RESERVED_SLUGS.indexOf(parts[0].toLowerCase()) === -1) {
+      var slug = decodeURIComponent(parts[0]);
+      var sub = parts[1] || null; // 'login', 'dashboard', 'students', ... (mirrors ROUTES)
       return { area: 'school', slug: slug, subRoute: (sub && sub !== 'login') ? sub : null };
     }
     return { area: 'root' };
@@ -686,7 +700,7 @@
     // URL-slug router when present) — the server never trusts it for anything
     // beyond finding this school's user by username; every route after login
     // is scoped purely by the signed token, never by anything the client sends.
-    var schoolInput = U.el('input', { type: 'text', value: App.schoolIdHint || '', placeholder: 'e.g. sch-stmarys' });
+    var schoolInput = U.el('input', { type: 'text', value: App.schoolIdHint || '', placeholder: 'e.g. indigo-academy' });
     var userInput = U.el('input', { type: 'text', autocomplete: 'username', placeholder: 'Username' });
     var passInput = U.el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password' });
 

@@ -73,14 +73,18 @@ The API refuses to issue tokens while `APP_SECRET` is the placeholder.
 As the platform admin (log in to get a platform token), call:
 
 ```
-POST ?r=provision   { "school_id": "sch-stmarys", "name": "St Mary's Basic" }
+POST ?r=provision   { "school_id": "st-marys", "name": "St Mary's Basic" }
 ```
 
-This creates the registry row and seeds that school's defaults from `seed.json`.
+`school_id` becomes that school's public URL directly — `zetclass.com/st-marys`
+— so pick it deliberately (lowercase letters, numbers, hyphens only). It's
+rejected if it collides with a reserved word (see `RESERVED_SLUGS` in
+`app/js/app.js` and this file's matching list in `index.php`). This creates
+the registry row and seeds that school's defaults from `seed.json`.
 Suspend / reactivate on payment status:
 
 ```
-POST ?r=suspend     { "school_id": "sch-stmarys", "status": "suspended" }
+POST ?r=suspend     { "school_id": "st-marys", "status": "suspended" }
 ```
 
 ---
@@ -122,7 +126,7 @@ The front-end wiring described in earlier versions of this doc is done:
 `store.js`'s `ApiAdapter` logs in via `?r=auth/login`, stores the returned
 token, and attaches `Authorization: Bearer <token>` to every request;
 `app.js` has a dedicated API-mode login screen (`chooseRoleApi`), path-based
-routing (`/school/:slug/...`, `/admin/...`), and a platform dashboard
+routing (`/:slug/...`, `/admin/...`), and a platform dashboard
 (`/admin`) for provisioning, suspending, resetting, extending trials, and
 impersonating schools.
 Flip `DB_CONFIG.useApi = true` in `app/index.html` to switch the app into API
