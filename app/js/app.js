@@ -28,7 +28,7 @@
       'Admin': mk(MODULES),
       'Director': mk(MODULES.filter(function (m) { return m !== 'Settings'; })),
       'Teacher': mk(['Dashboard', 'Students', 'Assessment', 'Attendance']),
-      'Bursar': mk(['Dashboard', 'Students', 'Finance', 'Communication', 'Administration', 'Inventory', 'Accounting', 'Payroll']),
+      'Other staff': mk(['Dashboard', 'Students', 'Finance', 'Communication', 'Administration', 'Inventory', 'Accounting', 'Payroll']),
       'Parent': mk(['Dashboard', 'Students', 'Assessment', 'Finance', 'Attendance', 'Communication'])
     };
   }
@@ -165,7 +165,7 @@
     if (role === 'Admin') return true;                         // edit everywhere
     if (role === 'Director' || role === 'Parent') return false; // view / download only
     if (role === 'Teacher') return module === 'Assessment' || module === 'Attendance';
-    if (role === 'Bursar') return ['Finance', 'Accounting', 'Payroll', 'Inventory', 'Students', 'Administration'].indexOf(module) !== -1;
+    if (role === 'Other staff') return ['Finance', 'Accounting', 'Payroll', 'Inventory', 'Students', 'Administration'].indexOf(module) !== -1;
     return false;
   };
 
@@ -195,14 +195,19 @@
     return subj; // restricted list (possibly empty)
   };
 
-  // Full dashboard (Finance KPIs + enrolment/attendance) is open to Admin,
-  // Director, Bursar (Account/Finance office) by default, plus any staff
-  // member an Admin has explicitly flagged via Administration → Staff.
-  // Everyone else with Dashboard access sees the Enrolment & Attendance side only.
+  // Full dashboard (Finance KPIs + enrolment/attendance) is open to Admin and
+  // Director by default. "Other staff" is a broad catch-all role (front desk,
+  // office support, whoever handles fees, etc.) — not everyone in it should
+  // see financial figures by default, so it does NOT auto-qualify here.
+  // Instead, Admin individually flags the specific person who needs it (e.g.
+  // the one actually handling accounts) via Administration → Staff → "Full
+  // dashboard access". Everyone without that flag sees Enrolment & Attendance
+  // only — what a person can SEE here follows what they've actually been
+  // granted, not a blanket rule tied to their role label.
   App.canFullDashboard = function () {
     if (!App.user) return false;
     var role = App.user.role;
-    if (role === 'Admin' || role === 'Director' || role === 'Bursar') return true;
+    if (role === 'Admin' || role === 'Director') return true;
     var st = App.myStaff();
     return !!(st && st.dashboard_full_access);
   };
