@@ -1,6 +1,6 @@
 # WEBAPP LOGIC — Zetclass (Ghanaian Private Basic School)
 _Single source of truth. Paste into an AI builder to reconstruct the app without further guidance._
-_Last updated: 2026-07-16 (living document — updated at the end of each change)._
+_Last updated: 2026-08-04 (living document — updated at the end of each change)._
 
 > **Drift note (2026-07-16):** sections below describe the original Phase 1–11 build and predate
 > several shipped modules — **Accounting**, **Payroll**, **Settings → Access Control**, and
@@ -151,13 +151,16 @@ Option A**):
   and Remarks per template (Template B fields).
 
 ## 5. Roles & permission matrix
-Five roles: **Admin, Director, Teacher, Bursar, Parent**. Module-level on/off matrix, editable
+Five roles: **Admin, Director, Teacher, Other staff, Parent**. Module-level on/off matrix, editable
 by Admin. **Admin is always full.** Defaults:
 - Admin: all (incl. Settings).
 - Director: all except Settings.
 - Teacher: Dashboard, Students, Assessment, Attendance (own class(es) only). No Finance/Settings.
-- Bursar: Dashboard, Students, Finance, Attendance, Communication, Administration, Inventory,
-  Accounting, Payroll (configurable) — the school's finance/accounts office.
+- Other staff: Dashboard (Attendance & Enrolment only by default — the Finance side is hidden
+  unless Admin individually grants "Full dashboard access" to that person), Students, Finance,
+  Attendance, Communication, Administration, Inventory, Accounting, Payroll (configurable) — a
+  broad catch-all for non-teaching staff (front desk, office support, whoever handles fees, etc.),
+  not a finance-only role.
 - Parent: read-only own child(ren) — Dashboard, Students, Assessment, Finance, Attendance,
   Communication (all view-only).
 

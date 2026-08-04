@@ -1,5 +1,5 @@
 # Zetclass — Install & Test Guide
-_Last updated: 2026-07-18 · living document (updated at the end of each change)_
+_Last updated: 2026-08-04 · living document (updated at the end of each change)_
 
 This guide covers how to install/run the Zetclass web app and how to test every feature.
 The app has two run modes behind one swappable data layer:
@@ -114,7 +114,7 @@ this section should be updated to match.)
 ### Finance
 - [ ] Generate term bills; take a test-mode payment; print receipt; Bills report + CSV.
 - [ ] Confirm Director/Parent (view-only roles) do **not** see "Generate term bills" or any
-      edit control in Finance/Payroll/Accounting/Administration — only Admin and Bursar can.
+      edit control in Finance/Payroll/Accounting/Administration — only Admin and Other staff can.
 
 ### Attendance & Discipline
 - [ ] **Student Attendance**: pick class/date; present by default; P/A/L; All present/absent; save.
@@ -143,7 +143,7 @@ this section should be updated to match.)
 
 ### Roles (gating)
 - [ ] Teacher: own class only; no Finance/Settings. Parent: read-only own child. Admin: full.
-- [ ] Bursar (Account/Finance office): Finance, Payroll, Inventory, Accounting, Students,
+- [ ] Other staff (Account/Finance office): Finance, Payroll, Inventory, Accounting, Students,
       Administration — no Assessment, no Settings.
 - [ ] Login: wrong school name / user type / password is rejected with a generic error (no hint
       about which field was wrong). Settings → Access Control → Login accounts: reset a
@@ -161,7 +161,7 @@ this section should be updated to match.)
   100 and then re-blended by percentage, silently deflating totals whenever weighting wasn't 50/50
   (e.g. a 35/60-max entry was cut to 14). Class score and exam score are now entered already scaled
   to their own weight (e.g. 40 + 60 when weighting is 40/60, standard Ghanaian SBA convention) and
-  the total is a direct sum — verified against a real sample report card (26 + 23 = 49). Input caps
+  the total is a direct sum (verified against a real sample report card (26 + 23 = 49). Input caps
   and bulk-upload validation now track the configured weighting instead of a hardcoded 0–100.
   `Grading.computeTotal()` dropped its now-unused weighting argument (old 3-arg callers still work
   harmlessly). Settings → Grading relabeled to "max points" and explains the new semantics.
@@ -223,7 +223,7 @@ this section should be updated to match.)
   user type + password, PBKDF2-SHA256 hashed client-side). Added Settings → Access Control →
   Login accounts (reset password / add account). Fixed several view-only bypasses (Director could
   edit staff/payroll/accounting; Parent/Director could generate fee bills). Fixed a stored-XSS in
-  payment receipts. "Bursar" now defaults to the Account/Finance office permission set
+  payment receipts. "Other staff" now defaults to the Account/Finance office permission set
   (stock, payroll, fees, student & staff data). Removed false automated-test claims from this doc.
 - 2026-06-26 — Grading switched to **Option A** (A1–E9 with proficiency level + meaning,
   fully editable, reset-to-default). Added editable **Conduct/Attitude/Interest/Overall**
@@ -232,6 +232,10 @@ this section should be updated to match.)
   (printed on report cards). Storage version bumped to v2 (auto-seeds new defaults).
 - 2026-06-25 — Initial end-to-end build (Phases 1–11): all modules, both report templates,
   PHP/MySQL API, bulk CSV entry, test-mode payment/SMS stubs.
-- 2026-08-04 — Renamed the "Other staff" role to **Bursar** throughout the app, seed data, and
-  docs — clearer, industry-standard term for the school's finance/accounts office role. No
-  permission or behavior change; existing demo accounts on this role now display as "Bursar".
+- 2026-08-04 — Dashboard visibility for "Other staff" now follows what each person is actually
+  granted rather than a blanket rule: this role no longer auto-qualifies for the Finance side of
+  the Dashboard (Admin and Director still do). Admin grants it to a specific person — e.g.
+  whoever actually handles fees/accounts among "Other staff" — via Administration → Staff →
+  "Full dashboard access", the same toggle that already existed for this purpose. Everyone else
+  in the role sees Enrolment & Attendance only. (A same-day "Bursar" rename of this role was
+  reverted — "Other staff" is intentionally a broad catch-all, not a finance-specific title.)
