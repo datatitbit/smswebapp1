@@ -1,5 +1,5 @@
 # ============================================================
-# render.yaml — Render Blueprint for the SMS webapp.
+# render.yaml — Render Blueprint for the Zetclass webapp.
 #
 # Deploys the browser app in ./app as a free Static Site.
 # The app runs in localStorage mode (no backend needed), so
@@ -19,7 +19,7 @@
 # ============================================================
 services:
   - type: web
-    name: smswebapp
+    name: zetclass
     runtime: static
     buildCommand: rm -rf app/api
     staticPublishPath: ./app
