@@ -1,6 +1,6 @@
-# School Management System (SMS) — Ghanaian Private Basic School
+# Zetclass — Ghanaian Private Basic School Management System
 
-A mobile-first, low-bandwidth School Management System sold and installed **per school**
+A mobile-first, low-bandwidth school management system sold and installed **per school**
 (one database per school), built so the future SaaS/subscriber and offline (PWA) phases can
 be added without a rewrite. Ships with **Ghana defaults** (GES/NaCCA structure, SBA scoring,
 GHS, MoMo/SMS) that are all editable in **Settings** — nothing school-specific is hard-coded.
@@ -201,7 +201,7 @@ client:
 ## Project layout
 
 ```
-SMS Webapp/
+Zetclass/
   README.md
   app/                      <- deploy the CONTENTS of this folder to public_html/
     index.html              <- SPA entry (DB_CONFIG flag: Local vs API mode)

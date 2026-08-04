@@ -1,7 +1,7 @@
-# School Management System — Install & Test Guide
+# Zetclass — Install & Test Guide
 _Last updated: 2026-07-18 · living document (updated at the end of each change)_
 
-This guide covers how to install/run the SMS web app and how to test every feature.
+This guide covers how to install/run the Zetclass web app and how to test every feature.
 The app has two run modes behind one swappable data layer:
 - **Local mode** (default): runs by opening `app/index.html`; data in the browser.
 - **API mode**: PHP + PDO REST API (`app/api/`), SQLite in dev / MySQL on cPanel.
@@ -161,7 +161,7 @@ this section should be updated to match.)
   100 and then re-blended by percentage, silently deflating totals whenever weighting wasn't 50/50
   (e.g. a 35/60-max entry was cut to 14). Class score and exam score are now entered already scaled
   to their own weight (e.g. 40 + 60 when weighting is 40/60, standard Ghanaian SBA convention) and
-  the total is a direct sum — verified against a real sample report card (26 + 23 = 49). Input caps
+  the total is a direct sum (verified against a real sample report card (26 + 23 = 49). Input caps
   and bulk-upload validation now track the configured weighting instead of a hardcoded 0–100.
   `Grading.computeTotal()` dropped its now-unused weighting argument (old 3-arg callers still work
   harmlessly). Settings → Grading relabeled to "max points" and explains the new semantics.
