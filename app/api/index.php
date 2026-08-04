@@ -80,6 +80,27 @@ function valid_school_slug($sid, $reserved) {
     return !in_array(strtolower($sid), $reserved, true);
 }
 
+/* Derives a URL slug from a school's display name when the caller leaves
+ * school_id blank — lowercase, hyphens between words, truncated at a whole
+ * word so long names stay readable. Mirrors slugify() in app/js/platform.js
+ * (the operator's live "Add school" preview); this copy is what actually
+ * runs when a caller omits school_id (or bypasses the UI and calls the API
+ * directly), so it must stay in sync with that one. */
+function slugify_school_name($name, $maxLen = 40) {
+    $s = strtolower((string)$name);
+    $s = str_replace(["'", "\xE2\x80\x99"], '', $s); // apostrophes (incl. UTF-8 curly ’)
+    $s = preg_replace('/[^a-z0-9]+/', '-', $s);
+    $s = trim($s, '-');
+    if ($s === '') { return 'school'; }
+    if (strlen($s) > $maxLen) {
+        $cut = substr($s, 0, $maxLen);
+        $cut = preg_replace('/-[^-]*$/', '', $cut);
+        $cut = rtrim($cut, '-');
+        $s = $cut !== '' ? $cut : substr($s, 0, $maxLen);
+    }
+    return $s;
+}
+
 /* ---- Owner-plane audit trail ----------------------------------------------
  * Appends one row per privileged action. Returns false if the write failed;
  * callers surface that as "audit": false in their response rather than
@@ -226,13 +247,28 @@ if ($head === 'schools' && $arg === 'list' && $method === 'GET') {
 if ($head === 'provision' && $method === 'POST') {
     if (!$isPlat) { out(['error' => 'Forbidden'], 403); }
     $b = body();
-    $sid  = !empty($b['school_id']) ? $b['school_id'] : ('sch-' . bin2hex(random_bytes(5)));
-    if (!valid_school_slug($sid, $RESERVED_SLUGS)) {
-        out(['error' => 'school_id must be lowercase letters, numbers and hyphens only, and cannot be a reserved word (' . implode(', ', $RESERVED_SLUGS) . ')'], 400);
-    }
     $name = $b['name'] ?? 'New School';
-    $exists = $pdo->prepare("SELECT id FROM schools WHERE id=?"); $exists->execute([$sid]);
-    if ($exists->fetch()) { out(['error' => 'School already exists', 'school_id' => $sid], 409); }
+    if (!empty($b['school_id'])) {
+        $sid = $b['school_id'];
+        if (!valid_school_slug($sid, $RESERVED_SLUGS)) {
+            out(['error' => 'school_id must be lowercase letters, numbers and hyphens only, and cannot be a reserved word (' . implode(', ', $RESERVED_SLUGS) . ')'], 400);
+        }
+        $exists = $pdo->prepare("SELECT id FROM schools WHERE id=?"); $exists->execute([$sid]);
+        if ($exists->fetch()) { out(['error' => 'School already exists', 'school_id' => $sid], 409); }
+    } else {
+        // No school_id given: derive one from the name, then make it unique
+        // by appending -2, -3, ... on collision (same convention as GitHub/
+        // Notion-style slugs) — a caller can never trigger a name clash.
+        $base = slugify_school_name($name);
+        if (!valid_school_slug($base, $RESERVED_SLUGS)) { $base = 'school'; }
+        $sid = $base;
+        $chk = $pdo->prepare("SELECT id FROM schools WHERE id=?");
+        for ($n = 2; ; $n++) {
+            $chk->execute([$sid]);
+            if (!$chk->fetch()) { break; }
+            $sid = $base . '-' . $n;
+        }
+    }
     db_seed_school($pdo, $sid, db_load_seed(), $name);
     $logged = audit($pdo, $claims, 'provision', $sid, null, ['name' => $name]);
     out(['ok' => true, 'audit' => $logged, 'school_id' => $sid, 'name' => $name], 201);

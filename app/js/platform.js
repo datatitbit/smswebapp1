@@ -31,6 +31,21 @@
   function today() { var d = new Date(); return d.toISOString().slice(0, 10); }
   function plusDays(n) { return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10); }
 
+  // School name -> URL slug: lowercase, hyphens between words, letters/numbers
+  // only, truncated at a whole word (never mid-word) so long names still read
+  // cleanly. Mirrors slugify_school_name() in api/index.php, which is the real
+  // safety backstop (reserved-word + format check) if this suggestion is
+  // edited or bypassed. Kept short (40 chars) — the school's actual name is
+  // shown everywhere in the app; the slug only has to be short and readable.
+  function slugify(name, maxLen) {
+    maxLen = maxLen || 40;
+    var s = String(name || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (s.length > maxLen) {
+      s = s.slice(0, maxLen).replace(/-[^-]*$/, '').replace(/-+$/, '');
+    }
+    return s;
+  }
+
   function stateChip(row) {
     var label = STATE_LABEL[row.state] || row.state || '—';
     return el('span', { class: 'tag', style: 'background:' + (STATE_COLOR[row.state] || '#666') + ';color:#fff', text: label });
@@ -165,11 +180,24 @@
 
   function openProvisionModal() {
     var body = el('div');
-    var idInput = el('input', { type: 'text', placeholder: 'leave blank to auto-generate' });
+    var idInput = el('input', { type: 'text', placeholder: 'auto-filled from the school name' });
     var nameInput = el('input', { type: 'text', placeholder: 'e.g. St Mary’s Basic School' });
+    var preview = el('div', { class: 'help', style: 'font-family:monospace' });
+    // Auto-suggest the web-address slug from the name as the operator types,
+    // but stop the moment they touch the ID field themselves — their edit
+    // always wins over the suggestion.
+    var idTouched = false;
+    function updatePreview() { preview.textContent = 'Web address: zetclass.com/' + (idInput.value || '…'); }
+    idInput.addEventListener('input', function () { idTouched = true; updatePreview(); });
+    nameInput.addEventListener('input', function () {
+      if (!idTouched) idInput.value = slugify(nameInput.value);
+      updatePreview();
+    });
+    updatePreview();
     body.appendChild(field('School name', nameInput));
-    body.appendChild(field('School ID (optional)', idInput));
-    body.appendChild(el('div', { class: 'help', text: 'The School ID appears in their web address, so keep it short and lowercase (e.g. sch-stmarys). New schools start on a 30-day free trial, which you can change any time from Subscription.' }));
+    body.appendChild(field('School ID / web address', idInput));
+    body.appendChild(preview);
+    body.appendChild(el('div', { class: 'help', text: 'Lowercase letters, numbers and hyphens only — edit the auto-filled suggestion for something shorter if you prefer. A few words (admin, pricing, api, etc.) are reserved and cannot be used. New schools start on a 30-day free trial, which you can change any time from Subscription.' }));
     var e = errBox(); body.appendChild(e);
 
     U.modal({
