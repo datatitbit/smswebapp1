@@ -29,20 +29,20 @@
     'Attendance', 'Communication', 'Administration', 'Inventory',
     'Accounting', 'Payroll', 'Settings'];
 
-  var ROLES = ['Admin', 'Director', 'Teacher', 'Other staff', 'Parent'];
+  var ROLES = ['Admin', 'Director', 'Teacher', 'Bursar', 'Parent'];
 
   // Permission matrix: role -> { module: bool }. Admin always full (enforced in code too).
   // Order: Dash, Students, Assess, Finance, Attend, Comm, Admin, Invent, Accounting, Payroll, Settings
   function row(vals) {
     var o = {}; MODULES.forEach(function (m, i) { o[m] = vals[i]; }); return o;
   }
-  // 'Other staff' = the Account/Finance office: stock (Inventory), payroll, fees
+  // 'Bursar' = the Account/Finance office: stock (Inventory), payroll, fees
   // (Finance/Accounting), student & staff data. Not Assessment or Settings.
   var permissions = {
     'Admin':       row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true]),
     'Director':    row([true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false]),
     'Teacher':     row([true,  true,  true,  false, true,  false, false, false, false, false, false]),
-    'Other staff': row([true,  true,  false, true,  true,  true,  true,  true,  true,  true,  false]),
+    'Bursar': row([true,  true,  false, true,  true,  true,  true,  true,  true,  true,  false]),
     'Parent':      row([true,  true,  true,  true,  true,  true,  false, false, false, false, false])
   };
 
@@ -413,7 +413,7 @@
       password_salt: '726e4a07e4f2520116c93d54d8be74bb', password_hash: '6fca94685b351d4fc0de847e6bcd440abf9593fd588acda346d634fbc29a87ee', must_change_password: true },
     { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [],
       password_salt: '1e521ab3eb3d3f5bff0462190ea9eef6', password_hash: 'd3f5d81d2cdb78af4cd59958e71fa09dc2fc501ddb7ca43cb75358f7c01e2327', must_change_password: true },
-    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [],
+    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Bursar', staff_id: 'SF0004', linked_student_ids: [],
       password_salt: 'c82d75e7a982657abaab6d7928e5d55a', password_hash: '6a8c3db8ad51f7cd31e2c327c53a993f754a714634897bf17614005f01c13f77', must_change_password: true },
     { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001'],
       password_salt: '45f5558dbac1e710faae477606f6beb5', password_hash: '43715fc1427c99b4274c03a585233547449e99427b4d942dd792cc9b6fc87dee', must_change_password: true }
@@ -425,7 +425,7 @@
   // subject_teacher_of = [{ subject, class_ids }] — one subject across one or more classes.
   // dashboard_full_access lets Admin grant a specific staff member the Finance
   // side of the Dashboard even outside their role's default (Admin/Director/
-  // Other staff always have it; see App.canFullDashboard()).
+  // Bursar always have it; see App.canFullDashboard()).
   // Beyond the 4 demo-login-linked staff (SF0001–4, unchanged so the seeded
   // login accounts keep working), a few more teachers and office staff are
   // seeded so every class has a class teacher and there's enough of a roster
@@ -434,7 +434,7 @@
     { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
     { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
     { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} },
+    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Bursar', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} },
     { id: 'st-5', school_id: SCHOOL_ID, staff_id: 'SF0005', name: 'Ama Serwaa',           role: 'Teacher',     phone: '+233 24 000 0005', class_ids: ['cl-creche', 'cl-nur1', 'cl-nur2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
     { id: 'st-6', school_id: SCHOOL_ID, staff_id: 'SF0006', name: 'Kwabena Owusu',        role: 'Teacher',     phone: '+233 24 000 0006', class_ids: ['cl-kg1', 'cl-kg2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
     { id: 'st-7', school_id: SCHOOL_ID, staff_id: 'SF0007', name: 'Efua Darko',           role: 'Teacher',     phone: '+233 24 000 0007', class_ids: ['cl-b2', 'cl-b3'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
@@ -444,7 +444,7 @@
     // Demonstrates the reverse pairing: class teacher of B7–B9, and also
     // teaches English Language across B4–B6 (owned by SF0008 as class teacher).
     { id: 'st-9', school_id: SCHOOL_ID, staff_id: 'SF0009', name: 'Abena Konadu',         role: 'Teacher',     phone: '+233 24 000 0009', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'], subject_teacher_of: [{ subject: 'English Language', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    { id: 'st-10', school_id: SCHOOL_ID, staff_id: 'SF0010', name: 'Gifty Adjei',          role: 'Other staff', phone: '+233 24 000 0010', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1300, allowances: 100, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} }
+    { id: 'st-10', school_id: SCHOOL_ID, staff_id: 'SF0010', name: 'Gifty Adjei',          role: 'Bursar', phone: '+233 24 000 0010', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1300, allowances: 100, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} }
   ];
 
   function stu(code, first, last, cls, gender, parent) {
