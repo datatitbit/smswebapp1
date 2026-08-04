@@ -1,4 +1,4 @@
-# SMSWebApp1 — Hosting & App Roadmap (plain-English)
+# Zetclass — Hosting & App Roadmap (plain-English)
 
 _Last updated: 28 July 2026_
 

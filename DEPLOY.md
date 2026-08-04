@@ -9,7 +9,7 @@ point of this document.
 ```
 Render (Static Site)                          cPanel / Namecheap host
   app/ only, api/ stripped     -- Bearer -->     PHP + MySQL (app/api/)
-  https://smswebapp1.onrender.com                api/index.php + PDO/MySQL
+  https://zetclass.com (Render behind it)         api/index.php + PDO/MySQL
   serves index.html, js/, css/  <-- JSON ---      login, CRUD, platform routes
   static files only, no PHP                       (provision/suspend/impersonate)
 ```
@@ -24,14 +24,14 @@ Render (Static Site)                          cPanel / Namecheap host
 
 | Stage | Example URL for a school called "Schoola" | Pattern |
 |---|---|---|
-| **NOW** (this build, on shared hosting) | `novasms1.com/school/schoola` | client name comes **AFTER** the domain (**path-based routing**) |
-| **LATER** (once on a bigger server) | `schoola.novasms1.com` | client name comes **BEFORE** the domain (**subdomain routing**) |
+| **NOW** (this build, on shared hosting) | `zetclass.com/school/schoola` | client name comes **AFTER** the domain (**path-based routing**) |
+| **LATER** (once on a bigger server) | `schoola.zetclass.com` | client name comes **BEFORE** the domain (**subdomain routing**) |
 
 **Why NOW is path-based:** subdomain routing needs a **wildcard SSL
-certificate** (a security certificate that covers `*.novasms1.com` — i.e. any
+certificate** (a security certificate that covers `*.zetclass.com` — i.e. any
 name in front of the domain — instead of just one exact address) plus
 **wildcard DNS** (telling the internet's address book that *any* name before
-`novasms1.com` should point at our server). Ordinary shared hosting (cPanel /
+`zetclass.com` should point at our server). Ordinary shared hosting (cPanel /
 Namecheap, which is what this app targets today — see §2 below) does not make
 that easy or automatic. Path-based routing needs none of that extra setup, so
 it is what `app.js`'s `/school/:slug/...` routing (see §3) actually
@@ -52,8 +52,8 @@ small pieces of login data a browser stores per address).
 hosting/DNS/SSL setup around it — the underlying security model does NOT
 change. The school's data is, and always will be, isolated by the **signed
 token** issued at login (see `README-ISOLATION.md`), never by the URL itself.
-Whether a school's address is `novasms1.com/school/schoola` or
-`schoola.novasms1.com`, the server never trusts what's in the URL for
+Whether a school's address is `zetclass.com/school/schoola` or
+`schoola.zetclass.com`, the server never trusts what's in the URL for
 security — only the token. So this is purely a URL-presentation/hosting
 decision, safe to defer and change later without touching the security design.
 
@@ -63,7 +63,8 @@ decision, safe to defer and change later without touching the security design.
   folder** (including `config.php` and any credentials pasted into it) before
   publishing. Render's static-site runtime does not execute PHP even if the
   folder were left in place — it only serves files as-is.
-- The live site (`https://smswebapp1.onrender.com`) therefore **always runs
+- The live site (`https://zetclass.com`, served by Render — see custom-domain
+  note below) therefore **always runs
   in Local mode** (`DB_CONFIG.useApi = false`, browser `localStorage`) unless
   and until `index.html` is changed to point at a real, separately-hosted API
   (see §3). Pushing to `main` never deploys or affects the PHP API in any way
@@ -89,7 +90,7 @@ Two ways to lay this out:
   is what `README.md` §3 already documents.
 - **Split-origin** (this repo's actual target topology): the frontend stays on
   Render, only `api/` is deployed to the PHP host under its own domain (e.g.
-  `https://api.yourschoolsms.com`). This requires the frontend to know the
+  `https://api.zetclass.com`). This requires the frontend to know the
   **full URL** of the API — see §3 below — and relies on `index.php`'s
   existing `Access-Control-Allow-Origin: *` header, which already permits
   cross-origin requests from the Render domain with no further server change.
@@ -103,16 +104,16 @@ single editable spot:
 <script>
   // ---- API base URL per environment ----
   // Render hosts the static frontend ONLY — it can never run api/index.php
-  // (see DEPLOY.md). SMS_API_BASE must be a URL this page can actually
+  // (see DEPLOY.md). API_BASE must be a URL this page can actually
   // reach api/index.php at:
   //   - same-origin PHP host (frontend + api/ deployed together)
   //     -> a relative path: 'api/index.php'
   //   - split-origin (frontend on Render, API on cPanel/Namecheap)
-  //     -> the API's full URL: 'https://api.yourschoolsms.com/api/index.php'
+  //     -> the API's full URL: 'https://api.zetclass.com/api/index.php'
   // useApi stays false (Local/localStorage mode) until the PHP API + MySQL
-  // deployment above is live and reachable at SMS_API_BASE.
-  var SMS_API_BASE = 'api/index.php';
-  window.DB_CONFIG = { useApi: false, apiBase: SMS_API_BASE };
+  // deployment above is live and reachable at API_BASE.
+  var API_BASE = 'api/index.php';
+  window.DB_CONFIG = { useApi: false, apiBase: API_BASE };
 </script>
 ```
 
@@ -121,11 +122,11 @@ design — see the project's standing rules), so there is no environment-variabl
 injection at deploy time. Switching environments means editing these two lines
 directly before publishing:
 
-| Environment | `useApi` | `SMS_API_BASE` |
+| Environment | `useApi` | `API_BASE` |
 |---|---|---|
 | Local dev, no server | `false` | *(unused)* |
 | Local dev against `php -S` (same machine) | `true` | `'api/index.php'` |
-| Render (frontend) + cPanel (API), split-origin | `true` | `'https://api.yourschoolsms.com/api/index.php'` |
+| Render (frontend) + cPanel (API), split-origin | `true` | `'https://api.zetclass.com/api/index.php'` |
 | Single PHP host serving both frontend + API | `true` | `'api/index.php'` |
 
 Path-based routing (`/school/:slug/...`, `/admin/...` — see `app.js`) only

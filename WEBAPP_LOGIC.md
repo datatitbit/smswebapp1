@@ -1,4 +1,4 @@
-# WEBAPP LOGIC — School Management System (Ghanaian Private Basic School)
+# WEBAPP LOGIC — Zetclass (Ghanaian Private Basic School)
 _Single source of truth. Paste into an AI builder to reconstruct the app without further guidance._
 _Last updated: 2026-07-16 (living document — updated at the end of each change)._
 
