@@ -1,6 +1,6 @@
 <?php
 /* ============================================================
- * index.php — REST front controller for the SMS API.
+ * index.php — REST front controller for the Zetclass API.
  * Mirrors the front-end data-access layer (store.js -> ApiAdapter).
  *
  * SECURITY MODEL (multi-tenant):
