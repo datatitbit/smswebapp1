@@ -151,13 +151,13 @@ Option A**):
   and Remarks per template (Template B fields).
 
 ## 5. Roles & permission matrix
-Five roles: **Admin, Director, Teacher, Other staff, Parent**. Module-level on/off matrix, editable
+Five roles: **Admin, Director, Teacher, Bursar, Parent**. Module-level on/off matrix, editable
 by Admin. **Admin is always full.** Defaults:
 - Admin: all (incl. Settings).
 - Director: all except Settings.
 - Teacher: Dashboard, Students, Assessment, Attendance (own class(es) only). No Finance/Settings.
-- Other staff: Dashboard, Students, Attendance, Communication, Inventory (configurable; can be
-  granted Finance to become a bursar).
+- Bursar: Dashboard, Students, Finance, Attendance, Communication, Administration, Inventory,
+  Accounting, Payroll (configurable) — the school's finance/accounts office.
 - Parent: read-only own child(ren) — Dashboard, Students, Assessment, Finance, Attendance,
   Communication (all view-only).
 
