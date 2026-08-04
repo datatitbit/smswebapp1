@@ -201,7 +201,7 @@
 
     // ---- Full dashboard access ----
     var dashCb = el('input', { type: 'checkbox' }); if (s && s.dashboard_full_access) dashCb.checked = true;
-    f.appendChild(el('div', { class: 'field' }, [el('label', { class: 'check-label' }, [dashCb, document.createTextNode(' Full dashboard access (Finance KPIs, not just Enrolment/Attendance) — Admin, Director and Bursar already have this by default.')])]));
+    f.appendChild(el('div', { class: 'field' }, [el('label', { class: 'check-label' }, [dashCb, document.createTextNode(' Full dashboard access (Finance KPIs, not just Enrolment/Attendance) — Admin and Director already have this by default; tick this for anyone else (e.g. whoever actually handles fees/accounts) who should see it too.')])]));
 
     U.modal({ title: s ? 'Edit staff' : 'Add staff', wide: true, body: f, actions: [
       { label: 'Cancel', onClick: function (x) { x(); } },
