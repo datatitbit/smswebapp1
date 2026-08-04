@@ -335,7 +335,7 @@
       var root = U.clear(U.$('#root'));
       var wrap = U.el('div', { class: 'login-wrap' });
       var card = U.el('div', { class: 'card' });
-      var sName = App.ctx.school ? App.ctx.school.name : 'School Management System';
+      var sName = App.ctx.school ? App.ctx.school.name : 'Zetclass';
       card.appendChild(U.el('div', { class: 'login-badge', text: initials(sName) }));
       card.appendChild(U.el('h1', { text: sName }));
       card.appendChild(U.el('p', { class: 'muted', text: 'Sign in with your school name, user type, and password.' }));
@@ -524,7 +524,7 @@
     ]);
 
     var sidebar = U.el('div', { class: 'sidebar', id: 'sidebar' });
-    sidebar.appendChild(U.el('div', { class: 'brand', text: 'SMS · ' + (App.ctx.school.motto || '') }));
+    sidebar.appendChild(U.el('div', { class: 'brand', text: 'Zetclass · ' + (App.ctx.school.motto || '') }));
     var nav = U.el('nav');
     MODULES.forEach(function (m) {
       var allowed = App.can(m);
@@ -674,7 +674,7 @@
     var root = U.clear(U.$('#root'));
     var wrap = U.el('div', { class: 'login-wrap' });
     var card = U.el('div', { class: 'card' });
-    var label = App.schoolSlugLabel || 'School Management System';
+    var label = App.schoolSlugLabel || 'Zetclass';
     card.appendChild(U.el('div', { class: 'login-badge', text: initials(label) }));
     card.appendChild(U.el('h1', { text: label }));
     card.appendChild(U.el('p', { class: 'muted', text: 'Sign in to your school portal.' }));
