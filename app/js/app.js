@@ -380,7 +380,10 @@
         if (schoolVal.toLowerCase() !== realSchoolName.toLowerCase()) {
           showError('Incorrect school name, user type, or password.'); return;
         }
-        var candidates = users.filter(function (u) { return u.role === roleVal; });
+        // Excludes disabled accounts (mirrors api/index.php's check at login)
+        // so Settings → Demo Data → "Demo Login Accounts" actually blocks
+        // sign-in in local/PWA mode too, not just in API mode.
+        var candidates = users.filter(function (u) { return u.role === roleVal && !u.disabled; });
         submitBtn.disabled = true; submitBtn.textContent = 'Signing in…';
         verifyAgainstAny(candidates, passVal).then(function (user) {
           submitBtn.disabled = false; submitBtn.textContent = 'Sign in';
@@ -405,6 +408,12 @@
       }
 
       form.appendChild(submitBtn);
+
+      // Small, permanent footnote (not tied to the demo-password hint above,
+      // which disappears once passwords are changed) — an Admin can clear or
+      // restore the sample students/staff/inventory at any time from Settings
+      // → Demo Data. Purely a testing convenience; it never touches real data.
+      form.appendChild(U.el('div', { class: 'help', style: 'margin-top:.8rem;text-align:center;font-size:.75rem', text: 'This school starts with sample demo data for testing. An Admin can clear or restore it anytime in Settings → Demo Data.' }));
 
       card.appendChild(form);
       wrap.appendChild(card);

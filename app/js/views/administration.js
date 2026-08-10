@@ -20,14 +20,26 @@
   }
 
   /* ---------------- Reports ---------------- */
+  // Every report below follows the same shape: an optional Reports.timeFilter
+  // (Today/Week/Month/Term/Year/All — reused as-is, not reinvented) where a
+  // date range is meaningful, a table, and a "⤓ Export CSV" button using
+  // Bulk.download — the same pattern already proven by examReport/
+  // financeReport/attendanceReport below. This is the one screen where
+  // Admin/Director (and Other staff, per the existing permission matrix) can
+  // download whole-school data instead of item-by-item exports scattered
+  // across other screens.
   function tabReports(panel) {
     var sub = el('div', { class: 'tabs' }); var area = el('div'); var which = 'exam';
-    [['exam', 'Exam summary'], ['finance', 'Finance'], ['attendance', 'Attendance']].forEach(function (o) {
+    [['enrolment', 'Enrolment'], ['attendance', 'Attendance'], ['staffAttendance', 'Staff Attendance'],
+      ['exam', 'Exam summary'], ['finance', 'Finance'], ['fees', 'Fees / Arrears']].forEach(function (o) {
       var b = el('button', { text: o[1], onclick: function () { which = o[0]; redraw(); } }); b._w = o[0]; sub.appendChild(b);
     });
     panel.appendChild(sub); panel.appendChild(area);
-    function redraw() { U.$all('button', sub).forEach(function (b) { b.classList.toggle('active', b._w === which); }); U.clear(area);
-      if (which === 'exam') examReport(area); else if (which === 'finance') financeReport(area); else attendanceReport(area); }
+    function redraw() {
+      U.$all('button', sub).forEach(function (b) { b.classList.toggle('active', b._w === which); }); U.clear(area);
+      ({ exam: examReport, finance: financeReport, attendance: attendanceReport,
+        enrolment: enrolmentReport, staffAttendance: staffAttendanceReport, fees: feesReport })[which](area);
+    }
     redraw();
   }
 
@@ -114,6 +126,149 @@
         var tb = el('tbody');
         Object.keys(byClass).forEach(function (cid) { var b = byClass[cid]; tb.appendChild(el('tr', {}, [el('td', { text: App.className(cid) }), el('td', { text: b.p }), el('td', { text: b.t }), el('td', { text: Math.round(b.p / b.t * 100) + '%' })])); });
         if (!Object.keys(byClass).length) tb.appendChild(el('tr', {}, [el('td', { colspan: 4, html: '<span class=empty>No attendance in this period.</span>' })]));
+        t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); box.appendChild(c);
+      });
+    }
+  }
+
+  // Whole-school enrolment register. "All time" (the filter's default) shows
+  // the full current roster; picking Today/Week/Month/Term/Year narrows to
+  // students admitted within that period (new admissions), reusing the exact
+  // same Reports.timeFilter control as every other report on this screen.
+  function enrolmentReport(area) {
+    var filter = Reports.timeFilter(function () { load(); });
+    var classes = App.ctx.classes.slice().sort(function (a, b) { return a.sort - b.sort; });
+    var clsSel = el('select'); clsSel.appendChild(el('option', { value: '', text: 'All classes' }));
+    classes.forEach(function (c) { clsSel.appendChild(el('option', { value: c.id, text: c.name })); });
+    clsSel.addEventListener('change', load);
+    var statusSel = el('select');
+    [['', 'All statuses'], ['active', 'Active'], ['withdrawn', 'Withdrawn'], ['completed', 'Completed']].forEach(function (o) { statusSel.appendChild(el('option', { value: o[0], text: o[1] })); });
+    statusSel.addEventListener('change', load);
+    // Appended onto the filter's own toolbar node (one bar), not a second
+    // .toolbar — two stacked toolbars would each carry their own margin and
+    // read as disconnected control rows instead of one filter line.
+    filter.node.appendChild(el('span', { class: 'muted', text: 'Class:' }));
+    filter.node.appendChild(clsSel);
+    filter.node.appendChild(el('span', { class: 'muted', text: 'Status:' }));
+    filter.node.appendChild(statusSel);
+    area.appendChild(filter.node);
+    var box = el('div'); area.appendChild(box);
+    load();
+    function load() {
+      U.clear(box);
+      var range = filter.current();
+      var narrowByDate = range.label !== 'All time';
+      DB.all('students').then(function (all) {
+        var rows = all.filter(function (s) {
+          if (clsSel.value && s.class_id !== clsSel.value) return false;
+          if (statusSel.value && (s.status || 'active') !== statusSel.value) return false;
+          if (narrowByDate && !Reports.inRange(s.admitted_on, range)) return false;
+          return true;
+        });
+        var c = el('div', { class: 'card' });
+        c.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between' }, [
+          el('h3', { text: 'Enrolment · ' + (narrowByDate ? 'Admitted ' + range.label : 'Full roster') }),
+          el('button', { class: 'btn ghost sm', text: '⤓ Export CSV', onclick: function () {
+            Bulk.download('enrolment-register.csv', [['Student ID', 'Name', 'Class', 'Gender', 'Status', 'Admitted on', 'Parent/Guardian']].concat(rows.map(function (s) {
+              var parent = (App.ctx.parents || []).filter(function (p) { return p.id === s.parent_id; })[0];
+              return [s.student_id, s.first_name + ' ' + s.last_name, App.className(s.class_id), s.gender || '', s.status || 'active', s.admitted_on || '', parent ? parent.name : ''];
+            })));
+          } })
+        ]));
+        var activeN = rows.filter(function (s) { return (s.status || 'active') === 'active'; }).length;
+        var withdrawnN = rows.filter(function (s) { return s.status === 'withdrawn'; }).length;
+        c.appendChild(el('div', { class: 'grid cols-3', style: 'margin:.5rem 0' }, [stat(rows.length, 'In this view'), stat(activeN, 'Active'), stat(withdrawnN, 'Withdrawn')]));
+        var t = el('table', { class: 'data' });
+        t.appendChild(el('thead', {}, [el('tr', {}, ['Student ID', 'Name', 'Class', 'Gender', 'Status', 'Admitted on'].map(function (h) { return el('th', { text: h }); }))]));
+        var tb = el('tbody');
+        rows.forEach(function (s) { tb.appendChild(el('tr', {}, [el('td', { text: s.student_id }), el('td', { text: s.first_name + ' ' + s.last_name }), el('td', { text: App.className(s.class_id) }), el('td', { text: s.gender || '—' }), el('td', {}, [el('span', { class: 'tag ' + (s.status === 'active' ? '' : 'muted'), text: s.status || 'active' })]), el('td', { text: s.admitted_on ? U.fmtDate(s.admitted_on) : '—' })])); });
+        if (!rows.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 6, html: '<span class=empty>No students match this filter.</span>' })]));
+        t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); box.appendChild(c);
+      });
+    }
+  }
+
+  // Mirrors attendanceReport() exactly, one row per staff member instead of
+  // per class (staff aren't grouped into classes the way students are).
+  function staffAttendanceReport(area) {
+    var filter = Reports.timeFilter(function () { load(); });
+    area.appendChild(filter.node);
+    var box = el('div'); area.appendChild(box);
+    load();
+    function load() {
+      U.clear(box);
+      var range = filter.current();
+      Promise.all([DB.all('staffAttendance'), DB.all('staff')]).then(function (r) {
+        var att = r[0].filter(function (a) { return Reports.inRange(a.date, range); });
+        var staffByCode = {}; r[1].forEach(function (s) { staffByCode[s.staff_id] = s; });
+        var byStaff = {};
+        att.forEach(function (a) {
+          byStaff[a.staff_id] = byStaff[a.staff_id] || { p: 0, t: 0 };
+          byStaff[a.staff_id].t++; if (a.status === 'present') byStaff[a.staff_id].p++;
+        });
+        var codes = Object.keys(byStaff);
+        var c = el('div', { class: 'card' });
+        c.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between' }, [
+          el('h3', { text: 'Staff attendance · ' + range.label }),
+          el('button', { class: 'btn ghost sm', text: '⤓ Export CSV', onclick: function () {
+            Bulk.download('staff-attendance-report.csv', [['Staff ID', 'Name', 'Role', 'Present', 'Records', 'Rate %']].concat(codes.map(function (code) {
+              var b = byStaff[code], s = staffByCode[code];
+              return [code, s ? s.name : code, s ? s.role : '', b.p, b.t, Math.round(b.p / b.t * 100)];
+            })));
+          } })
+        ]));
+        var t = el('table', { class: 'data' });
+        t.appendChild(el('thead', {}, [el('tr', {}, ['Staff ID', 'Name', 'Role', 'Present', 'Records', 'Rate'].map(function (h) { return el('th', { text: h }); }))]));
+        var tb = el('tbody');
+        codes.forEach(function (code) { var b = byStaff[code], s = staffByCode[code]; tb.appendChild(el('tr', {}, [el('td', { text: code }), el('td', { text: s ? s.name : code }), el('td', { text: s ? s.role : '—' }), el('td', { text: b.p }), el('td', { text: b.t }), el('td', { text: Math.round(b.p / b.t * 100) + '%' })])); });
+        if (!codes.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 6, html: '<span class=empty>No staff attendance recorded in this period.</span>' })]));
+        t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); box.appendChild(c);
+      });
+    }
+  }
+
+  // Per-student fee position (billed / paid / arrears) — term-scoped rather
+  // than day/week/month, since fee types and invoices are inherently billed
+  // per term in this app (see finance-lib.js), not by calendar date. A term
+  // picker is the filter that's actually meaningful here.
+  function feesReport(area) {
+    var terms = App.ctx.academic.terms.slice().sort(function (a, b) { return a.n - b.n; });
+    var termSel = el('select');
+    terms.forEach(function (t) { var o = el('option', { value: t.n, text: t.name }); if (t.n === App.ctx.academic.current_term) o.selected = true; termSel.appendChild(o); });
+    termSel.addEventListener('change', load);
+    area.appendChild(el('div', { class: 'toolbar' }, [el('span', { class: 'muted', text: 'Term:' }), termSel]));
+    var box = el('div'); area.appendChild(box);
+    load();
+    function load() {
+      U.clear(box);
+      var term = Number(termSel.value);
+      Promise.all([DB.all('students'), DB.all('invoices'), DB.all('payments')]).then(function (r) {
+        var students = r[0].filter(function (s) { return s.status === 'active'; });
+        var invoices = r[1].filter(function (i) { return i.term === term; });
+        var payments = r[2].filter(function (p) { return p.term === term; });
+        var cur = App.ctx.school.currency;
+        var rows = students.map(function (s) {
+          var klass = App.ctx.classes.filter(function (c) { return c.id === s.class_id; })[0];
+          var pos = FL.studentFeePosition(s.student_id, klass, invoices, payments, App.ctx.feeTypes);
+          return { code: s.student_id, name: s.first_name + ' ' + s.last_name, cls: klass ? klass.name : '', billed: pos.billed, paid: pos.paid, arrears: pos.arrears };
+        }).sort(function (a, b) { return b.arrears - a.arrears; });
+        var totalBilled = rows.reduce(function (a, r2) { return a + r2.billed; }, 0);
+        var totalPaid = rows.reduce(function (a, r2) { return a + r2.paid; }, 0);
+        var totalArrears = rows.reduce(function (a, r2) { return a + r2.arrears; }, 0);
+        var termName = (terms.filter(function (t) { return t.n === term; })[0] || {}).name || ('Term ' + term);
+        var c = el('div', { class: 'card' });
+        c.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between' }, [
+          el('h3', { text: 'Fees / Arrears · ' + termName }),
+          el('button', { class: 'btn ghost sm', text: '⤓ Export CSV', onclick: function () {
+            Bulk.download('fees-arrears-' + termName.replace(/\s+/g, '') + '.csv', [['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears']].concat(rows.map(function (r2) { return [r2.code, r2.name, r2.cls, r2.billed, r2.paid, r2.arrears]; })));
+          } })
+        ]));
+        c.appendChild(el('div', { class: 'grid cols-3', style: 'margin:.5rem 0' }, [stat(U.money(totalBilled, cur), 'Total billed'), stat(U.money(totalPaid, cur), 'Total paid'), stat(U.money(totalArrears, cur), 'Total arrears')]));
+        var t = el('table', { class: 'data' });
+        t.appendChild(el('thead', {}, [el('tr', {}, ['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears'].map(function (h) { return el('th', { text: h }); }))]));
+        var tb = el('tbody');
+        rows.forEach(function (r2) { tb.appendChild(el('tr', {}, [el('td', { text: r2.code }), el('td', { text: r2.name }), el('td', { text: r2.cls }), el('td', { text: U.money(r2.billed, cur) }), el('td', { text: U.money(r2.paid, cur) }), el('td', { text: U.money(r2.arrears, cur) })])); });
+        if (!rows.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 6, html: '<span class=empty>No active students.</span>' })]));
         t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); box.appendChild(c);
       });
     }

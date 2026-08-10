@@ -227,16 +227,24 @@
   };
 
   // ---- Sample inventory items (Item Master) + stock rows (Stock Levels) ----
-  var inventoryItems = [
-    { id: 'itm-1', school_id: SCHOOL_ID, sku: 'UNI-BRN-14', name: 'Brown Uniform - Size 14', inventory_type: 'resale', category: 'Uniforms', target_class: 'cl-b1', cost_price: 45, selling_price: 70, unit_cost: 45, unit: 'set', low_threshold: 10, qty: 40, supplier: { name: '', contact: '', location: '' }, archived: false },
-    { id: 'itm-2', school_id: SCHOOL_ID, sku: 'BK-MAT-B9', name: 'Mathematics Textbook - Basic 9', inventory_type: 'resale', category: 'Textbooks', target_class: 'cl-b9', cost_price: 30, selling_price: 45, unit_cost: 30, unit: 'copy', low_threshold: 15, qty: 60, supplier: { name: '', contact: '', location: '' }, archived: false },
-    { id: 'itm-3', school_id: SCHOOL_ID, sku: 'ICT-LAP-01', name: 'ICT Lab Laptop', inventory_type: 'asset', category: 'ICT Equipment', target_class: '', cost_price: 4500, selling_price: 0, unit_cost: 4500, unit: 'unit', low_threshold: 2, qty: 12, supplier: { name: '', contact: '', location: '' }, archived: false }
-  ];
-  var inventoryStock = [
-    { id: 'stk-1', school_id: SCHOOL_ID, item_id: 'itm-1', item_name: 'Brown Uniform - Size 14', location: 'Bookshop', qoh: 40, allocated: 5, reorder_level: 10, batch: {}, archived: false },
-    { id: 'stk-2', school_id: SCHOOL_ID, item_id: 'itm-2', item_name: 'Mathematics Textbook - Basic 9', location: 'Bookshop', qoh: 60, allocated: 0, reorder_level: 15, batch: {}, archived: false },
-    { id: 'stk-3', school_id: SCHOOL_ID, item_id: 'itm-3', item_name: 'ICT Lab Laptop', location: 'Main Admin Store', qoh: 12, allocated: 0, reorder_level: 2, batch: {}, archived: false }
-  ];
+  // Tagged is_demo: true — cleared/restored as a set via Settings → Demo Data,
+  // same pattern as the demo student roster and extra staff above.
+  function buildDemoInventory() {
+    var items = [
+      { id: 'itm-1', school_id: SCHOOL_ID, sku: 'UNI-BRN-14', name: 'Brown Uniform - Size 14', inventory_type: 'resale', category: 'Uniforms', target_class: 'cl-b1', cost_price: 45, selling_price: 70, unit_cost: 45, unit: 'set', low_threshold: 10, qty: 40, supplier: { name: '', contact: '', location: '' }, archived: false, is_demo: true },
+      { id: 'itm-2', school_id: SCHOOL_ID, sku: 'BK-MAT-B9', name: 'Mathematics Textbook - Basic 9', inventory_type: 'resale', category: 'Textbooks', target_class: 'cl-b9', cost_price: 30, selling_price: 45, unit_cost: 30, unit: 'copy', low_threshold: 15, qty: 60, supplier: { name: '', contact: '', location: '' }, archived: false, is_demo: true },
+      { id: 'itm-3', school_id: SCHOOL_ID, sku: 'ICT-LAP-01', name: 'ICT Lab Laptop', inventory_type: 'asset', category: 'ICT Equipment', target_class: '', cost_price: 4500, selling_price: 0, unit_cost: 4500, unit: 'unit', low_threshold: 2, qty: 12, supplier: { name: '', contact: '', location: '' }, archived: false, is_demo: true }
+    ];
+    var stock = [
+      { id: 'stk-1', school_id: SCHOOL_ID, item_id: 'itm-1', item_name: 'Brown Uniform - Size 14', location: 'Bookshop', qoh: 40, allocated: 5, reorder_level: 10, batch: {}, archived: false, is_demo: true },
+      { id: 'stk-2', school_id: SCHOOL_ID, item_id: 'itm-2', item_name: 'Mathematics Textbook - Basic 9', location: 'Bookshop', qoh: 60, allocated: 0, reorder_level: 15, batch: {}, archived: false, is_demo: true },
+      { id: 'stk-3', school_id: SCHOOL_ID, item_id: 'itm-3', item_name: 'ICT Lab Laptop', location: 'Main Admin Store', qoh: 12, allocated: 0, reorder_level: 2, batch: {}, archived: false, is_demo: true }
+    ];
+    return { items: items, stock: stock };
+  }
+  var demoInv = buildDemoInventory();
+  var inventoryItems = demoInv.items;
+  var inventoryStock = demoInv.stock;
 
   // ---- Report templates (blocks/fields toggleable & renamable) ----
   var checklistDomains = [
@@ -406,16 +414,30 @@
   // ---- Default users (one per role) for demo login ----
   // Passwords are PBKDF2-SHA256 hashed (see auth-lib.js), never stored in plaintext.
   // DEMO PASSWORD (change at go-live — see README "Placeholders"): 123 (same for every role)
+  // is_demo: true marks these as the seeded demo-login accounts (Settings →
+  // Demo Data → "Demo Login Accounts" toggle). u-admin is intentionally the
+  // only one this toggle can never disable — see settings.js tabDemoData —
+  // so an Admin can never lock themselves out of the Settings screen they're
+  // using to flip the toggle.
+  // Display names below are job titles shown in the topbar/payslips — the
+  // underlying `role` (used by every permission check across the app) is
+  // unchanged. "Headteacher" and "Account/Finance Officer" are just more
+  // realistic real-world titles for the Director and Other-staff demo
+  // accounts; there is no separate "Headteacher" or "Finance Officer" role.
   var users = [
-    { id: 'u-admin',   school_id: SCHOOL_ID, name: 'School Administrator', username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [],
+    { id: 'u-admin',   school_id: SCHOOL_ID, name: 'Admin',                 username: 'admin',    role: 'Admin',       staff_id: 'SF0001', linked_student_ids: [], is_demo: true,
       password_salt: '801996da7c05539ac10e6f24afb4d0d6', password_hash: '13c96df114026eb5585524e418b7d24f422b5ccfb982ab5dfc4bbbc96d7293ef', must_change_password: true },
-    { id: 'u-dir',     school_id: SCHOOL_ID, name: 'The Director',          username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [],
+    { id: 'u-dir',     school_id: SCHOOL_ID, name: 'Headteacher',           username: 'director', role: 'Director',    staff_id: 'SF0002', linked_student_ids: [], is_demo: true,
       password_salt: '726e4a07e4f2520116c93d54d8be74bb', password_hash: '6fca94685b351d4fc0de847e6bcd440abf9593fd588acda346d634fbc29a87ee', must_change_password: true },
-    { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [],
+    { id: 'u-teacher', school_id: SCHOOL_ID, name: 'Class Teacher',         username: 'teacher',  role: 'Teacher',     staff_id: 'SF0003', class_ids: ['cl-b1'], linked_student_ids: [], is_demo: true,
       password_salt: '1e521ab3eb3d3f5bff0462190ea9eef6', password_hash: 'd3f5d81d2cdb78af4cd59958e71fa09dc2fc501ddb7ca43cb75358f7c01e2327', must_change_password: true },
-    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Front Desk',            username: 'staff',    role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [],
+    { id: 'u-staff',   school_id: SCHOOL_ID, name: 'Account/Finance Officer', username: 'staff',  role: 'Other staff', staff_id: 'SF0004', linked_student_ids: [], is_demo: true,
       password_salt: 'c82d75e7a982657abaab6d7928e5d55a', password_hash: '6a8c3db8ad51f7cd31e2c327c53a993f754a714634897bf17614005f01c13f77', must_change_password: true },
-    { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001'],
+    // ST0001 and ST0002 are genuine siblings under the same parent record
+    // (pa-1, built by buildDemoRoster's every-other-student pairing below) —
+    // linking both here demonstrates the multi-ward parent portal view
+    // (parentDash() in dashboard.js already renders one card per ward).
+    { id: 'u-parent',  school_id: SCHOOL_ID, name: 'A Parent',              username: 'parent',   role: 'Parent',      linked_student_ids: ['ST0001', 'ST0002'], is_demo: true,
       password_salt: '45f5558dbac1e710faae477606f6beb5', password_hash: '43715fc1427c99b4274c03a585233547449e99427b4d942dd792cc9b6fc87dee', must_change_password: true }
   ];
 
@@ -427,32 +449,55 @@
   // side of the Dashboard — needed for anyone in "Other staff" who actually
   // handles fees/accounts, since that role does NOT get it by default (only
   // Admin/Director do; see App.canFullDashboard()).
-  // Beyond the 4 demo-login-linked staff (SF0001–4, unchanged so the seeded
-  // login accounts keep working), a few more teachers and office staff are
-  // seeded so every class has a class teacher and there's enough of a roster
-  // to test attendance/payroll/reports without hand-creating staff first.
-  var staff = [
-    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'School Administrator', role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'The Director',          role: 'Director',    phone: '+233 00 000 0002', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+  // The first 4 (SF0001-4) are linked to the demo-login users above and are
+  // NOT tagged is_demo — clearing "Demo Sample Data" never touches them, so
+  // the demo login accounts keep working even after sample data is cleared.
+  // SF0005 onward are tagged is_demo: true — extra teachers/office staff
+  // seeded purely so every class has a class teacher and there's enough of a
+  // roster to test attendance/payroll/reports; "Clear Demo Data" removes
+  // these, "Restore Demo Data" (Settings → Demo Data) regenerates them via
+  // buildDemoStaffExtra() below.
+  var coreStaff = [
+    { id: 'st-1', school_id: SCHOOL_ID, staff_id: 'SF0001', name: 'Admin',                 role: 'Admin',       phone: '+233 00 000 0001', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 2500, allowances: 300, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
+    { id: 'st-2', school_id: SCHOOL_ID, staff_id: 'SF0002', name: 'Headteacher',           role: 'Director',    phone: '+233 00 000 0002', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 4000, allowances: 500, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
     { id: 'st-3', school_id: SCHOOL_ID, staff_id: 'SF0003', name: 'Class Teacher',         role: 'Teacher',     phone: '+233 00 000 0003', class_ids: ['cl-b1'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Front Desk',            role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} },
-    { id: 'st-5', school_id: SCHOOL_ID, staff_id: 'SF0005', name: 'Ama Serwaa',           role: 'Teacher',     phone: '+233 24 000 0005', class_ids: ['cl-creche', 'cl-nur1', 'cl-nur2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-6', school_id: SCHOOL_ID, staff_id: 'SF0006', name: 'Kwabena Owusu',        role: 'Teacher',     phone: '+233 24 000 0006', class_ids: ['cl-kg1', 'cl-kg2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    { id: 'st-7', school_id: SCHOOL_ID, staff_id: 'SF0007', name: 'Efua Darko',           role: 'Teacher',     phone: '+233 24 000 0007', class_ids: ['cl-b2', 'cl-b3'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} },
-    // Demonstrates a subject teacher: class teacher of B4–B6, and also teaches
-    // Mathematics across B7–B9 (owned by SF0009 as their class teacher).
-    { id: 'st-8', school_id: SCHOOL_ID, staff_id: 'SF0008', name: 'Yaw Boadu',            role: 'Teacher',     phone: '+233 24 000 0008', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'], subject_teacher_of: [{ subject: 'Mathematics', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    // Demonstrates the reverse pairing: class teacher of B7–B9, and also
-    // teaches English Language across B4–B6 (owned by SF0008 as class teacher).
-    { id: 'st-9', school_id: SCHOOL_ID, staff_id: 'SF0009', name: 'Abena Konadu',         role: 'Teacher',     phone: '+233 24 000 0009', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'], subject_teacher_of: [{ subject: 'English Language', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {} },
-    { id: 'st-10', school_id: SCHOOL_ID, staff_id: 'SF0010', name: 'Gifty Adjei',          role: 'Other staff', phone: '+233 24 000 0010', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1300, allowances: 100, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {} }
+    // dashboard_full_access: true — this is the demo-login-linked "Other
+    // staff" account, so its title/access match: an Account/Finance Officer
+    // is exactly the kind of "Other staff" member who needs the Finance side
+    // of the Dashboard (see App.canFullDashboard() in app.js).
+    { id: 'st-4', school_id: SCHOOL_ID, staff_id: 'SF0004', name: 'Account/Finance Officer', role: 'Other staff', phone: '+233 00 000 0004', class_ids: [], subject_teacher_of: [], dashboard_full_access: true, basic_salary: 1200, allowances: 100, employee_type: 'Part-time', payment_method: 'Cash', payroll_overrides: {} }
   ];
+  function buildDemoStaffExtra() {
+    return [
+      { id: 'st-5', school_id: SCHOOL_ID, staff_id: 'SF0005', name: 'Ama Serwaa',           role: 'Teacher',     phone: '+233 24 000 0005', class_ids: ['cl-creche', 'cl-nur1', 'cl-nur2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {}, is_demo: true },
+      { id: 'st-6', school_id: SCHOOL_ID, staff_id: 'SF0006', name: 'Kwabena Owusu',        role: 'Teacher',     phone: '+233 24 000 0006', class_ids: ['cl-kg1', 'cl-kg2'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1700, allowances: 150, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {}, is_demo: true },
+      { id: 'st-7', school_id: SCHOOL_ID, staff_id: 'SF0007', name: 'Efua Darko',           role: 'Teacher',     phone: '+233 24 000 0007', class_ids: ['cl-b2', 'cl-b3'], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 1800, allowances: 200, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {}, is_demo: true },
+      // Demonstrates a subject teacher: class teacher of B4–B6, and also teaches
+      // Mathematics across B7–B9 (owned by SF0009 as their class teacher).
+      { id: 'st-8', school_id: SCHOOL_ID, staff_id: 'SF0008', name: 'Yaw Boadu',            role: 'Teacher',     phone: '+233 24 000 0008', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'], subject_teacher_of: [{ subject: 'Mathematics', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {}, is_demo: true },
+      // Demonstrates the reverse pairing: class teacher of B7–B9, and also
+      // teaches English Language across B4–B6 (owned by SF0008 as class teacher).
+      { id: 'st-9', school_id: SCHOOL_ID, staff_id: 'SF0009', name: 'Abena Konadu',         role: 'Teacher',     phone: '+233 24 000 0009', class_ids: ['cl-b7', 'cl-b8', 'cl-b9'], subject_teacher_of: [{ subject: 'English Language', class_ids: ['cl-b4', 'cl-b5', 'cl-b6'] }], dashboard_full_access: false, basic_salary: 1900, allowances: 200, employee_type: 'Full-time', payment_method: 'Bank', payroll_overrides: {}, is_demo: true },
+      // Demonstrates dashboard_full_access: an "Other staff" role member
+      // explicitly granted the Finance side of the Dashboard (e.g. the
+      // person who actually handles fees/accounts) — see App.canFullDashboard().
+      { id: 'st-10', school_id: SCHOOL_ID, staff_id: 'SF0010', name: 'Gifty Adjei',          role: 'Other staff', phone: '+233 24 000 0010', class_ids: [], subject_teacher_of: [], dashboard_full_access: true, basic_salary: 1300, allowances: 100, employee_type: 'Full-time', payment_method: 'MoMo', payroll_overrides: {}, is_demo: true },
+      // Support staff — plain "Other staff", no dashboard finance access
+      // (matches App.canFullDashboard()'s default for this role: Enrolment
+      // & Attendance only, unless individually granted like SF0004/SF0010).
+      { id: 'st-11', school_id: SCHOOL_ID, staff_id: 'SF0011', name: 'Cook',                  role: 'Other staff', phone: '+233 24 000 0011', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 900,  allowances: 50, employee_type: 'Full-time', payment_method: 'Cash', payroll_overrides: {}, is_demo: true },
+      { id: 'st-12', school_id: SCHOOL_ID, staff_id: 'SF0012', name: 'Cleaner',               role: 'Other staff', phone: '+233 24 000 0012', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 800,  allowances: 50, employee_type: 'Full-time', payment_method: 'Cash', payroll_overrides: {}, is_demo: true },
+      { id: 'st-13', school_id: SCHOOL_ID, staff_id: 'SF0013', name: 'Driver',                role: 'Other staff', phone: '+233 24 000 0013', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 850,  allowances: 100, employee_type: 'Full-time', payment_method: 'Cash', payroll_overrides: {}, is_demo: true },
+      { id: 'st-14', school_id: SCHOOL_ID, staff_id: 'SF0014', name: 'Security',              role: 'Other staff', phone: '+233 24 000 0014', class_ids: [], subject_teacher_of: [], dashboard_full_access: false, basic_salary: 850,  allowances: 50, employee_type: 'Full-time', payment_method: 'Cash', payroll_overrides: {}, is_demo: true }
+    ];
+  }
+  var staff = coreStaff.concat(buildDemoStaffExtra());
 
   function stu(code, first, last, cls, gender, parent) {
     return { id: 'stu-' + code, school_id: SCHOOL_ID, student_id: code,
       first_name: first, last_name: last, class_id: cls, gender: gender,
       dob: '', parent_id: parent, status: 'active',
-      admitted_on: '2025-09-09' };
+      admitted_on: '2025-09-09', is_demo: true };
   }
   function pad4(n) { var s = '' + n; while (s.length < 4) s = '0' + s; return s; }
   function pad(n, len) { var s = '' + n; while (s.length < len) s = '0' + s; return s; }
@@ -461,38 +506,55 @@
   // Generated deterministically from Ghanaian name pools so every one of the
   // 14 classes starts with a full-looking roster (STUDENTS_PER_CLASS pupils
   // each) instead of a handful of hand-typed records — enough to exercise
-  // attendance, scores, promotion, fees and reports right away. Pupils are
-  // paired two-at-a-time under one parent record (siblings), matching the
-  // "multi-child parent" feature the app supports.
-  var FIRST_M = ['Kwame', 'Kofi', 'Yaw', 'Kwabena', 'Kwaku', 'Kwesi', 'Emmanuel', 'Prince'];
-  var FIRST_F = ['Akosua', 'Ama', 'Efua', 'Abena', 'Adwoa', 'Afia', 'Esi', 'Comfort'];
-  var LAST_NAMES = ['Mensah', 'Owusu', 'Boateng', 'Asante', 'Osei', 'Appiah', 'Amoah', 'Agyei', 'Darko', 'Adjei', 'Frimpong', 'Sarpong', 'Tetteh', 'Quaye'];
-  var STUDENTS_PER_CLASS = 4;
+  // attendance, scores, promotion, fees and reports right away (~100 pupils
+  // total). Pupils are paired two-at-a-time under one parent record
+  // (siblings), matching the "multi-child parent" feature the app supports.
+  // Both students and parents are tagged is_demo: true so Settings → Demo
+  // Data can clear/restore this roster without touching real enrollments a
+  // school adds later. buildDemoRoster() is reused (with a fresh seq offset)
+  // by the "Restore Demo Data" action to avoid ID collisions.
+  var FIRST_M = ['Kwame', 'Kofi', 'Yaw', 'Kwabena', 'Kwaku', 'Kwesi', 'Emmanuel', 'Prince', 'Joseph', 'Samuel', 'David', 'Solomon'];
+  var FIRST_F = ['Akosua', 'Ama', 'Efua', 'Abena', 'Adwoa', 'Afia', 'Esi', 'Comfort', 'Grace', 'Faith', 'Hope', 'Victoria'];
+  var LAST_NAMES = ['Mensah', 'Owusu', 'Boateng', 'Asante', 'Osei', 'Appiah', 'Amoah', 'Agyei', 'Darko', 'Adjei', 'Frimpong', 'Sarpong', 'Tetteh', 'Quaye', 'Amponsah', 'Acheampong'];
+  var STUDENTS_PER_CLASS = 7;
 
-  var parents = [];
-  var students = [];
-  var studentSeq = 0;
-  classes.forEach(function (c) {
-    var currentParent = null;
-    for (var i = 0; i < STUDENTS_PER_CLASS; i++) {
-      studentSeq++;
-      var code = 'ST' + pad4(studentSeq);
-      var isMale = studentSeq % 2 === 1;
-      var first = isMale ? FIRST_M[studentSeq % FIRST_M.length] : FIRST_F[studentSeq % FIRST_F.length];
-      var last = LAST_NAMES[studentSeq % LAST_NAMES.length];
-      var parentId;
-      if (i % 2 === 0) {
-        parentId = 'pa-' + studentSeq;
-        var phone = '+233 24 ' + pad(1000000 + studentSeq, 7);
-        currentParent = { id: parentId, school_id: SCHOOL_ID, name: (isMale ? 'Mr. ' : 'Mrs. ') + last, phone: phone, whatsapp: phone, email: '', student_ids: [code] };
-        parents.push(currentParent);
-      } else {
-        parentId = currentParent.id;
-        currentParent.student_ids.push(code);
+  function buildDemoRoster(seqStart) {
+    var parents = [], students = [], seq = seqStart || 0;
+    classes.forEach(function (c) {
+      var currentParent = null;
+      for (var i = 0; i < STUDENTS_PER_CLASS; i++) {
+        seq++;
+        var code = 'ST' + pad4(seq);
+        var isMale = seq % 2 === 1;
+        var first = isMale ? FIRST_M[seq % FIRST_M.length] : FIRST_F[seq % FIRST_F.length];
+        var last = LAST_NAMES[seq % LAST_NAMES.length];
+        var parentId;
+        if (i % 2 === 0) {
+          parentId = 'pa-' + seq;
+          var phone = '+233 24 ' + pad(1000000 + seq, 7);
+          currentParent = { id: parentId, school_id: SCHOOL_ID, name: (isMale ? 'Mr. ' : 'Mrs. ') + last, phone: phone, whatsapp: phone, email: '', student_ids: [code], is_demo: true };
+          parents.push(currentParent);
+        } else {
+          parentId = currentParent.id;
+          currentParent.student_ids.push(code);
+        }
+        students.push(stu(code, first, last, c.id, isMale ? 'M' : 'F', parentId));
       }
-      students.push(stu(code, first, last, c.id, isMale ? 'M' : 'F', parentId));
-    }
-  });
+    });
+    return { parents: parents, students: students, lastSeq: seq };
+  }
+
+  var roster = buildDemoRoster(0);
+  var parents = roster.parents;
+  var students = roster.students;
+  var studentSeq = roster.lastSeq;
+
+  // ---- Demo Data settings (Settings → Demo Data) ----
+  // demo_login_enabled controls whether the 5 seeded demo-login accounts
+  // (username/123, tagged is_demo above) can sign in. Purely a testing
+  // convenience flag — toggling it off never deletes those accounts, it only
+  // disables sign-in for the 4 non-Admin ones (see settings.js tabDemoData).
+  var demoSettings = { id: 'demo-1', school_id: SCHOOL_ID, demo_login_enabled: true };
 
   var SEED = {
     school: school,
@@ -512,6 +574,7 @@
     admissionFields: admissionFields,
     weighting: weighting,
     dashboardSettings: dashboardSettings,
+    demoSettings: demoSettings,
     labels: labels,
     messageTemplates: messageTemplates,
     permissions: permissions,
@@ -543,4 +606,15 @@
   };
 
   global.SMS_SEED = SEED;
+
+  // ---- Regenerators for Settings → Demo Data → "Restore Demo Data" ----
+  // Reuses the exact same builders used at first-install seed time, so a
+  // restored roster/staff/inventory set looks identical to a fresh install's.
+  // seqStart lets the caller avoid colliding with existing student/parent IDs
+  // (e.g. pass the current highest ST#### number found in the live dataset).
+  global.SMS_DEMO_GENERATORS = {
+    buildRoster: buildDemoRoster,
+    buildStaffExtra: buildDemoStaffExtra,
+    buildInventory: buildDemoInventory
+  };
 })(window);

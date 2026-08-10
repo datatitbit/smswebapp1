@@ -11,7 +11,7 @@
   var el = U.el;
 
   var TABS = ['Profile', 'Academic', 'Classes & Subjects', 'Grading', 'Fees',
-    'Inventory', 'Report Templates', 'Identity', 'Admission Form', 'Roles', 'Access Control', 'Messages & Labels', 'Data'];
+    'Inventory', 'Report Templates', 'Identity', 'Admission Form', 'Roles', 'Access Control', 'Messages & Labels', 'Data', 'Demo Data'];
 
   function render(container) {
     U.clear(container);
@@ -36,7 +36,7 @@
         'Grading': tabGrading, 'Fees': tabFees, 'Inventory': tabInventory,
         'Report Templates': tabTemplates, 'Identity': tabIdentity, 'Admission Form': tabAdmission,
         'Roles': tabRoles, 'Access Control': tabAccess,
-        'Messages & Labels': tabMessages, 'Data': tabData
+        'Messages & Labels': tabMessages, 'Data': tabData, 'Demo Data': tabDemoData
       }[active])(panel);
     }
     draw();
@@ -909,6 +909,119 @@
       } })
     ]));
     panel.appendChild(card('Data Management', body));
+  }
+
+  /* ---------------- Demo Data (testing only — never touches real data) ---------------- */
+  // Two independent toggles, per how the seeded demo dataset is used:
+  //   1. Demo Login Accounts — enable/disable sign-in for the 5 seeded demo
+  //      users (username/123). The Admin one can never be disabled here, so
+  //      an Admin can never lock themselves out of this very screen.
+  //   2. Demo Sample Data — clear/restore the sample students, staff and
+  //      inventory (all tagged is_demo: true at seed time). Clearing only
+  //      ever removes is_demo records; anything a real school has since
+  //      added is untagged and is never touched by either action.
+  var DEMO_DATA_COLLECTIONS = ['students', 'parents', 'staff', 'inventoryItems', 'inventoryStock'];
+
+  function tabDemoData(panel) {
+    panel.appendChild(el('div', { class: 'note', text: 'For testing only. Nothing here ever affects a real student, staff, or inventory record you have added yourself.' }));
+    panel.appendChild(card('Demo Login Accounts', demoLoginBody()));
+    panel.appendChild(card('Demo Sample Data', demoSampleDataBody()));
+  }
+
+  function demoLoginBody() {
+    var wrap = el('div');
+    wrap.appendChild(el('p', { class: 'muted', text: 'Five seeded accounts (Admin, Director, Teacher, Other staff, Parent — password "123") let anyone explore every role before real staff have their own logins.' }));
+    var status = el('div', { class: 'help', style: 'margin-bottom:.5rem' });
+    var btnRow = el('div', { class: 'btn-row' });
+    wrap.appendChild(status); wrap.appendChild(btnRow);
+    refresh();
+
+    function refresh() {
+      DB.singleton('demoSettings').then(function (ds) {
+        ds = ds || { demo_login_enabled: true };
+        var on = ds.demo_login_enabled !== false;
+        status.textContent = on
+          ? 'Demo login is ON — Director, Teacher, Other staff and Parent demo accounts can sign in with "123".'
+          : 'Demo login is OFF — those 4 demo accounts are disabled and cannot sign in. (The Admin demo account always stays enabled so this screen is never locked out.)';
+        U.clear(btnRow);
+        btnRow.appendChild(el('button', { class: 'btn ' + (on ? 'danger' : 'gold'), text: on ? 'Turn off demo login' : 'Turn on demo login', onclick: function () {
+          var next = !on;
+          DB.all('users').then(function (users) {
+            var targets = users.filter(function (u) { return u.is_demo && u.role !== 'Admin'; });
+            return Promise.all(targets.map(function (u) { return DB.update('users', u.id, { disabled: !next }); }));
+          }).then(function () {
+            return DB.setSingleton('demoSettings', Object.assign({}, ds, { demo_login_enabled: next }));
+          }).then(function () {
+            U.toast(next ? 'Demo login accounts enabled.' : 'Demo login accounts disabled.');
+            refresh();
+          });
+        } }));
+      });
+    }
+    return wrap;
+  }
+
+  function demoSampleDataBody() {
+    var wrap = el('div');
+    wrap.appendChild(el('p', { class: 'muted', text: 'Sample students, staff and inventory pre-loaded so every screen has something to look at while testing. Clearing removes only these tagged demo records; restoring adds a fresh set back.' }));
+    var status = el('div', { class: 'help', style: 'margin-bottom:.5rem' });
+    var btnRow = el('div', { class: 'btn-row' });
+    wrap.appendChild(status); wrap.appendChild(btnRow);
+    refresh();
+
+    function demoCounts() {
+      return Promise.all(DEMO_DATA_COLLECTIONS.map(function (c) { return DB.all(c); })).then(function (all) {
+        var n = {}; DEMO_DATA_COLLECTIONS.forEach(function (c, i) { n[c] = all[i].filter(function (x) { return x.is_demo; }).length; });
+        return n;
+      });
+    }
+
+    function refresh() {
+      demoCounts().then(function (n) {
+        var hasAny = Object.keys(n).some(function (k) { return n[k] > 0; });
+        status.textContent = n.students + ' demo students, ' + n.staff + ' demo staff, ' + n.inventoryItems + ' demo inventory items currently loaded.';
+        U.clear(btnRow);
+        btnRow.appendChild(el('button', { class: 'btn gold', text: 'Restore demo data', onclick: function () { restoreDemo(hasAny); } }));
+        btnRow.appendChild(el('button', { class: 'btn danger', text: 'Clear demo data', disabled: !hasAny, onclick: clearDemo }));
+      });
+    }
+
+    function clearDemo() {
+      U.confirm('This removes all sample demo students, staff and inventory. Your real school data is never touched. Continue?', function () {
+        Promise.all(DEMO_DATA_COLLECTIONS.map(function (c) {
+          return DB.all(c).then(function (arr) { return DB.replaceAll(c, arr.filter(function (x) { return !x.is_demo; })); });
+        })).then(function () {
+          App.refresh().then(function () { U.toast('Demo sample data cleared.'); refresh(); });
+        });
+      });
+    }
+
+    function restoreDemo(hasAny) {
+      if (hasAny) { U.toast('Demo data is already loaded. Clear it first, then restore, to get a fresh set.', 'err'); return; }
+      U.confirm('This adds a fresh set of demo students, staff and inventory. Continue?', function () {
+        var G = global.SMS_DEMO_GENERATORS;
+        DB.all('students').then(function (existing) {
+          var maxSeq = existing.reduce(function (m, s) {
+            var n = parseInt(String(s.student_id || '').replace(/\D/g, ''), 10);
+            return isNaN(n) ? m : Math.max(m, n);
+          }, 0);
+          var roster = G.buildRoster(maxSeq);
+          var staffExtra = G.buildStaffExtra();
+          var inv = G.buildInventory();
+          return Promise.all([
+            DB.replaceAll('students', existing.concat(roster.students)),
+            DB.all('parents').then(function (arr) { return DB.replaceAll('parents', arr.concat(roster.parents)); }),
+            DB.all('staff').then(function (arr) { return DB.replaceAll('staff', arr.concat(staffExtra)); }),
+            DB.all('inventoryItems').then(function (arr) { return DB.replaceAll('inventoryItems', arr.concat(inv.items)); }),
+            DB.all('inventoryStock').then(function (arr) { return DB.replaceAll('inventoryStock', arr.concat(inv.stock)); })
+          ]);
+        }).then(function () {
+          App.refresh().then(function () { U.toast('Demo sample data restored.'); refresh(); });
+        });
+      });
+    }
+
+    return wrap;
   }
 
   /* ---------------- small shared helpers ---------------- */
