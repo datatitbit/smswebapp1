@@ -31,7 +31,7 @@
   function tabReports(panel) {
     var sub = el('div', { class: 'tabs' }); var area = el('div'); var which = 'exam';
     [['enrolment', 'Enrolment'], ['attendance', 'Attendance'], ['staffAttendance', 'Staff Attendance'],
-      ['exam', 'Exam summary'], ['finance', 'Finance'], ['fees', 'Fees / Arrears']].forEach(function (o) {
+      ['exam', 'Academic Report'], ['finance', 'Finance'], ['fees', 'Bills']].forEach(function (o) {
       var b = el('button', { text: o[1], onclick: function () { which = o[0]; redraw(); } }); b._w = o[0]; sub.appendChild(b);
     });
     panel.appendChild(sub); panel.appendChild(area);
@@ -227,10 +227,16 @@
     }
   }
 
-  // Per-student fee position (billed / paid / arrears) — term-scoped rather
-  // than day/week/month, since fee types and invoices are inherently billed
-  // per term in this app (see finance-lib.js), not by calendar date. A term
-  // picker is the filter that's actually meaningful here.
+  // Per-student bill: billed / paid / arrears / next term's fees / total
+  // payable, plus a Paid-Unpaid status at a glance — the counterpart to
+  // Academic Report (exam summary) below. Term-scoped rather than
+  // day/week/month, since fee types and invoices are inherently billed per
+  // term in this app (see finance-lib.js), not by calendar date, so a term
+  // picker is the filter that's actually meaningful here. "Next term's fees"
+  // reuses FinanceLib.studentFeePosition's own convention (relative to the
+  // school's actual current term, same as the Parent dashboard/portal) —
+  // it does not shift if you pick a past term above, since a past term's
+  // "next term" bill isn't a real quantity a school bills against.
   function feesReport(area) {
     var terms = App.ctx.academic.terms.slice().sort(function (a, b) { return a.n - b.n; });
     var termSel = el('select');
@@ -250,25 +256,30 @@
         var rows = students.map(function (s) {
           var klass = App.ctx.classes.filter(function (c) { return c.id === s.class_id; })[0];
           var pos = FL.studentFeePosition(s.student_id, klass, invoices, payments, App.ctx.feeTypes);
-          return { code: s.student_id, name: s.first_name + ' ' + s.last_name, cls: klass ? klass.name : '', billed: pos.billed, paid: pos.paid, arrears: pos.arrears };
+          return { code: s.student_id, name: s.first_name + ' ' + s.last_name, cls: klass ? klass.name : '',
+            billed: pos.billed, paid: pos.paid, arrears: pos.arrears, next: pos.next, payable: pos.payable,
+            status: pos.arrears > 0 ? 'Unpaid' : 'Paid' };
         }).sort(function (a, b) { return b.arrears - a.arrears; });
         var totalBilled = rows.reduce(function (a, r2) { return a + r2.billed; }, 0);
         var totalPaid = rows.reduce(function (a, r2) { return a + r2.paid; }, 0);
         var totalArrears = rows.reduce(function (a, r2) { return a + r2.arrears; }, 0);
+        var totalNext = rows.reduce(function (a, r2) { return a + r2.next; }, 0);
+        var unpaidN = rows.filter(function (r2) { return r2.status === 'Unpaid'; }).length;
         var termName = (terms.filter(function (t) { return t.n === term; })[0] || {}).name || ('Term ' + term);
         var c = el('div', { class: 'card' });
         c.appendChild(el('div', { class: 'flex', style: 'justify-content:space-between' }, [
-          el('h3', { text: 'Fees / Arrears · ' + termName }),
+          el('h3', { text: 'Bills · ' + termName }),
           el('button', { class: 'btn ghost sm', text: '⤓ Export CSV', onclick: function () {
-            Bulk.download('fees-arrears-' + termName.replace(/\s+/g, '') + '.csv', [['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears']].concat(rows.map(function (r2) { return [r2.code, r2.name, r2.cls, r2.billed, r2.paid, r2.arrears]; })));
+            Bulk.download('bills-' + termName.replace(/\s+/g, '') + '.csv', [['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears', 'Next term fees', 'Total payable', 'Status']].concat(rows.map(function (r2) { return [r2.code, r2.name, r2.cls, r2.billed, r2.paid, r2.arrears, r2.next, r2.payable, r2.status]; })));
           } })
         ]));
-        c.appendChild(el('div', { class: 'grid cols-3', style: 'margin:.5rem 0' }, [stat(U.money(totalBilled, cur), 'Total billed'), stat(U.money(totalPaid, cur), 'Total paid'), stat(U.money(totalArrears, cur), 'Total arrears')]));
+        c.appendChild(el('div', { class: 'grid cols-4', style: 'margin:.5rem 0' }, [stat(U.money(totalBilled, cur), 'Total billed'), stat(U.money(totalPaid, cur), 'Total paid'), stat(U.money(totalArrears, cur), 'Total arrears'), stat(unpaidN, 'Students unpaid')]));
+        c.appendChild(el('div', { class: 'help', text: 'Next term\'s fees (' + U.money(totalNext, cur) + ' school-wide) reflect the upcoming term regardless of which term is selected above.' }));
         var t = el('table', { class: 'data' });
-        t.appendChild(el('thead', {}, [el('tr', {}, ['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears'].map(function (h) { return el('th', { text: h }); }))]));
+        t.appendChild(el('thead', {}, [el('tr', {}, ['Student ID', 'Name', 'Class', 'Billed', 'Paid', 'Arrears', 'Next term fees', 'Total payable', 'Status'].map(function (h) { return el('th', { text: h }); }))]));
         var tb = el('tbody');
-        rows.forEach(function (r2) { tb.appendChild(el('tr', {}, [el('td', { text: r2.code }), el('td', { text: r2.name }), el('td', { text: r2.cls }), el('td', { text: U.money(r2.billed, cur) }), el('td', { text: U.money(r2.paid, cur) }), el('td', { text: U.money(r2.arrears, cur) })])); });
-        if (!rows.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 6, html: '<span class=empty>No active students.</span>' })]));
+        rows.forEach(function (r2) { tb.appendChild(el('tr', {}, [el('td', { text: r2.code }), el('td', { text: r2.name }), el('td', { text: r2.cls }), el('td', { text: U.money(r2.billed, cur) }), el('td', { text: U.money(r2.paid, cur) }), el('td', { text: U.money(r2.arrears, cur) }), el('td', { text: U.money(r2.next, cur) }), el('td', { text: U.money(r2.payable, cur) }), el('td', {}, [el('span', { class: 'tag ' + (r2.status === 'Paid' ? '' : 'req'), text: r2.status })])])); });
+        if (!rows.length) tb.appendChild(el('tr', {}, [el('td', { colspan: 9, html: '<span class=empty>No active students.</span>' })]));
         t.appendChild(tb); c.appendChild(el('div', { class: 'table-wrap' }, [t])); box.appendChild(c);
       });
     }
